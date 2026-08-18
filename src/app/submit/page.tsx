@@ -1,0 +1,80 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { asc } from 'drizzle-orm'
+import { db } from '@/db'
+import { categories, techStackTags } from '@/db/schema'
+import { lookupApp } from '@/lib/appstore/lookup'
+import { getCurrentUser } from '@/lib/auth'
+import { SubmitFlow } from './submit-flow'
+
+export const metadata: Metadata = {
+  title: 'Add your iOS app',
+  description:
+    'List your App Store app and connect its revenue. Takes about two minutes and one read-only API key.',
+}
+
+export default async function SubmitPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>
+}) {
+  const [{ id }, user, categoryList, techList] = await Promise.all([
+    searchParams,
+    getCurrentUser(),
+    db.select().from(categories).orderBy(asc(categories.sortOrder)),
+    db.select().from(techStackTags).orderBy(asc(techStackTags.name)),
+  ])
+
+  /*
+   * Returning from sign-in carries the App Store ID in the URL, so the form
+   * comes back filled in rather than empty. Everything here is re-derived from
+   * Apple, which is why a bare ID is enough to restore the step.
+   */
+  const resumed = id && /^\d{6,12}$/.test(id) ? await lookupApp(id).catch(() => null) : null
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
+      <p className="label">Step 1 of 2</p>
+      <h1 className="display mt-2 text-4xl">Add your app</h1>
+      <p className="text-muted mt-3 text-[13px] leading-relaxed">
+        Paste your App Store link and we&apos;ll fill in the rest. You&apos;ll connect revenue next
+        — your app stays private until that succeeds.
+      </p>
+
+      {!user && (
+        <p className="border-border bg-surface text-muted mt-5 rounded-[10px] border px-4 py-3 text-[12px] leading-relaxed">
+          No account needed to look up your app. You&apos;ll sign in when you save, so the listing
+          belongs to you.{' '}
+          <Link href="/login?next=%2Fsubmit" className="text-fg underline underline-offset-4">
+            Sign in first
+          </Link>
+        </p>
+      )}
+
+      <SubmitFlow
+        isSignedIn={Boolean(user)}
+        initialApp={
+          resumed && {
+            appStoreId: resumed.appStoreId,
+            name: resumed.name,
+            tagline: (resumed.description?.split('\n')[0] ?? '').slice(0, 110),
+            description: resumed.description?.slice(0, 1500) ?? '',
+            iconUrl: resumed.iconUrl,
+            sellerName: resumed.sellerName,
+            primaryGenre: resumed.primaryGenre,
+            bundleId: resumed.bundleId,
+            appStoreUrl: resumed.appStoreUrl,
+            website: resumed.website,
+            releasedAt: resumed.releasedAt?.toISOString().slice(0, 10) ?? null,
+          }
+        }
+        categories={categoryList.map((c) => ({
+          slug: c.slug,
+          name: c.name,
+          genre: c.appStoreGenre,
+        }))}
+        tech={techList.map((t) => ({ slug: t.slug, name: t.name }))}
+      />
+    </div>
+  )
+}

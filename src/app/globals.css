@@ -1,26 +1,149 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* ==========================================================================
+   Tokens
+
+   Dark only, and neutral — no blue cast in the greys. Colour appears just
+   three ways: white for the primary action, green/red for direction of change,
+   and gold for a status flag. Everything else is greyscale, so an app's own
+   icon is the only saturated thing in a row.
+   ========================================================================== */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+  --border: #262626;
+  --border-strong: #363636;
+
+  --fg: #ededed;
+  --fg-muted: #8f8f8f;
+  --fg-dim: #666666;
+
+  --accent: #fafafa;
+  --accent-fg: #0a0a0a;
+
+  --green: #3ecf8e;
+  --green-dim: #1a3a2c;
+  --red: #f75a68;
+  --red-dim: #3a1a1f;
+  --gold: #e0a33c;
+  --gold-dim: #3a2c14;
+  --blue: #5b8def;
+  --blue-dim: #16244a;
+
+  --radius: 10px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-dim: var(--fg-dim);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-green: var(--green);
+  --color-green-dim: var(--green-dim);
+  --color-red: var(--red);
+  --color-red-dim: var(--red-dim);
+  --color-gold: var(--gold);
+  --color-gold-dim: var(--gold-dim);
+  --color-blue: var(--blue);
+  --color-blue-dim: var(--blue-dim);
+
+  /* One family, everywhere. The whole interface reads as a terminal. */
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-sans: var(--font-jetbrains-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --radius-card: var(--radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-mono), monospace;
+    font-variant-ligatures: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Figures are data: align them in columns. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-fg);
+  }
+
+  /* Dense horizontal card rails, scrolled without a visible scrollbar. */
+  .rail {
+    scrollbar-width: none;
+  }
+  .rail::-webkit-scrollbar {
+    display: none;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  /* The iOS icon shape. Path lives in components/squircle-defs.tsx. */
+  .squircle {
+    clip-path: url(#ios-squircle);
+  }
+
+  /*
+   * Headlines. Monospace at display size needs tighter tracking than its
+   * default or the letters drift apart.
+   */
+  .display {
+    font-weight: 700;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
+  }
+
+  /* The tiny uppercase key above every figure on the site. */
+  .label {
+    font-size: 10px;
+    line-height: 1.4;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

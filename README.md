@@ -1,36 +1,190 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TrustMRR · iOS
 
-## Getting Started
+A directory of App Store apps whose revenue is read directly from their payment
+provider, never typed in by hand. Modelled on [trustmrr.com](https://trustmrr.com),
+scoped entirely to iOS.
 
-First, run the development server:
+Every listing is an App Store app, so each one carries its real icon, rating,
+category, and version from Apple's public catalogue alongside verified MRR.
+
+## Stack
+
+- **Next.js 15** (App Router, RSC) + TypeScript
+- **Tailwind CSS v4** with a token system in `src/app/globals.css`
+- **Prettier** (`npm run format`) with the Tailwind class-sorting plugin
+- **Supabase** — Postgres, Auth (magic link + GitHub), RLS
+- **Drizzle ORM** for queries and migrations
+- **Vercel** for hosting and cron
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local     # fill in the values, see below
+npm run db:setup               # migrate, apply policies, seed sample data
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`db:setup` runs three steps you can also run individually:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command | What it does |
+|---|---|
+| `npm run db:generate` | Generate a migration from `src/db/schema.ts` |
+| `npm run db:migrate` | Apply migrations in `supabase/migrations` |
+| `npm run db:policies` | Apply `supabase/policies.sql` — RLS, triggers, auth wiring. Idempotent; re-run after every migration |
+| `npm run db:seed` | Insert sample apps and 180 days of revenue history |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Environment
 
-## Learn More
+See `.env.example` for the full list. Two are worth calling out:
 
-To learn more about Next.js, take a look at the following resources:
+- **`CREDENTIALS_ENCRYPTION_KEY`** — 32 random bytes, base64. Encrypts every
+  stored provider credential. **Rotating it makes all of them unreadable**, and
+  founders must reconnect.
+- **`CRON_SECRET`** — shared secret for the sync endpoints. Without it they'd be
+  a public button for hammering provider APIs.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Generate both with:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
 
-## Deploy on Vercel
+### Local database without Supabase
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The app runs against plain Postgres for development — `supabase/policies.sql`
+creates a minimal `auth` schema shim when it doesn't find Supabase's. Auth
+itself still needs a real Supabase project; everything public works without one.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+createdb trustmrr_dev
+# DATABASE_URL=postgresql://you@localhost:5432/trustmrr_dev
+```
+
+## Design system
+
+Dark only, monospace throughout — the interface is meant to read like a
+terminal, and tabular figures let every revenue column line up across rows.
+
+Tokens live in `src/app/globals.css` and are exposed to Tailwind through
+`@theme inline`. Use the token classes, never raw hex.
+
+| Token | Class | Used for |
+|---|---|---|
+| `--bg` `#0a0a0a` | `bg-bg` | Page background |
+| `--surface` `#141414` | `bg-surface` | Cards, tables, panels |
+| `--surface-2` `#1c1c1c` | `bg-surface-2` | Hover and inset fills |
+| `--border` `#262626` | `border-border` | Every divider and card edge |
+| `--fg` `#ededed` | `text-fg` | Primary text and figures |
+| `--fg-muted` `#8f8f8f` | `text-muted` | Secondary text |
+| `--fg-dim` `#666` | `text-dim` | Labels, timestamps |
+| `--accent` `#fafafa` | `bg-accent` | The one primary action per view |
+| `--green` / `--red` | `text-green` / `text-red` | Direction of change, nothing else |
+| `--blue` | `text-blue` | Verified state and links |
+| `--gold` | `text-gold` | Status flags |
+
+Colour is rationed on purpose: green always means "MRR is up on 30 days ago",
+so an app's own icon is the only other saturated thing in a row.
+
+Two utility classes carry most of the typography:
+
+- `.display` — headline weight and tracking. Monospace at display size needs
+  tighter tracking than its default.
+- `.label` — the 10px uppercase key that sits above every figure on the site.
+
+Components worth reusing before writing new ones: `Stat` (`components/ui/card`)
+for a label/value pair, `AppRow` + `AppRowHeader` for any table of apps,
+`AppCard` + `AppRail` for a horizontal card rail.
+
+## How verification works
+
+1. A founder pastes an App Store link. We fetch the public listing from Apple's
+   iTunes lookup API and pre-fill the submission.
+2. They connect a **read-only** provider credential. We make one live call to
+   confirm it works, and **only store it if that call succeeds**.
+3. The credential is encrypted with AES-256-GCM before it touches the database.
+4. An hourly cron re-reads every active connection and appends a daily snapshot.
+5. `app_metrics` is rebuilt from those snapshots — every leaderboard and card
+   reads that rollup, never the raw history.
+
+An app is a private draft until a provider verifies it. Verification is the only
+thing that publishes a listing.
+
+### Providers
+
+| Provider | Credential | Notes |
+|---|---|---|
+| RevenueCat | V2 secret key scoped to `charts_metrics:overview:read`, plus project ID | Primary path. 25 req/min per key |
+| App Store Connect | Issuer ID, key ID, `.p8`, vendor number | Reports lag one day; UI shows a "data as of" date |
+| Stripe | Restricted key with read on Subscriptions | For apps that also bill on the web |
+| Superwall | — | **Not supported.** Superwall issues public SDK keys only and publishes no metrics API, so there is no way to verify a figure through it |
+
+Multiple providers on one app are summed once per day, never double-counted.
+
+## Security model
+
+`revenue_connections` holds provider credentials and **has RLS enabled with no
+policy at all**. Anon and authenticated roles cannot read, insert, or update a
+single row — including the founders who own them. Only server code holding the
+service-role key can reach it. Do not add a policy to that table.
+
+Verify this at any time:
+
+```sql
+set role anon;
+select count(*) from revenue_connections;  -- must be 0
+```
+
+## Testing
+
+```bash
+npm test          # unit tests: report parsers, MRR normalisation, crypto
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Manual end-to-end check:
+
+1. Sign in, submit a real App Store URL, confirm the icon and metadata populate.
+2. Connect a RevenueCat key; confirm the app flips to live and a snapshot lands.
+3. `curl -H "Authorization: Bearer $CRON_SECRET" localhost:3000/api/cron/sync-revenue`
+   twice — the snapshot count must not change (it upserts per day).
+4. Enter a bad key; confirm a readable error and that existing snapshots survive.
+
+## Layout
+
+```
+src/
+  app/                    routes; (public) pages use ISR, dashboard is dynamic
+  components/             UI — squircle icons, sparklines, sync tape
+  db/                     Drizzle schema and client
+  lib/
+    appstore/             iTunes lookup client and URL parsing
+    providers/            one adapter per revenue provider, common interface
+    crypto/               credential encryption (server-only)
+    data/                 queries and mutations
+    sync.ts               the hourly job
+supabase/
+  migrations/             generated by drizzle-kit
+  policies.sql            RLS, triggers, auth wiring — hand-written
+scripts/                  seed and policy-application CLIs
+```
+
+## Deploying
+
+1. Create a Supabase project; set the `NEXT_PUBLIC_SUPABASE_*`, service role,
+   and `DATABASE_URL` (transaction pooler) variables in Vercel.
+2. Run `npm run db:migrate && npm run db:policies` against it.
+3. Set `CREDENTIALS_ENCRYPTION_KEY` and `CRON_SECRET`.
+4. Deploy. `vercel.json` registers the hourly revenue sync and the daily App
+   Store metadata refresh.
+
+Do **not** run `npm run db:seed` against production — it inserts fictional
+revenue and refuses non-local databases unless forced.
+
+## Not built yet
+
+The marketplace (buy/sell listings, asking price, buyer inquiries), the activity
+feed, co-founder matching, and the admin review queue. The schema reserves
+nullable columns on `apps` for the marketplace phase.

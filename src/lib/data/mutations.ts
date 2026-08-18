@@ -1,0 +1,127 @@
+import 'server-only'
+import { and, eq, inArray } from 'drizzle-orm'
+import { db } from '@/db'
+import {
+  appStoreMetadata,
+  apps,
+  appTechStack,
+  revenueConnections,
+  techStackTags,
+} from '@/db/schema'
+import type { AppStoreApp } from '@/lib/appstore/lookup'
+import { slugify } from '@/lib/utils'
+
+/** Finds a free slug, appending a counter only when the natural one is taken. */
+export async function uniqueSlug(name: string) {
+  const base = slugify(name) || 'app'
+  for (let suffix = 0; suffix < 50; suffix++) {
+    const candidate = suffix === 0 ? base : `${base}-${suffix + 1}`
+    const [existing] = await db
+      .select({ id: apps.id })
+      .from(apps)
+      .where(eq(apps.slug, candidate))
+      .limit(1)
+    if (!existing) return candidate
+  }
+  return `${base}-${Date.now()}`
+}
+
+/**
+ * Writes the App Store facts for an app. Everything here is derived from
+ * Apple's lookup API, so it is replaced wholesale on every refresh rather than
+ * merged — a field Apple stops returning should disappear here too.
+ */
+export async function saveAppStoreMetadata(appId: string, data: AppStoreApp) {
+  await db
+    .insert(appStoreMetadata)
+    .values({
+      appId,
+      trackName: data.name,
+      sellerName: data.sellerName,
+      iconUrl: data.iconUrl,
+      screenshotUrls: data.screenshotUrls,
+      priceCents: data.priceCents,
+      currency: data.currency,
+      hasInAppPurchases: data.hasInAppPurchases,
+      averageRating: data.averageRating,
+      ratingCount: data.ratingCount,
+      version: data.version,
+      primaryGenre: data.primaryGenre,
+      genres: data.genres,
+      contentRating: data.contentRating,
+      releasedAt: data.releasedAt,
+      updatedInStoreAt: data.updatedInStoreAt,
+      fileSizeBytes: data.fileSizeBytes,
+      supportedDevices: data.supportedDevices,
+      minimumOsVersion: data.minimumOsVersion,
+      fetchedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: appStoreMetadata.appId,
+      set: {
+        trackName: data.name,
+        sellerName: data.sellerName,
+        iconUrl: data.iconUrl,
+        screenshotUrls: data.screenshotUrls,
+        priceCents: data.priceCents,
+        currency: data.currency,
+        averageRating: data.averageRating,
+        ratingCount: data.ratingCount,
+        version: data.version,
+        primaryGenre: data.primaryGenre,
+        genres: data.genres,
+        contentRating: data.contentRating,
+        releasedAt: data.releasedAt,
+        updatedInStoreAt: data.updatedInStoreAt,
+        fileSizeBytes: data.fileSizeBytes,
+        supportedDevices: data.supportedDevices,
+        minimumOsVersion: data.minimumOsVersion,
+        fetchedAt: new Date(),
+      },
+    })
+}
+
+export async function setAppTechStack(appId: string, tagSlugs: string[]) {
+  await db.delete(appTechStack).where(eq(appTechStack.appId, appId))
+  if (tagSlugs.length === 0) return
+
+  const tags = await db
+    .select({ id: techStackTags.id })
+    .from(techStackTags)
+    .where(inArray(techStackTags.slug, tagSlugs))
+
+  if (tags.length === 0) return
+
+  await db
+    .insert(appTechStack)
+    .values(tags.map((tag) => ({ appId, tagId: tag.id })))
+    .onConflictDoNothing()
+}
+
+export async function getOwnedApp(appId: string, founderId: string) {
+  const [app] = await db
+    .select()
+    .from(apps)
+    .where(and(eq(apps.id, appId), eq(apps.founderId, founderId)))
+    .limit(1)
+  return app ?? null
+}
+
+/** Connection status for the dashboard. Deliberately excludes the credential. */
+export async function listConnections(appId: string) {
+  return db
+    .select({
+      id: revenueConnections.id,
+      provider: revenueConnections.provider,
+      status: revenueConnections.status,
+      accountLabel: revenueConnections.accountLabel,
+      lastSyncedAt: revenueConnections.lastSyncedAt,
+      lastError: revenueConnections.lastError,
+    })
+    .from(revenueConnections)
+    .where(eq(revenueConnections.appId, appId))
+}
+
+export async function listAllTechTags() {
+  return db.select().from(techStackTags).orderBy(techStackTags.name)
+}

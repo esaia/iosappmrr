@@ -1,103 +1,167 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { AppRail } from '@/components/app-card'
+import { AppRow, AppRowHeader } from '@/components/app-row'
+import { HomeSearch } from '@/components/home-search'
+import { SyncTape } from '@/components/sync-tape'
+import { getEcosystemStats, getRecentSyncs, listApps, listCategories } from '@/lib/data/apps'
+import { formatMoney, formatMrr } from '@/lib/utils'
 
-export default function Home() {
+export const revalidate = 600
+
+const QUICK_LINKS = [
+  { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/stats', label: 'Stats' },
+  { href: '/verification', label: 'How we verify' },
+  { href: '/dashboard', label: 'Dashboard' },
+]
+
+export default async function HomePage() {
+  const [top, recent, fastest, stats, syncs, categories] = await Promise.all([
+    listApps({ sort: 'mrr', limit: 10 }),
+    listApps({ sort: 'newest', limit: 8 }),
+    listApps({ sort: 'growth', limit: 8 }),
+    getEcosystemStats(),
+    getRecentSyncs(8),
+    listCategories(),
+  ])
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+      {/* Hero */}
+      <section className="pt-12 text-center sm:pt-16">
+        <h1 className="display mx-auto max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)]">
+          The database of verified iOS app revenue
+        </h1>
+        <p className="text-muted mx-auto mt-5 max-w-xl text-[13px] leading-relaxed">
+          {stats.appCount} App Store apps, {formatMoney(stats.totalMrrCents)} of monthly revenue,
+          read straight from RevenueCat, App Store Connect and Stripe.{' '}
+          <Link
+            href="/verification"
+            className="text-fg hover:text-blue underline underline-offset-4"
+          >
+            See how we verify
+          </Link>
+        </p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        <HomeSearch />
+
+        <nav className="text-muted mt-5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[13px]">
+          {QUICK_LINKS.map((link, index) => (
+            <span key={link.href} className="flex items-center gap-2">
+              {index > 0 && <span className="text-dim">·</span>}
+              <Link href={link.href} className="hover:text-fg">
+                {link.label}
+              </Link>
+            </span>
+          ))}
+        </nav>
+      </section>
+
+      <AppRail
+        title="Recently verified"
+        href="/apps?sort=newest"
+        linkLabel="View all"
+        apps={recent}
+      />
+      <AppRail
+        title="Growing fastest this month"
+        href="/leaderboard?sort=growth"
+        linkLabel="View all"
+        apps={fastest}
+      />
+
+      {/* Leaderboard panel */}
+      <section className="border-border bg-surface mt-10 overflow-hidden rounded-[10px] border">
+        <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+          <h2 className="text-fg text-[15px] font-bold">Leaderboard</h2>
+          <div className="text-muted flex items-center gap-2 text-[12px]">
+            <span className="border-border bg-surface-2 rounded-md border px-2 py-1">MRR</span>
+            <Link href="/leaderboard" className="hover:text-fg">
+              Full Top 50 →
+            </Link>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+
+        <AppRowHeader />
+        {top.map((app, index) => (
+          <AppRow key={app.id} app={app} rank={index + 1} />
+        ))}
+      </section>
+
+      {/* Sync tape + stats */}
+      <div className="mt-10 grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+        <SyncTape
+          events={syncs.map((sync) => ({ ...sync, lastSyncedAt: sync.lastSyncedAt.toISOString() }))}
+        />
+
+        <div className="border-border bg-surface rounded-[10px] border p-4">
+          <h2 className="text-fg text-[13px] font-bold">Categories</h2>
+          <ul className="mt-3 space-y-1.5">
+            {categories
+              .filter((category) => category.appCount > 0)
+              .slice(0, 8)
+              .map((category) => (
+                <li key={category.slug}>
+                  <Link
+                    href={`/categories/${category.slug}`}
+                    className="hover:bg-surface-2 flex items-baseline justify-between gap-3 rounded-md px-2 py-1.5 text-[12px] transition-colors"
+                  >
+                    <span className="text-fg">{category.name}</span>
+                    <span className="tabular text-muted">
+                      {formatMrr(Number(category.totalMrrCents))}
+                      <span className="text-dim">
+                        {' '}
+                        · {category.appCount} {category.appCount === 1 ? 'app' : 'apps'}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* How verification works */}
+      <section className="border-border bg-surface mt-10 rounded-[10px] border p-5 sm:p-6">
+        <h2 className="text-fg text-[15px] font-bold">What &ldquo;verified&rdquo; means here</h2>
+        <div className="mt-4 grid gap-5 sm:grid-cols-3">
+          <Explainer
+            index="01"
+            title="Read-only, scoped keys"
+            body="Founders connect a key that can read revenue charts and nothing else. It cannot see customers, issue refunds, or change a paywall."
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+          <Explainer
+            index="02"
+            title="Refreshed every hour"
+            body="A number that was true last quarter is not verification. Every connected app is re-read hourly, and each profile shows its last sync."
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
+          <Explainer
+            index="03"
+            title="Credentials stay encrypted"
+            body="Keys are encrypted before they touch the database and are never returned to a browser — not even to the founder who added them."
           />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+        <Link
+          href="/verification"
+          className="text-fg hover:text-blue mt-5 inline-block text-[12px] underline underline-offset-4"
+        >
+          Read the full method →
+        </Link>
+      </section>
     </div>
-  );
+  )
+}
+
+/**
+ * Numbered because verification really is a sequence — the key is connected,
+ * then read on a schedule, and encrypted throughout.
+ */
+function Explainer({ index, title, body }: { index: string; title: string; body: string }) {
+  return (
+    <div>
+      <p className="label">{index}</p>
+      <h3 className="text-fg mt-1.5 text-[13px] font-bold">{title}</h3>
+      <p className="text-muted mt-1.5 text-[12px] leading-relaxed">{body}</p>
+    </div>
+  )
 }

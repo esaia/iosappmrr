@@ -1,0 +1,14 @@
+{
+  // CLI scripts run outside Next.js, where the `server-only` guard has nothing
+  // to protect against. Stubbing it here keeps the guard intact for app code.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "paths": {
+      "@/*": ["./src/*"],
+      "server-only": ["./src/test/server-only-stub.ts"]
+    }
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.ts"]
+}
