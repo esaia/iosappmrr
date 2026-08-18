@@ -120,6 +120,12 @@ export default async function DashboardPage() {
                 >
                   Insights
                 </Link>
+                <Link
+                  href={`/dashboard/${row.id}/edit`}
+                  className="text-muted hover:text-fg text-sm"
+                >
+                  Edit
+                </Link>
                 {row.status === 'live' && (
                   <Link href={`/apps/${row.slug}`} className="text-muted hover:text-fg text-sm">
                     View page

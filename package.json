@@ -19,7 +19,9 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",
     "db:reference": "tsx --tsconfig tsconfig.scripts.json scripts/seed-reference.ts",
-    "stripe:testdata": "tsx --tsconfig tsconfig.scripts.json scripts/stripe-test-data.ts"
+    "stripe:testdata": "tsx --tsconfig tsconfig.scripts.json scripts/stripe-test-data.ts",
+    "db:demo": "tsx --tsconfig tsconfig.scripts.json scripts/seed-demo.ts",
+    "db:simulate": "tsx --tsconfig tsconfig.scripts.json scripts/simulate-verification.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

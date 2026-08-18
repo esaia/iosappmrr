@@ -1,0 +1,1 @@
+ALTER TABLE "apps" ADD COLUMN "website_dofollow" boolean DEFAULT false NOT NULL;

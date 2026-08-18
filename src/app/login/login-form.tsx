@@ -11,6 +11,14 @@ function GitHubMark() {
   )
 }
 
+function XMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+    </svg>
+  )
+}
+
 export function LoginForm({ next }: { next: string }) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent'>('idle')
@@ -37,11 +45,16 @@ export function LoginForm({ next }: { next: string }) {
     setStatus('sent')
   }
 
-  async function signInWithGitHub() {
+  /*
+   * `x` is the OAuth 2.0 provider. Supabase also exposes a separate `twitter`
+   * id for the deprecated OAuth 1.0a integration — they are different entries
+   * in the dashboard, and enabling one does not enable the other.
+   */
+  async function signInWithOAuth(provider: 'github' | 'x') {
     setError(null)
     const supabase = createClient()
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
+      provider,
       options: { redirectTo },
     })
     if (oauthError) setError(oauthError.message)
@@ -68,16 +81,28 @@ export function LoginForm({ next }: { next: string }) {
 
   return (
     <div className="mt-8">
-      <Button
-        type="button"
-        variant="secondary"
-        size="lg"
-        onClick={signInWithGitHub}
-        className="w-full"
-      >
-        <GitHubMark />
-        Continue with GitHub
-      </Button>
+      <div className="space-y-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          onClick={() => signInWithOAuth('x')}
+          className="w-full"
+        >
+          <XMark />
+          Continue with X
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          onClick={() => signInWithOAuth('github')}
+          className="w-full"
+        >
+          <GitHubMark />
+          Continue with GitHub
+        </Button>
+      </div>
 
       <div className="my-5 flex items-center gap-3">
         <span className="bg-line h-px flex-1" />

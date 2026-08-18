@@ -8,7 +8,7 @@ export const revalidate = 600
 export const metadata: Metadata = {
   title: 'Every verified iOS app',
   description:
-    'Browse App Store apps with revenue read directly from RevenueCat, App Store Connect, or Stripe. Filter by category, tech stack, and revenue.',
+    'Browse App Store apps with revenue read directly from RevenueCat or App Store Connect. Filter by category, tech stack, and revenue.',
 }
 
 const PAGE_SIZE = 30

@@ -39,7 +39,7 @@ export default function AboutPage() {
           Subscription and in-app purchase revenue, normalised to monthly.
         </li>
         <li className="list-disc">
-          Web revenue via Stripe, where an app also bills outside the store.
+          Revenue read from the provider, refreshed hourly, never self-reported.
         </li>
       </ul>
 

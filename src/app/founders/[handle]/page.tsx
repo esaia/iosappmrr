@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ExternalLink } from 'lucide-react'
 import { AppRow, AppRowHeader } from '@/components/app-row'
 import { getFounderByHandle } from '@/lib/data/apps'
-import { formatMoney } from '@/lib/utils'
+import { formatMoney, highResAvatar } from '@/lib/utils'
 
 export const revalidate = 600
 
@@ -34,7 +34,7 @@ export default async function FounderPage({ params }: Params) {
         {founder.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={founder.avatarUrl}
+            src={highResAvatar(founder.avatarUrl) ?? undefined}
             alt=""
             className="squircle size-16 object-cover"
             width={64}

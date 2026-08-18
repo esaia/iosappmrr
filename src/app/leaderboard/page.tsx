@@ -13,9 +13,9 @@ const SORTS: { value: AppSort; label: string; blurb: string }[] = [
   { value: 'newest', label: 'Newest', blurb: 'Most recently verified apps.' },
 ]
 export const metadata: Metadata = {
-  title: 'Top 50 iOS apps by verified revenue',
+  title: 'Top 100 iOS apps by verified revenue',
   description:
-    'The fifty highest-earning App Store apps whose revenue is read directly from their payment provider. Updated hourly.',
+    'The hundred highest-earning App Store apps whose revenue is read directly from their payment provider. Updated hourly.',
 }
 
 export default async function LeaderboardPage({
@@ -25,14 +25,14 @@ export default async function LeaderboardPage({
 }) {
   const params = await searchParams
   const sort = (SORTS.find((s) => s.value === params.sort)?.value ?? 'mrr') as AppSort
-  const [apps, stats] = await Promise.all([listApps({ sort, limit: 50 }), getEcosystemStats()])
+  const [apps, stats] = await Promise.all([listApps({ sort, limit: 100 }), getEcosystemStats()])
   const active = SORTS.find((s) => s.value === sort)!
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <header>
         <p className="label">Updated hourly</p>
-        <h1 className="display mt-2 text-4xl font-semibold sm:text-5xl">Top 50</h1>
+        <h1 className="display mt-2 text-4xl font-semibold sm:text-5xl">Top 100</h1>
         <p className="text-muted mt-3 max-w-xl">
           Every app below has connected a payment provider. {formatMoney(stats.totalMrrCents)} of
           monthly revenue across {stats.appCount} apps, none of it typed in by hand.

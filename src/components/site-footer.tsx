@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
 import { site } from '@/lib/site'
@@ -6,7 +7,7 @@ const columns = [
   {
     heading: 'Browse',
     links: [
-      { href: '/leaderboard', label: 'Top 50 by MRR' },
+      { href: '/leaderboard', label: 'Top 100 by MRR' },
       { href: '/apps', label: 'All apps' },
       { href: '/categories', label: 'Categories' },
       { href: '/stats', label: 'Stats' },
@@ -71,12 +72,7 @@ export function SiteFooter() {
             rel="noopener noreferrer"
             className="text-fg inline-flex items-center gap-1.5 hover:underline"
           >
-            <span
-              aria-hidden
-              className="bg-surface-3 text-fg flex size-5 items-center justify-center rounded-full text-[10px] font-bold"
-            >
-              E
-            </span>
+            <Image src="/esaia.jpg" alt="" width={20} height={20} className="size-5 rounded-full" />
             Esaia
           </a>
         </p>

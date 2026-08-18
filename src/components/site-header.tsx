@@ -2,8 +2,16 @@ import Link from 'next/link'
 import { ButtonLink } from '@/components/ui/button'
 import { Logo } from '@/components/logo'
 import { nav } from '@/lib/site'
+import { getCurrentUser } from '@/lib/auth'
+import { signOutAction } from '@/app/auth/actions'
 
-export function SiteHeader() {
+/**
+ * Reads the session so the right-hand side reflects who is signed in. This
+ * makes every page render per request rather than at build time — the cost of
+ * a header that can tell the truth about the reader.
+ */
+export async function SiteHeader() {
+  const user = await getCurrentUser()
   return (
     <header className="border-border bg-bg/90 sticky top-0 z-40 border-b backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
@@ -22,12 +30,31 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            href="/login"
-            className="text-muted hover:text-fg hidden px-2 py-1.5 text-[13px] transition-colors sm:block"
-          >
-            Sign in
-          </Link>
+          {user ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="text-muted hover:text-fg hidden px-2 py-1.5 text-[13px] transition-colors sm:block"
+              >
+                @{user.profile.handle}
+              </Link>
+              <form action={signOutAction} className="hidden sm:block">
+                <button
+                  type="submit"
+                  className="text-muted hover:text-fg px-2 py-1.5 text-[13px] transition-colors"
+                >
+                  Sign out
+                </button>
+              </form>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="text-muted hover:text-fg hidden px-2 py-1.5 text-[13px] transition-colors sm:block"
+            >
+              Sign in
+            </Link>
+          )}
           <ButtonLink href="/submit" size="sm">
             Add app
           </ButtonLink>

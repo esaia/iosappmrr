@@ -1,3 +1,4 @@
+import { escapeLike } from '@/lib/utils'
 import 'server-only'
 import { and, asc, desc, eq, gte, ilike, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
@@ -57,7 +58,7 @@ export async function listApps(
   if (options.minMrrCents) filters.push(gte(appMetrics.mrrCents, options.minMrrCents))
 
   if (options.search) {
-    const term = `%${options.search}%`
+    const term = `%${escapeLike(options.search)}%`
     filters.push(or(ilike(apps.name, term), ilike(apps.tagline, term))!)
   }
 
@@ -127,7 +128,7 @@ export async function countApps(options: { categorySlug?: string; search?: strin
   const filters = [eq(apps.status, 'live')]
   if (options.categorySlug) filters.push(eq(categories.slug, options.categorySlug))
   if (options.search) {
-    const term = `%${options.search}%`
+    const term = `%${escapeLike(options.search)}%`
     filters.push(or(ilike(apps.name, term), ilike(apps.tagline, term))!)
   }
 

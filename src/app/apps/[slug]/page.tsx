@@ -8,8 +8,9 @@ import { RevenueChart } from '@/components/revenue-chart'
 import { AppScreenshots } from '@/components/app-screenshots'
 import { AddAppCta } from '@/components/add-app-cta'
 import { AppCard } from '@/components/app-card'
-import { StartupInsights } from '@/components/startup-insights'
 import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
+import { ShareButton } from '@/components/share-button'
+import { ExpandableText } from '@/components/expandable-text'
 import { getAppBySlug, getRevenueHistory, listApps } from '@/lib/data/apps'
 import { formatCount, formatMoney, formatMrr, timeAgo } from '@/lib/utils'
 import { site } from '@/lib/site'
@@ -41,7 +42,7 @@ export default async function AppPage({ params }: Params) {
   const record = await getAppBySlug(slug)
   if (!record) notFound()
 
-  const { app, metadata, metrics, category, founder, tech } = record
+  const { app, metadata, metrics, category, founder } = record
   const history = await getRevenueHistory(app.id, 365)
   // Same category where we have one, otherwise the top apps overall.
   const related = (await listApps({ categorySlug: category?.slug, sort: 'mrr', limit: 7 })).filter(
@@ -97,14 +98,38 @@ export default async function AppPage({ params }: Params) {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="display text-3xl font-semibold sm:text-4xl">{app.name}</h1>
             <VerifiedBadge providers={providers} />
+            <span className="ml-auto">
+              <ShareButton
+                url={`${site.url}/apps/${app.slug}`}
+                title={app.name}
+                mrr={mrrCents > 0 ? formatMoney(mrrCents) : undefined}
+              />
+            </span>
           </div>
           {app.tagline && <p className="text-muted mt-2 text-lg">{app.tagline}</p>}
 
           <div className="text-muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             {founder && (
-              <Link href={`/founders/${founder.handle}`} className="hover:text-blue">
-                {founder.name ?? `@${founder.handle}`}
-              </Link>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="text-dim">by</span>
+                <Link href={`/founders/${founder.handle}`} className="hover:text-blue">
+                  {founder.name ?? `@${founder.handle}`}
+                </Link>
+                {founder.twitter && (
+                  <a
+                    href={`https://x.com/${founder.twitter}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted hover:text-fg inline-flex items-center gap-1 text-xs transition-colors"
+                    title={`@${founder.twitter} on X`}
+                  >
+                    <XMark />
+                    {founder.twitterFollowers != null && (
+                      <span className="tabular">{formatCount(founder.twitterFollowers)}</span>
+                    )}
+                  </a>
+                )}
+              </span>
             )}
             {metadata?.averageRating && (
               <span className="inline-flex items-center gap-1">
@@ -114,6 +139,22 @@ export default async function AppPage({ params }: Params) {
                   <span className="text-xs">({formatCount(metadata.ratingCount)})</span>
                 )}
               </span>
+            )}
+            {app.website && (
+              <a
+                href={app.website}
+                target="_blank"
+                /*
+                 * Nofollow unless the founder paid for the upgrade. Passing
+                 * authority to every listing by default would make the link
+                 * worthless to sell and would make this site a link farm.
+                 */
+                rel={app.websiteDofollow ? 'noopener noreferrer' : 'nofollow noopener noreferrer'}
+                className="hover:text-blue inline-flex items-center gap-1"
+              >
+                Website
+                <ExternalLink className="size-3" />
+              </a>
             )}
             {app.appStoreUrl && (
               <a
@@ -174,7 +215,9 @@ export default async function AppPage({ params }: Params) {
           {app.description && (
             <section>
               <h2 className="display text-xl font-semibold">About</h2>
-              <p className="text-muted mt-3 leading-relaxed">{app.description}</p>
+              <div className="mt-3">
+                <ExpandableText text={app.description} />
+              </div>
             </section>
           )}
         </div>
@@ -183,7 +226,13 @@ export default async function AppPage({ params }: Params) {
           <Panel title="App Store">
             <Row label="Category" value={category?.name ?? metadata?.primaryGenre ?? '—'} />{' '}
             <Row label="Version" value={metadata?.version ?? '—'} />{' '}
-            <Row label="Price" value={priceLabel(metadata?.priceCents, metadata?.currency)} />
+            {/*
+              "Download", not "Price": this is what the App Store charges to
+              install, which for a subscription app is almost always zero. The
+              revenue above is the price that matters, and conflating the two
+              is what makes "Free" look wrong on an app earning thousands.
+            */}
+            <Row label="Download" value={priceLabel(metadata?.priceCents, metadata?.currency)} />
             <Row
               label="Released"
               value={app.launchedAt ?? metadata?.releasedAt?.toISOString().slice(0, 10) ?? '—'}
@@ -191,23 +240,12 @@ export default async function AppPage({ params }: Params) {
             <Row
               label="Requires"
               value={metadata?.minimumOsVersion ? `iOS ${metadata.minimumOsVersion}+` : '—'}
-            />{' '}
+            />
+            <Row label="Size" value={fileSizeLabel(metadata?.fileSizeBytes)} />
+            <Row label="Age rating" value={metadata?.contentRating ?? '—'} />
           </Panel>
         </aside>
       </div>
-
-      <StartupInsights
-        insights={{
-          valueProposition: app.valueProposition,
-          problemSolved: app.problemSolved,
-          audience: app.audience,
-          audienceType: app.audienceType,
-          marketTags: app.marketTags,
-          marketingChannels: app.marketingChannels,
-          additionalInfo: app.additionalInfo,
-        }}
-        tech={tech}
-      />
 
       <AppScreenshots urls={metadata?.screenshotUrls ?? []} appName={app.name} />
 
@@ -242,6 +280,18 @@ function growthLabel(value: number | null | undefined) {
 
   const rounded = Math.round(value * 10) / 10
   return `${rounded > 0 ? '+' : ''}${rounded}%`
+}
+
+/**
+ * Apple reports bytes and displays megabytes on the decimal scale — 76,375,040
+ * bytes is shown as 76.4 MB, not the 72.8 MiB a binary divisor would give. Match
+ * the store so the two numbers agree.
+ */
+function fileSizeLabel(bytes: number | null | undefined) {
+  if (bytes === null || bytes === undefined) return '—'
+  const mb = Number(bytes) / 1_000_000
+  if (mb >= 1000) return `${(mb / 1000).toFixed(2)} GB`
+  return `${mb.toFixed(1)} MB`
 }
 
 function priceLabel(cents: number | null | undefined, currency: string | null | undefined) {
@@ -289,5 +339,14 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-muted">{label}</dt>
       <dd className="tabular text-fg truncate">{value}</dd>
     </div>
+  )
+}
+
+/** lucide dropped brand marks, so the X logo lives here. */
+function XMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-3" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+    </svg>
   )
 }

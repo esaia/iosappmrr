@@ -22,6 +22,20 @@
       "when": 1787044772663,
       "tag": "0002_married_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787055738891,
+      "tag": "0003_amazing_omega_sentinel",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787055910201,
+      "tag": "0004_right_glorian",
+      "breakpoints": true
     }
   ]
 }

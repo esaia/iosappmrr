@@ -145,3 +145,30 @@ export async function updateAppInsights(
     .set({ ...values, updatedAt: new Date() })
     .where(eq(apps.id, appId))
 }
+
+/** Core listing details a founder can change after submitting. */
+export async function updateAppDetails(
+  appId: string,
+  values: {
+    name: string
+    tagline: string | null
+    description: string | null
+    categoryId: string | null
+    website: string | null
+    websiteDofollow: boolean
+  },
+) {
+  await db
+    .update(apps)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(apps.id, appId))
+}
+
+/**
+ * Removes a listing outright. Snapshots, connections, metrics and tech links
+ * all cascade from apps, so this leaves nothing orphaned — and nothing
+ * recoverable, which is why the UI confirms by name.
+ */
+export async function deleteApp(appId: string) {
+  await db.delete(apps).where(eq(apps.id, appId))
+}

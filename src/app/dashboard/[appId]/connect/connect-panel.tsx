@@ -40,6 +40,21 @@ export function ConnectPanel({
   const [selected, setSelected] = useState(providers[0]?.id ?? '')
   const [state, run, pending] = useActionState<ConnectState, FormData>(connectProviderAction, {})
 
+  /*
+   * useActionState keeps its result until the next submission, so switching
+   * tabs would otherwise leave RevenueCat's validation error sitting under the
+   * Stripe form. Remember which provider produced the result and only show it
+   * on that tab.
+   */
+  const [resultFor, setResultFor] = useState<string | null>(null)
+
+  function submit(formData: FormData) {
+    setResultFor(String(formData.get('provider') ?? ''))
+    return run(formData)
+  }
+
+  const shown = resultFor === selected ? state : {}
+
   const provider = providers.find((p) => p.id === selected)
   const connected = new Set(connections.map((c) => c.provider))
 
@@ -53,7 +68,7 @@ export function ConnectPanel({
           </div>
           <p className="text-fg mt-2 text-sm">
             We read {formatMoney(state.connected.mrrCents, state.connected.currency)}/mo from{' '}
-            {providerLabel(selected)}. Your app is live.
+            {providerLabel(resultFor ?? selected)}. Your app is live.
           </p>
           <Link
             href={`/apps/${appSlug}`}
@@ -130,7 +145,7 @@ export function ConnectPanel({
           ))}
         </div>
         {provider && (
-          <form action={run} key={provider.id} className="mt-5 space-y-4">
+          <form action={submit} key={provider.id} className="mt-5 space-y-4">
             <input type="hidden" name="appId" value={appId} />
             <input type="hidden" name="provider" value={provider.id} />
 
@@ -173,18 +188,18 @@ export function ConnectPanel({
                     className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong mt-2 w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
                   />
                 )}
-                {state.fieldErrors?.[field.name] && (
-                  <p className="text-red mt-1.5 text-sm">{state.fieldErrors[field.name]}</p>
+                {shown.fieldErrors?.[field.name] && (
+                  <p className="text-red mt-1.5 text-sm">{shown.fieldErrors[field.name]}</p>
                 )}
               </div>
             ))}
 
-            {state.error && (
+            {shown.error && (
               <p
                 role="alert"
                 className="border-red/40 bg-red-dim text-red rounded-[10px] border px-4 py-3 text-sm"
               >
-                {state.error}
+                {shown.error}
               </p>
             )}
 

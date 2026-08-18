@@ -57,6 +57,13 @@ export const profiles = pgTable(
     website: text('website'),
     twitter: text('twitter'),
 
+    /**
+     * Follower count, read once at sign-in with the founder's own X token.
+     * Null when X was not used to sign in, or the call was not permitted.
+     */
+    twitterFollowers: integer('twitter_followers'),
+    twitterSyncedAt: timestamp('twitter_synced_at', { withTimezone: true }),
+
     role: userRole('role').notNull().default('founder'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -124,6 +131,12 @@ export const apps = pgTable(
 
     website: text('website'),
     twitter: text('twitter'),
+    /**
+     * Whether the website link is followed by search engines. Off by default:
+     * an unpaid listing gets rel="nofollow", which is the honest default for a
+     * link the site has not vouched for.
+     */
+    websiteDofollow: boolean('website_dofollow').notNull().default(false),
     // Startup insights. Founder-written, unlike revenue, which is provider-read.
     // Every field is optional; the profile hides whichever are blank.
     valueProposition: text('value_proposition'),

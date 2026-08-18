@@ -19,12 +19,15 @@ const ADAPTERS: Partial<Record<ProviderId, ProviderAdapter<any>>> = {
   stripe: stripeAdapter,
 }
 
-/** Providers a founder can actually connect, in the order we recommend them. */
-export const CONNECTABLE_PROVIDERS = [
-  revenueCatAdapter,
-  appStoreConnectAdapter,
-  stripeAdapter,
-] as const
+/**
+ * Providers a founder can actually connect, in the order we recommend them.
+ *
+ * Stripe is absent by choice, not by limitation: this index is about App Store
+ * revenue, and web billing muddies the comparison. The adapter stays registered
+ * above so connections already made keep syncing — dropping it there would
+ * strand them with "no adapter registered" on the next run.
+ */
+export const CONNECTABLE_PROVIDERS = [revenueCatAdapter, appStoreConnectAdapter] as const
 
 export function getAdapter(provider: ProviderId) {
   const adapter = ADAPTERS[provider]

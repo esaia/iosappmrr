@@ -45,12 +45,19 @@ export async function lookupAppAction(
   }
 
   const [existing] = await db
-    .select({ slug: apps.slug })
+    .select({ slug: apps.slug, status: apps.status })
     .from(apps)
     .where(eq(apps.appStoreId, appStoreId))
     .limit(1)
 
-  if (existing) {
+  /*
+   * Only a live listing blocks the lookup. An unverified draft is invisible to
+   * everyone but its owner, so treating it as taken would stop a founder in
+   * their tracks over a listing they cannot see — and would let anyone reserve
+   * an app by submitting it and never verifying. Collisions are resolved at
+   * save time instead, where we know who is asking.
+   */
+  if (existing?.status === 'live') {
     return { error: `That app is already listed at /apps/${existing.slug}.` }
   }
 
@@ -138,12 +145,26 @@ export async function createAppAction(
   if (!user) return { needsAuth: { appStoreId: data.appStoreId } }
 
   const [duplicate] = await db
-    .select({ id: apps.id })
+    .select({ id: apps.id, slug: apps.slug, status: apps.status, founderId: apps.founderId })
     .from(apps)
     .where(eq(apps.appStoreId, data.appStoreId))
     .limit(1)
 
-  if (duplicate) return { error: 'That app has already been submitted.' }
+  if (duplicate) {
+    // Live listings are settled; nobody re-submits them.
+    if (duplicate.status === 'live') {
+      return { error: `That app is already listed at /apps/${duplicate.slug}.` }
+    }
+    // Your own unfinished draft: pick it up where you left off rather than
+    // reporting a duplicate you cannot see.
+    if (duplicate.founderId === user.id) {
+      redirect(`/dashboard/${duplicate.id}/connect`)
+    }
+    return {
+      error:
+        'Another founder has claimed this app and is verifying it. If it is yours, get in touch and we will sort it out.',
+    }
+  }
 
   const [category] = await db
     .select({ id: categories.id })

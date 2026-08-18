@@ -83,3 +83,25 @@ export function percentChange(from: string | number | null, to: number): number 
   if (!Number.isFinite(baseline) || baseline <= 0) return null
   return ((to - baseline) / baseline) * 100
 }
+
+/**
+ * Escapes LIKE wildcards in user input. Without this a query of "%" matches
+ * every row, turning the search box into a full-table scan on request.
+ * Backslash is Postgres's default LIKE escape character.
+ */
+export function escapeLike(input: string) {
+  return input.replace(/[\\%_]/g, (ch) => `\\${ch}`)
+}
+
+/**
+ * Upgrades an X avatar to a usable resolution.
+ *
+ * X hands out the `_normal` variant in OAuth metadata, which is 48px and looks
+ * soft at any real size. The same object is served at 400px by swapping the
+ * suffix. Other hosts are returned untouched.
+ */
+export function highResAvatar(url: string | null | undefined) {
+  if (!url) return url ?? null
+  if (!url.includes('pbs.twimg.com')) return url
+  return url.replace(/_(normal|bigger|mini)\.(jpg|jpeg|png|gif|webp)$/i, '_400x400.$2')
+}

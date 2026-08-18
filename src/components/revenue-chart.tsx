@@ -22,7 +22,7 @@ export type RevenuePoint = {
   revenue28dCents?: number | null
 }
 
-type MetricKey = 'revenue28d' | 'mrr' | 'subscribers' | 'trials' | 'visitors' | 'churn'
+type MetricKey = 'revenue28d' | 'mrr' | 'subscribers' | 'trials'
 
 type Metric = {
   key: MetricKey
@@ -31,19 +31,16 @@ type Metric = {
   /** Pulls the value out of a day's row. Null means "no data for this day". */
   read: (point: RevenuePoint) => number | null
   format: (value: number) => string
-  /** Series we have no column for. Shown locked so the menu reads as complete. */
-  locked?: boolean
 }
 
+/*
+ * Only metrics a provider actually reports. RevenueCat's overview returns mrr,
+ * revenue, active_subscriptions, active_trials and new_customers; App Store
+ * Connect's subscription report returns MRR and active subscriptions. Neither
+ * exposes visitors or churn, so offering them — even locked — would advertise
+ * something the sync can never fill.
+ */
 const METRICS: Metric[] = [
-  {
-    key: 'visitors',
-    label: 'Visitors',
-    dot: '#8b7fd4',
-    read: () => null,
-    format: formatCount,
-    locked: true,
-  },
   {
     key: 'revenue28d',
     label: 'Revenue',
@@ -71,14 +68,6 @@ const METRICS: Metric[] = [
     dot: '#5bbcd4',
     read: (p) => p.activeTrials ?? null,
     format: formatCount,
-  },
-  {
-    key: 'churn',
-    label: 'Churn',
-    dot: '#b08442',
-    read: () => null,
-    format: (v) => `${v}%`,
-    locked: true,
   },
 ]
 
@@ -159,7 +148,10 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
   const metricHasData = useMemo(() => {
     const seen = new Map<MetricKey, boolean>()
     for (const m of METRICS) {
-      seen.set(m.key, !m.locked && data.some((point) => m.read(point) != null))
+      seen.set(
+        m.key,
+        data.some((point) => m.read(point) != null),
+      )
     }
     return seen
   }, [data])
