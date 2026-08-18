@@ -163,51 +163,6 @@ export async function getAdminApp(appId: string) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                    Users                                    */
-/* -------------------------------------------------------------------------- */
-
-export type AdminUserRow = Awaited<ReturnType<typeof listAdminUsers>>[number]
-
-export async function listAdminUsers({ q, limit = 100 }: { q?: string; limit?: number }) {
-  const term = q?.trim() ? `%${escapeLike(q.trim())}%` : null
-
-  return db
-    .select({
-      id: profiles.id,
-      handle: profiles.handle,
-      name: profiles.name,
-      avatarUrl: profiles.avatarUrl,
-      twitter: profiles.twitter,
-      role: profiles.role,
-      createdAt: profiles.createdAt,
-      appCount: sql<number>`(select count(*)::int from ${apps} a where a.founder_id = ${profiles}.id)`,
-      liveAppCount: sql<number>`(
-        select count(*)::int from ${apps} a
-        where a.founder_id = ${profiles}.id and a.status = 'live'
-      )`,
-    })
-    .from(profiles)
-    .where(term ? or(ilike(profiles.handle, term), ilike(profiles.name, term)) : undefined)
-    .orderBy(desc(profiles.createdAt))
-    .limit(limit)
-}
-
-export async function getProfile(profileId: string) {
-  const [row] = await db.select().from(profiles).where(eq(profiles.id, profileId)).limit(1)
-  return row ?? null
-}
-
-/** How many admins exist, used to refuse demoting the last one. */
-export async function countAdmins() {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(profiles)
-    .where(eq(profiles.role, 'admin'))
-
-  return row?.count ?? 0
-}
-
-/* -------------------------------------------------------------------------- */
 /*                                  Purchases                                  */
 /* -------------------------------------------------------------------------- */
 

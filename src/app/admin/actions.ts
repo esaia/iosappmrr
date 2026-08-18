@@ -3,15 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { apps, profiles } from '@/db/schema'
+import { apps } from '@/db/schema'
 import { requireAdmin } from '@/lib/auth'
-import {
-  countAdmins,
-  getAdminApp,
-  getProfile,
-  logAdminAction,
-  type AdminActor,
-} from '@/lib/data/admin'
+import { getAdminApp, logAdminAction, type AdminActor } from '@/lib/data/admin'
 import {
   activatePurchaseById,
   getSlotInventory,
@@ -86,49 +80,6 @@ export async function setAppStatusAction(
   revalidatePublic(app.slug)
   revalidateAdmin()
   return { ok: `${app.name} is now ${status}.` }
-}
-
-/**
- * Marks an app verified by hand.
- *
- * The badge normally means "a provider connection returned these numbers", and
- * setting it here says that on the site's behalf without that evidence. It
- * exists for the case where a sync is broken and a listing that was genuinely
- * verified would otherwise silently lose its badge — not as a way to hand the
- * badge to an app that has never connected anything. The audit entry names who
- * did it, because the claim is the site's credibility.
- */
-export async function setAppVerifiedAction(
-  _previous: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const admin = await actor()
-  const appId = String(formData.get('appId') ?? '')
-  const verified = formData.get('verified') === 'true'
-
-  const app = await getAdminApp(appId)
-  if (!app) return { error: 'App not found.' }
-
-  await db
-    .update(apps)
-    .set({
-      isVerified: verified,
-      verifiedAt: verified ? new Date() : null,
-      updatedAt: new Date(),
-    })
-    .where(eq(apps.id, appId))
-
-  await logAdminAction(admin, {
-    action: verified ? 'verify_app' : 'unverify_app',
-    summary: `${verified ? 'Verified' : 'Removed verification from'} ${app.name} by hand`,
-    targetType: 'app',
-    targetId: appId,
-    detail: { from: app.isVerified, to: verified },
-  })
-
-  revalidatePublic(app.slug)
-  revalidateAdmin()
-  return { ok: verified ? `${app.name} marked verified.` : `Verification removed.` }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -366,51 +317,6 @@ export async function revokePurchaseAction(
   revalidatePublic()
   revalidateAdmin()
   return { ok: 'Purchase revoked.' }
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                    Users                                    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Promotes or demotes another account.
- *
- * Two refusals, both about not locking yourself out or being locked out:
- * you cannot change your own role, and the last admin cannot be demoted. The
- * first also means a compromised admin session cannot quietly hide its own
- * privileges by dropping back to `founder` after acting.
- */
-export async function setRoleAction(
-  _previous: AdminState,
-  formData: FormData,
-): Promise<AdminState> {
-  const admin = await actor()
-  const profileId = String(formData.get('profileId') ?? '')
-  const role = String(formData.get('role') ?? '')
-
-  if (role !== 'admin' && role !== 'founder') return { error: 'Unknown role.' }
-  if (profileId === admin.id) return { error: 'Change your own role from the database, not here.' }
-
-  const target = await getProfile(profileId)
-  if (!target) return { error: 'User not found.' }
-  if (target.role === role) return { ok: `@${target.handle} is already ${role}.` }
-
-  if (role === 'founder' && (await countAdmins()) <= 1) {
-    return { error: 'That is the last admin. Promote someone else first.' }
-  }
-
-  await db.update(profiles).set({ role, updatedAt: new Date() }).where(eq(profiles.id, profileId))
-
-  await logAdminAction(admin, {
-    action: 'set_role',
-    summary: `Made @${target.handle} ${role === 'admin' ? 'an admin' : 'a founder'}`,
-    targetType: 'profile',
-    targetId: profileId,
-    detail: { from: target.role, to: role },
-  })
-
-  revalidateAdmin()
-  return { ok: `@${target.handle} is now ${role}.` }
 }
 
 /* -------------------------------------------------------------------------- */

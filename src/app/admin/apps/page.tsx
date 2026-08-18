@@ -13,7 +13,6 @@ import {
   revokeDofollowAction,
   revokeSponsorAction,
   setAppStatusAction,
-  setAppVerifiedAction,
 } from '../actions'
 import { AdminFilters } from '../filters'
 
@@ -131,7 +130,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
           </div>
 
           <p className="text-muted mt-1 text-[12px]">
-            <Link href={`/admin/users?q=${row.founderHandle}`} className="hover:text-fg">
+            <Link href={`/founders/${row.founderHandle}`} className="hover:text-fg">
               @{row.founderHandle}
             </Link>
             {' · '}
@@ -237,6 +236,12 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
         </Control>
 
         {/* ------------------------------ Listing ---------------------------- */}
+        {/*
+          Publish and Hide only. Verification is deliberately not editable
+          here: `is_verified` is owned by the provider-connection flow — set
+          when a founder connects a source, cleared when they disconnect the
+          last one — and it is shown below purely as information.
+        */}
         <Control title="Listing" state={`${row.status}${row.isVerified ? ' · verified' : ''}`}>
           <div className="flex flex-wrap gap-2">
             {row.status !== 'live' && (
@@ -255,13 +260,6 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
                 confirm
               />
             )}
-            <ActionForm
-              action={setAppVerifiedAction}
-              fields={{ appId: row.id, verified: String(!row.isVerified) }}
-              label={row.isVerified ? 'Unverify' : 'Verify'}
-              variant="ghost"
-              confirm={!row.isVerified}
-            />
           </div>
         </Control>
       </div>

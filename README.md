@@ -180,9 +180,10 @@ something they did not receive.
 
 ## Admin
 
-Everything at `/admin` requires `profiles.role = 'admin'`. The first admin has to
-be made from the command line, because the only screen that can change a role
-lives behind the check:
+Everything at `/admin` requires `profiles.role = 'admin'`. Roles are changed
+only from the command line — there is no user-management screen, deliberately,
+because handing out admin is rare and not worth a button that can be clicked by
+mistake:
 
 ```bash
 npm run role -- <handle> admin      # promote
@@ -190,17 +191,30 @@ npm run role -- <handle> founder    # demote
 npm run role                        # usage, plus a list of handles and roles
 ```
 
-Sign out and back in afterwards — the role is read into the session.
+The change takes effect immediately: the role is read from the database on every
+request rather than baked into the session, so there is no need to sign in again.
 
 The section is five screens:
 
-| Screen        | What it does                                                                                                                                                                                                       |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Overview**  | Counts, plus the two failures that are invisible on the public site: checkouts that never settled, and revenue connections that have stopped refreshing.                                                           |
-| **Apps**      | Every app including drafts and hidden ones. Search by name, slug, or founder handle. Turn a sponsor slot on or off per app, gift or withdraw a dofollow link, publish or hide a listing, set verification by hand. |
-| **Users**     | Every account, with app counts. Promote to admin or demote to founder.                                                                                                                                             |
-| **Purchases** | The full ledger — paid and gifted, pending and revoked. Settle a stuck checkout or revoke a purchase after a refund.                                                                                               |
-| **Settings**  | How many sponsor slots exist to sell. Everything priced or worded stays in code, and the screen says which file.                                                                                                   |
+| Screen        | What it does                                                                                                                                                                             |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Overview**  | Counts, plus the two failures that are invisible on the public site: checkouts that never settled, and revenue connections that have stopped refreshing.                                 |
+| **Apps**      | Every app including drafts and hidden ones. Search by name, slug, or founder handle. Turn a sponsor slot on or off per app, gift or withdraw a dofollow link, publish or hide a listing. |
+| **Purchases** | The full ledger — paid and gifted, pending and revoked. Settle a stuck checkout or revoke a purchase after a refund.                                                                     |
+| **Settings**  | How many sponsor slots exist to sell. Everything priced or worded stays in code, and the screen says which file.                                                                         |
+| **Activity**  | The audit log of everything done from these screens.                                                                                                                                     |
+
+### Verification is not an admin control
+
+`apps.is_verified` is owned by the provider-connection flow: set when a founder
+connects a source, cleared when they disconnect the last one. The admin screens
+show it and never write it.
+
+That is not squeamishness about a button. The public "Verified" badge is rendered
+from the providers on `app_metrics`, not from this flag, so an admin toggle would
+not have removed the badge it appeared to remove — it would only have changed the
+`/stats` totals, silently. To take a listing down, use **Hide**, which does
+exactly what it says.
 
 ### Gifts
 
