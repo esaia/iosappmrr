@@ -39,7 +39,7 @@ export default function AboutPage() {
           Subscription and in-app purchase revenue, normalised to monthly.
         </li>
         <li className="list-disc">
-          Revenue read from the provider, refreshed hourly, never self-reported.
+          Revenue read from the provider, refreshed daily, never self-reported.
         </li>
       </ul>
 

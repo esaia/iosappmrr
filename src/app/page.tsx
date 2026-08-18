@@ -50,7 +50,7 @@ export default async function HomePage() {
           </h1>
           <p className="text-muted mx-auto mt-5 max-w-xl text-[13px] leading-relaxed">
             See what iOS apps really earn — or connect your own and prove yours. One read-only key,
-            refreshed hourly.{' '}
+            refreshed daily.{' '}
             <Link
               href="/verification"
               className="text-fg hover:text-blue underline underline-offset-4"
@@ -111,8 +111,8 @@ export default async function HomePage() {
             />
             <Explainer
               index="02"
-              title="Refreshed every hour"
-              body="A number that was true last quarter is not verification. Every connected app is re-read hourly, and each profile shows its last sync."
+              title="Refreshed every day"
+              body="A number that was true last quarter is not verification. Every connected app is re-read daily, and each profile shows its last sync."
             />
             <Explainer
               index="03"

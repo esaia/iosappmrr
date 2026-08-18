@@ -12,7 +12,7 @@ export function AddAppCta() {
       <h2 className="display text-2xl font-semibold sm:text-3xl">Add your own app</h2>
       <p className="text-muted mx-auto mt-2 max-w-md text-sm leading-relaxed">
         Connect RevenueCat or App Store Connect once. Your revenue is read straight from the
-        provider and refreshed hourly — never typed in by hand.
+        provider and refreshed daily — never typed in by hand.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-2">

@@ -79,7 +79,7 @@ export async function connectProvider(options: {
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
-/** Upserts on the day key, so an hourly re-run refreshes rather than appends. */
+/** Upserts on the day key, so a same-day re-run refreshes rather than appends. */
 export async function writeSnapshot(
   tx: Tx | typeof db,
   appId: string,

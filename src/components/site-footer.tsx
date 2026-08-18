@@ -43,7 +43,7 @@ export function SiteFooter() {
         <div>
           <Logo />
           <p className="text-muted mt-3 max-w-xs text-xs leading-relaxed">
-            Revenue is read directly from each app&apos;s payment provider and refreshed hourly.
+            Revenue is read directly from each app&apos;s payment provider and refreshed daily.
             Nothing here is self-reported.
           </p>
         </div>

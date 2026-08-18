@@ -32,7 +32,7 @@ export default async function ConnectPage({ params }: { params: Promise<{ appId:
       <h1 className="display mt-2 text-4xl font-semibold">Verify {app.name}</h1>
       <p className="text-muted mt-3 leading-relaxed">
         Connect the provider that bills your subscribers. We make one read-only call to confirm the
-        key works, then re-read it hourly. Your app goes live the moment this succeeds.
+        key works, then re-read it daily. Your app goes live the moment this succeeds.
       </p>
 
       <ConnectPanel

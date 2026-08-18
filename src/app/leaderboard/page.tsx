@@ -15,7 +15,7 @@ const SORTS: { value: AppSort; label: string; blurb: string }[] = [
 export const metadata: Metadata = {
   title: 'Top 100 iOS apps by verified revenue',
   description:
-    'The hundred highest-earning App Store apps whose revenue is read directly from their payment provider. Updated hourly.',
+    'The hundred highest-earning App Store apps whose revenue is read directly from their payment provider. Updated daily.',
 }
 
 export default async function LeaderboardPage({
@@ -31,7 +31,7 @@ export default async function LeaderboardPage({
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
       <header>
-        <p className="label">Updated hourly</p>
+        <p className="label">Updated daily</p>
         <h1 className="display mt-2 text-4xl font-semibold sm:text-5xl">Top 100</h1>
         <p className="text-muted mt-3 max-w-xl">
           Every app below has connected a payment provider. {formatMoney(stats.totalMrrCents)} of

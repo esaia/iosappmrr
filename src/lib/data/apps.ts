@@ -263,7 +263,7 @@ export async function getEcosystemStats() {
 
 /**
  * The homepage sync tape: which apps refreshed most recently. This is the claim
- * "updated hourly" made visible, so it reads from the connections themselves
+ * "updated daily" made visible, so it reads from the connections themselves
  * rather than a cached summary.
  */
 export async function getRecentSyncs(limit = 12) {

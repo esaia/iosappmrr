@@ -240,7 +240,7 @@ export const revenueConnections = pgTable(
 )
 
 /**
- * One row per app / provider / day. The hourly job upserts on that key so a
+ * One row per app / provider / day. The sync job upserts on that key so a
  * re-run refreshes the day rather than appending duplicates.
  */
 export const revenueSnapshots = pgTable(

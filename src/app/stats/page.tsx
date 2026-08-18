@@ -99,7 +99,7 @@ export default async function StatsPage() {
       </section>
 
       <p className="text-muted mt-12 text-xs">
-        Median app earns {formatMrr(stats.medianMrrCents)}/mo. Figures refresh hourly.
+        Median app earns {formatMrr(stats.medianMrrCents)}/mo. Figures refresh daily.
       </p>
     </div>
   )

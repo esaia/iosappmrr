@@ -56,10 +56,10 @@ export default function VerificationPage() {
         </p>
       </Section>
 
-      <Section title="3. Revenue is re-read every hour">
+      <Section title="3. Revenue is re-read every day">
         <p>
           A figure that was true last quarter is not verification. Every active connection is
-          re-read hourly and written to an append-only history, which is what draws the chart on
+          re-read daily and written to an append-only history, which is what draws the chart on
           each app page. Profiles show the last sync time so you can judge freshness yourself.
         </p>
         <p className="mt-3">

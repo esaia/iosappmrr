@@ -141,7 +141,7 @@ export type MetadataReport = { attempted: number; updated: number; missing: numb
 
 /**
  * Refreshes App Store facts — icon, rating, version, screenshots. Runs daily;
- * this data changes on Apple's release cadence, not hourly.
+ * this data changes on Apple's release cadence, not on ours.
  */
 export async function syncAppStoreMetadata(
   options: { limit?: number } = {},
