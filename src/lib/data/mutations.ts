@@ -146,7 +146,13 @@ export async function updateAppInsights(
     .where(eq(apps.id, appId))
 }
 
-/** Core listing details a founder can change after submitting. */
+/**
+ * Core listing details a founder can change after submitting.
+ *
+ * `websiteDofollow` is absent by design: it is a paid benefit, written only by
+ * the Polar webhook in `lib/data/purchases.ts`. Keeping it out of this type
+ * means a founder-facing form cannot set it even by accident.
+ */
 export async function updateAppDetails(
   appId: string,
   values: {
@@ -155,7 +161,6 @@ export async function updateAppDetails(
     description: string | null
     categoryId: string | null
     website: string | null
-    websiteDofollow: boolean
   },
 ) {
   await db

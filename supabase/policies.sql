@@ -138,7 +138,7 @@ $$;
 do $$
 declare t text;
 begin
-  foreach t in array array['profiles', 'apps', 'revenue_connections'] loop
+  foreach t in array array['profiles', 'apps', 'revenue_connections', 'purchases'] loop
     execute format('drop trigger if exists touch_updated_at on public.%I', t);
     execute format(
       'create trigger touch_updated_at before update on public.%I
@@ -165,6 +165,8 @@ alter table public.revenue_snapshots   enable row level security;
 alter table public.app_metrics         enable row level security;
 alter table public.follows             enable row level security;
 alter table public.app_views           enable row level security;
+alter table public.purchases           enable row level security;
+alter table public.vibecode_verdicts   enable row level security;
 
 do $$
 declare r record;
@@ -238,3 +240,18 @@ create policy follows_write_own on public.follows for all
 -- read, insert, or update a single row — including the founders who own them.
 -- Provider credentials are reachable only through server code holding the
 -- service-role key. Do not add a policy here.
+
+-- purchases deliberately has NO policy either.
+--
+-- Same reasoning as revenue_connections: these rows decide who has paid for
+-- what, so a client that could write one could grant itself a dofollow link or
+-- a sponsor slot for free. Only server code holding the service-role key
+-- touches this table, and only the Polar webhook promotes a row to `active`.
+
+-- Verdicts are public reading, exactly like the app they describe: visible for
+-- a live app, invisible for one that is not. No write policy — a client that
+-- could write here could publish arbitrary text under a model's byline on
+-- someone else's app page. Only server code holding the service-role key
+-- drafts or edits a verdict.
+create policy vibecode_verdicts_read on public.vibecode_verdicts for select
+  using (public.can_read_app(app_id));

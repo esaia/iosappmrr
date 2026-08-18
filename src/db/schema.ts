@@ -326,3 +326,124 @@ export const appViews = pgTable(
   },
   (t) => [primaryKey({ columns: [t.appId, t.viewedOn] })],
 )
+
+/* -------------------------------------------------------------------------- */
+/*                                  Payments                                   */
+/* -------------------------------------------------------------------------- */
+
+/** What was bought. Each value maps to one Polar product. */
+export const purchaseKind = pgEnum('purchase_kind', ['dofollow', 'sponsor'])
+
+/**
+ * `pending` is written when the checkout is created, before any money moves.
+ * Only the webhook promotes a row to `active` — the browser coming back from a
+ * success URL proves nothing, since anyone can navigate to it.
+ */
+export const purchaseStatus = pgEnum('purchase_status', ['pending', 'active', 'revoked'])
+
+export const purchases = pgTable(
+  'purchases',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: purchaseKind('kind').notNull(),
+    status: purchaseStatus('status').notNull().default('pending'),
+
+    /** Who paid. Kept even if the app is deleted, so refunds can be traced. */
+    profileId: uuid('profile_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+
+    /**
+     * Polar's checkout id. Unique because it is the idempotency key: webhooks
+     * are delivered at least once, and a retry must update this row rather than
+     * grant the benefit twice.
+     */
+    polarCheckoutId: text('polar_checkout_id').notNull(),
+    polarOrderId: text('polar_order_id'),
+    /** Set for `sponsor` only — dofollow is a one-time charge. */
+    polarSubscriptionId: text('polar_subscription_id'),
+
+    amountCents: bigint('amount_cents', { mode: 'number' }),
+    currency: text('currency'),
+
+    /**
+     * When a sponsor's paid period lapses. Null for dofollow, which does not
+     * expire. The rails read this so a cancelled sponsor drops off on time
+     * without a nightly job.
+     */
+    currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('purchases_polar_checkout_key').on(t.polarCheckoutId),
+    uniqueIndex('purchases_polar_subscription_key').on(t.polarSubscriptionId),
+    index('purchases_app_kind_idx').on(t.appId, t.kind, t.status),
+    index('purchases_status_idx').on(t.status),
+  ],
+)
+
+/* -------------------------------------------------------------------------- */
+/*                              Vibecode verdicts                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How hard the app would be to rebuild with AI coding tools.
+ *
+ * Three values rather than a score, because a number invites false precision:
+ * nobody can say an app is 68% rebuildable, and a reader would treat the
+ * figure as measured rather than guessed.
+ */
+export const vibecodeVerdict = pgEnum('vibecode_verdict', ['yes', 'kinda', 'not_really'])
+
+/**
+ * A model-written assessment of an app's rebuild difficulty, cached per app.
+ *
+ * Written once and read on every page view. The generation is deliberately not
+ * on the render path: it costs money, takes seconds, and the answer does not
+ * change between two readers. Nothing here is derived from revenue figures the
+ * founder connected — see `buildPrompt` for what the model is actually shown.
+ *
+ * Rows are editable by hand. The model drafts; a human can always overrule it,
+ * which matters because the subject is someone's business.
+ */
+export const vibecodeVerdicts = pgTable(
+  'vibecode_verdicts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** One verdict per app. Regenerating overwrites rather than accumulating. */
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+
+    verdict: vibecodeVerdict('verdict').notNull(),
+    /** One line, shown beside the verdict chip. */
+    headline: text('headline').notNull(),
+    /** Two or three sentences of reasoning. */
+    reasoning: text('reasoning').notNull(),
+
+    /** What a competent vibecoder could reproduce in a weekend. */
+    rebuildable: jsonb('rebuildable').$type<string[]>().notNull().default([]),
+    /** What they could not — distribution, data, integrations, brand. */
+    moat: jsonb('moat').$type<string[]>().notNull().default([]),
+
+    /**
+     * Which model and prompt produced this. Both change over time, and without
+     * them there is no way to tell a stale verdict from a current one, or to
+     * re-run only the rows written by a prompt that turned out to be bad.
+     */
+    model: text('model').notNull(),
+    promptVersion: integer('prompt_version').notNull().default(1),
+
+    /** Set when a human edits the row, so a backfill can skip it. */
+    editedByHuman: boolean('edited_by_human').notNull().default(false),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('vibecode_verdicts_app_key').on(t.appId)],
+)

@@ -1,9 +1,9 @@
 /**
  * The paid dofollow upgrade.
  *
- * Hardcoded until a payment provider is chosen — Stripe does not support
- * Georgia, so this is a placeholder, not a live product. Nothing here charges
- * anyone: ticking the box currently grants the link outright.
+ * Sold through Polar. The price below is for display only — the amount actually
+ * charged is whatever the Polar product is set to, so the two must be kept in
+ * step by hand. The flag it grants is written solely by the Polar webhook.
  */
 export const dofollow = {
   priceCents: 1900,

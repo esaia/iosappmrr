@@ -33,8 +33,13 @@ const columns = [
 
 export function SiteFooter() {
   return (
-    <footer className="border-border mt-20 border-t">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[2fr_1fr_1fr_1fr]">
+    <footer className="mt-20">
+      {/*
+        The rule is drawn on the content column, not on the footer element, so
+        it stops where the page's own gutters do rather than running the full
+        width of the viewport past the sponsor rails.
+      */}
+      <div className="border-border mx-auto grid max-w-6xl gap-10 border-t px-4 py-12 sm:px-6 md:grid-cols-[2fr_1fr_1fr_1fr]">
         <div>
           <Logo />
           <p className="text-muted mt-3 max-w-xs text-xs leading-relaxed">

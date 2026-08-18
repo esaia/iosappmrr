@@ -78,9 +78,37 @@ export async function SiteHeader() {
             {item.label}
           </Link>
         ))}
-        <Link href="/login" className="text-muted shrink-0 px-2.5 py-1 text-xs sm:hidden">
-          Sign in
-        </Link>
+        {/*
+          The account controls live in the header proper from sm up, so this
+          tail only exists below that. It still has to mirror the session —
+          offering "Sign in" to someone already signed in reads as a lost
+          session and sends them round a login they do not need.
+        */}
+        {user ? (
+          <>
+            <Link
+              href="/dashboard"
+              className="text-muted hover:text-fg shrink-0 px-2.5 py-1 text-xs transition-colors sm:hidden"
+            >
+              @{user.profile.handle}
+            </Link>
+            <form action={signOutAction} className="shrink-0 sm:hidden">
+              <button
+                type="submit"
+                className="text-muted hover:text-fg px-2.5 py-1 text-xs transition-colors"
+              >
+                Sign out
+              </button>
+            </form>
+          </>
+        ) : (
+          <Link
+            href="/login"
+            className="text-muted hover:text-fg shrink-0 px-2.5 py-1 text-xs transition-colors sm:hidden"
+          >
+            Sign in
+          </Link>
+        )}
       </nav>
     </header>
   )

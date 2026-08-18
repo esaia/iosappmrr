@@ -11,7 +11,9 @@ import { AppCard } from '@/components/app-card'
 import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
 import { ShareButton } from '@/components/share-button'
 import { ExpandableText } from '@/components/expandable-text'
+import { VibecodeVerdict } from '@/components/vibecode-verdict'
 import { getAppBySlug, getRevenueHistory, listApps } from '@/lib/data/apps'
+import { getVerdict } from '@/lib/data/vibecode'
 import { formatCount, formatMoney, formatMrr, timeAgo } from '@/lib/utils'
 import { site } from '@/lib/site'
 
@@ -44,6 +46,9 @@ export default async function AppPage({ params }: Params) {
 
   const { app, metadata, metrics, category, founder } = record
   const history = await getRevenueHistory(app.id, 365)
+  // Read from cache only. An app with no verdict simply does not show the
+  // section, rather than blocking the page on a model call.
+  const verdict = await getVerdict(app.id)
   // Same category where we have one, otherwise the top apps overall.
   const related = (await listApps({ categorySlug: category?.slug, sort: 'mrr', limit: 7 })).filter(
     (item) => item.slug !== app.slug,
@@ -210,7 +215,7 @@ export default async function AppPage({ params }: Params) {
         </p>
       </section>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1.6fr_1fr]">
+      <div className="mt-12 grid gap-10 lg:grid-cols-[1.6fr_1fr]">
         <div>
           {app.description && (
             <section>
@@ -246,6 +251,17 @@ export default async function AppPage({ params }: Params) {
           </Panel>
         </aside>
       </div>
+
+      {verdict && (
+        <VibecodeVerdict
+          verdict={verdict.verdict}
+          headline={verdict.headline}
+          reasoning={verdict.reasoning}
+          rebuildable={verdict.rebuildable}
+          moat={verdict.moat}
+          model={verdict.model}
+        />
+      )}
 
       <AppScreenshots urls={metadata?.screenshotUrls ?? []} appName={app.name} />
 

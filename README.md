@@ -27,12 +27,12 @@ npm run dev
 
 `db:setup` runs three steps you can also run individually:
 
-| Command | What it does |
-|---|---|
-| `npm run db:generate` | Generate a migration from `src/db/schema.ts` |
-| `npm run db:migrate` | Apply migrations in `supabase/migrations` |
+| Command               | What it does                                                                                         |
+| --------------------- | ---------------------------------------------------------------------------------------------------- |
+| `npm run db:generate` | Generate a migration from `src/db/schema.ts`                                                         |
+| `npm run db:migrate`  | Apply migrations in `supabase/migrations`                                                            |
 | `npm run db:policies` | Apply `supabase/policies.sql` — RLS, triggers, auth wiring. Idempotent; re-run after every migration |
-| `npm run db:seed` | Insert sample apps and 180 days of revenue history |
+| `npm run db:seed`     | Insert sample apps and 180 days of revenue history                                                   |
 
 ### Environment
 
@@ -69,19 +69,19 @@ terminal, and tabular figures let every revenue column line up across rows.
 Tokens live in `src/app/globals.css` and are exposed to Tailwind through
 `@theme inline`. Use the token classes, never raw hex.
 
-| Token | Class | Used for |
-|---|---|---|
-| `--bg` `#0a0a0a` | `bg-bg` | Page background |
-| `--surface` `#141414` | `bg-surface` | Cards, tables, panels |
-| `--surface-2` `#1c1c1c` | `bg-surface-2` | Hover and inset fills |
-| `--border` `#262626` | `border-border` | Every divider and card edge |
-| `--fg` `#ededed` | `text-fg` | Primary text and figures |
-| `--fg-muted` `#8f8f8f` | `text-muted` | Secondary text |
-| `--fg-dim` `#666` | `text-dim` | Labels, timestamps |
-| `--accent` `#fafafa` | `bg-accent` | The one primary action per view |
-| `--green` / `--red` | `text-green` / `text-red` | Direction of change, nothing else |
-| `--blue` | `text-blue` | Verified state and links |
-| `--gold` | `text-gold` | Status flags |
+| Token                   | Class                     | Used for                          |
+| ----------------------- | ------------------------- | --------------------------------- |
+| `--bg` `#0a0a0a`        | `bg-bg`                   | Page background                   |
+| `--surface` `#141414`   | `bg-surface`              | Cards, tables, panels             |
+| `--surface-2` `#1c1c1c` | `bg-surface-2`            | Hover and inset fills             |
+| `--border` `#262626`    | `border-border`           | Every divider and card edge       |
+| `--fg` `#ededed`        | `text-fg`                 | Primary text and figures          |
+| `--fg-muted` `#8f8f8f`  | `text-muted`              | Secondary text                    |
+| `--fg-dim` `#666`       | `text-dim`                | Labels, timestamps                |
+| `--accent` `#fafafa`    | `bg-accent`               | The one primary action per view   |
+| `--green` / `--red`     | `text-green` / `text-red` | Direction of change, nothing else |
+| `--blue`                | `text-blue`               | Verified state and links          |
+| `--gold`                | `text-gold`               | Status flags                      |
 
 Colour is rationed on purpose: green always means "MRR is up on 30 days ago",
 so an app's own icon is the only other saturated thing in a row.
@@ -112,14 +112,71 @@ thing that publishes a listing.
 
 ### Providers
 
-| Provider | Credential | Notes |
-|---|---|---|
-| RevenueCat | V2 secret key scoped to `charts_metrics:overview:read`, plus project ID | Primary path. 25 req/min per key |
-| App Store Connect | Issuer ID, key ID, `.p8`, vendor number | Reports lag one day; UI shows a "data as of" date |
-| Stripe | Restricted key with read on Subscriptions | For apps that also bill on the web |
-| Superwall | — | **Not supported.** Superwall issues public SDK keys only and publishes no metrics API, so there is no way to verify a figure through it |
+| Provider          | Credential                                                              | Notes                                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| RevenueCat        | V2 secret key scoped to `charts_metrics:overview:read`, plus project ID | Primary path. 25 req/min per key                                                                                                        |
+| App Store Connect | Issuer ID, key ID, `.p8`, vendor number                                 | Reports lag one day; UI shows a "data as of" date                                                                                       |
+| Stripe            | Restricted key with read on Subscriptions                               | For apps that also bill on the web                                                                                                      |
+| Superwall         | —                                                                       | **Not supported.** Superwall issues public SDK keys only and publishes no metrics API, so there is no way to verify a figure through it |
 
 Multiple providers on one app are summed once per day, never double-counted.
+
+## Payments
+
+Polar is the merchant of record for the two paid products:
+
+| Product       | Billing  | Grants                                                                                  |
+| ------------- | -------- | --------------------------------------------------------------------------------------- |
+| Dofollow link | One-time | `apps.website_dofollow`, so the listing's website link drops `rel="nofollow"`           |
+| Sponsor slot  | Monthly  | A rotating slot in the side rails, using the app's own icon and tagline as the creative |
+
+Both are bought from the app's edit screen, which is the only place that knows
+which listing a purchase belongs to.
+
+**Nothing is granted by the browser.** The success URL proves nothing — anyone
+can type it — so `/api/webhooks/polar` is the only code that promotes a purchase
+to `active`. It verifies Polar's signature, and every handler is idempotent
+because webhooks are delivered at least once. `websiteDofollow` is deliberately
+absent from `updateAppDetails`, so no founder-facing form can set it.
+
+Leave `POLAR_ACCESS_TOKEN` or a product id unset and that product simply is not
+offered — the UI says so rather than showing a button that throws.
+
+To set it up:
+
+1. Create the two products in Polar and copy their ids into `.env.local`.
+2. Add a webhook endpoint pointing at `https://your-host/api/webhooks/polar`,
+   subscribed to `order.paid`, `order.refunded`, `subscription.active`,
+   `subscription.uncanceled`, and `subscription.revoked`.
+3. Copy the signing secret into `POLAR_WEBHOOK_SECRET`.
+4. Keep `POLAR_SERVER=sandbox` until you have tested end to end. Sandbox is a
+   separate deployment — its tokens and product ids do not work in production.
+
+### When a webhook is missed
+
+A webhook is a delivery, not a guarantee. If the endpoint is missing,
+misconfigured, or down when an order is paid, Polar has nowhere to deliver to —
+and it only retries endpoints that existed at the time, so that payment is
+stranded: charged, but never granted.
+
+`npm run polar:reconcile` asks Polar the question the webhook would have
+answered. For every purchase still `pending` it looks for a paid order against
+that checkout, and grants what was bought:
+
+```bash
+npm run polar:reconcile          # report what would change
+npm run polar:reconcile -- --fix # apply it
+```
+
+It calls the same `activatePurchase` the webhook does rather than reimplementing
+the grant, so the two cannot drift, and that function is idempotent — running it
+repeatedly, or alongside a webhook that later arrives, is safe. Worth running
+after any webhook outage, and worth checking if a founder reports paying for
+something they did not receive.
+
+> **Payouts.** Polar settles to sellers over Stripe Connect Express and does not
+> list Georgia among its supported seller countries. Checkout and webhooks work
+> regardless; receiving the money needs an entity Polar supports.
 
 ## Security model
 
@@ -128,11 +185,15 @@ policy at all**. Anon and authenticated roles cannot read, insert, or update a
 single row — including the founders who own them. Only server code holding the
 service-role key can reach it. Do not add a policy to that table.
 
+`purchases` is locked down the same way, for the same reason: a client that
+could write a row could grant itself a paid upgrade for free.
+
 Verify this at any time:
 
 ```sql
 set role anon;
 select count(*) from revenue_connections;  -- must be 0
+select count(*) from purchases;            -- must be 0
 ```
 
 ## Testing

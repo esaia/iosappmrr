@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ExternalLink, Eye, Star, Users, X, Zap } from 'lucide-react'
-import { advertising, ROTATE_MS, spotsLeft, TOTAL_SPOTS, type Testimonial } from '@/lib/ads'
+import Link from 'next/link'
+import { advertising, ROTATE_MS, TOTAL_SPOTS, type Testimonial } from '@/lib/ads'
 import { formatCount, formatMoney } from '@/lib/utils'
 
 /**
@@ -16,10 +17,13 @@ export function AdvertiseModal({
   children,
   contactEmail,
   siteName,
+  spotsLeft,
 }: {
   children: React.ReactNode
   contactEmail: string
   siteName: string
+  /** Counted from live sponsor purchases by the server, not from a constant. */
+  spotsLeft: number
 }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -43,7 +47,7 @@ export function AdvertiseModal({
     }
   }, [open])
 
-  const remaining = spotsLeft()
+  const remaining = spotsLeft
   const price = advertising.monthlyPriceCents
   const mailto = `mailto:${contactEmail}?subject=${encodeURIComponent(`Advertising on ${siteName}`)}`
 
@@ -139,34 +143,40 @@ export function AdvertiseModal({
                 )}
               </div>
 
-              {advertising.checkoutUrl ? (
-                <a
-                  href={advertising.checkoutUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-fg text-bg mt-5 flex w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-[13px] font-medium transition-opacity hover:opacity-90"
-                >
-                  {price != null ? `Get started (${formatMoney(price)}/mo)` : 'Get started'}
-                  <ExternalLink className="size-3.5" />
-                </a>
-              ) : (
-                /*
-                 * No payment provider yet. A button that looks like checkout but
-                 * opens an email would be a bait and switch, so it is disabled
-                 * and says why, with the email offered underneath.
-                 */
+              {remaining === 0 ? (
                 <>
                   <button
                     type="button"
                     disabled
                     className="bg-fg text-bg mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-[13px] font-medium opacity-50"
                   >
-                    {price != null ? `Get started (${formatMoney(price)}/mo)` : 'Get started'}
+                    Sold out
                   </button>
                   <p className="text-dim mt-2 text-center text-[11px]">
-                    Checkout is not live yet —{' '}
                     <a href={mailto} className="text-muted hover:text-fg underline">
-                      email to book a spot
+                      Email to join the waiting list
+                    </a>
+                  </p>
+                </>
+              ) : (
+                /*
+                 * A slot is bought against a listing, so checkout starts from
+                 * the dashboard where the founder picks which app is sponsoring.
+                 * Sending them straight to Polar from here would leave the
+                 * webhook with no app to attach the purchase to.
+                 */
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="bg-fg text-bg mt-5 flex w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-[13px] font-medium transition-opacity hover:opacity-90"
+                  >
+                    {price != null ? `Get started (${formatMoney(price)}/mo)` : 'Get started'}
+                    <ExternalLink className="size-3.5" />
+                  </Link>
+                  <p className="text-dim mt-2 text-center text-[11px]">
+                    Pick the app that sponsors, then pay — or{' '}
+                    <a href={mailto} className="text-muted hover:text-fg underline">
+                      email us
                     </a>
                   </p>
                 </>

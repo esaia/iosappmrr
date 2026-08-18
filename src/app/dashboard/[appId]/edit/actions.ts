@@ -56,8 +56,11 @@ export async function updateAppAction(
     description: parsed.data.description || null,
     categoryId: category?.id ?? null,
     website: parsed.data.website || null,
-    // No payment step yet, so the checkbox is taken at face value.
-    websiteDofollow: formData.get('websiteDofollow') === 'on',
+    /*
+     * `websiteDofollow` is deliberately not read from this form. It is granted
+     * only by the Polar webhook once an order is paid — accepting it here
+     * would let anyone POST the field and take the paid link for free.
+     */
   })
 
   await setAppTechStack(appId, formData.getAll('tech').map(String))

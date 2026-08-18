@@ -4,8 +4,14 @@ import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
 import { dofollow } from '@/lib/dofollow'
+import { advertising, TOTAL_SPOTS } from '@/lib/ads'
 import { formatMoney } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import {
+  startDofollowCheckout,
+  startSponsorCheckout,
+  type CheckoutState,
+} from '@/app/checkout/actions'
 import { deleteAppAction, updateAppAction, type DeleteState, type EditState } from './actions'
 
 type Option = { slug: string; name: string }
@@ -19,11 +25,19 @@ export function EditForm({
   categories,
   tech,
   initial,
+  offers,
 }: {
   appId: string
   appName: string
   categories: Option[]
   tech: Option[]
+  /** What can be sold right now, decided on the server from the Polar config. */
+  offers: {
+    dofollowAvailable: boolean
+    sponsorAvailable: boolean
+    sponsorActive: boolean
+    spotsLeft: number
+  }
   initial: {
     name: string
     tagline: string
@@ -87,8 +101,6 @@ export function EditForm({
           <input name="website" type="url" defaultValue={initial.website} className={field} />
         </Field>
 
-        <DofollowOffer defaultChecked={initial.websiteDofollow} />
-
         <fieldset>
           <legend className="label">Built with</legend>
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -113,52 +125,168 @@ export function EditForm({
         <Save />
       </form>
 
+      <section className="mt-8 space-y-3">
+        <h2 className="label">Paid upgrades</h2>
+        <DofollowOffer
+          appId={appId}
+          active={initial.websiteDofollow}
+          available={offers.dofollowAvailable}
+        />
+        <SponsorOffer
+          appId={appId}
+          active={offers.sponsorActive}
+          available={offers.sponsorAvailable}
+          spotsLeft={offers.spotsLeft}
+        />
+      </section>
+
       <DangerZone appId={appId} appName={appName} />
     </>
   )
 }
 
 /**
- * The paid link upgrade. There is no payment provider yet, so ticking this
- * grants the dofollow link outright — the checkout step slots in here later.
+ * The paid link upgrade.
+ *
+ * A button that opens Polar, not a checkbox. The flag it grants is written by
+ * the webhook once the order is paid, so there is nothing here for the founder
+ * to tick — and nothing the form could set for free.
  */
-function DofollowOffer({ defaultChecked }: { defaultChecked: boolean }) {
-  const [checked, setChecked] = useState(defaultChecked)
+function DofollowOffer({
+  appId,
+  active,
+  available,
+}: {
+  appId: string
+  active: boolean
+  available: boolean
+}) {
+  const [state, action] = useActionState<CheckoutState, FormData>(startDofollowCheckout, {})
 
   return (
-    <label className="border-border hover:border-border-strong block cursor-pointer rounded-[10px] border border-dashed p-4 transition-colors">
-      <span className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          name="websiteDofollow"
-          checked={checked}
-          onChange={(event) => setChecked(event.target.checked)}
-          className="border-border bg-surface-2 mt-0.5 size-4 shrink-0 rounded-full border accent-[var(--blue)]"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="text-fg text-[13px] font-medium">
-              Dofollow link
-              {dofollow.domainAuthority != null && (
-                <span className="text-muted font-normal">
-                  {' '}
-                  · Domain Authority {dofollow.domainAuthority}
-                </span>
-              )}
-            </span>
-            <span className="text-fg text-[13px] font-medium">
-              {formatMoney(dofollow.priceCents)}
-            </span>
-          </span>
-          <span className="text-muted mt-1.5 block text-[12px] leading-relaxed">
-            {dofollow.blurb}
-          </span>
-          <span className="text-dim mt-2 block text-[11px]">
-            Not charged yet — payment is not wired up.
-          </span>
+    <Offer
+      title="Dofollow link"
+      meta={
+        dofollow.domainAuthority != null ? `Domain Authority ${dofollow.domainAuthority}` : null
+      }
+      price={formatMoney(dofollow.priceCents)}
+      blurb={dofollow.blurb}
+      active={active}
+      activeLabel="Active — your website link is dofollow."
+      available={available}
+      appId={appId}
+      action={action}
+      error={state.error}
+      cta="Buy"
+    />
+  )
+}
+
+/**
+ * A sponsor slot in the side rails, billed monthly.
+ *
+ * The creative is this app's own listing, so buying a slot needs nothing from
+ * the founder beyond the payment — no banner to upload or approve.
+ */
+function SponsorOffer({
+  appId,
+  active,
+  available,
+  spotsLeft,
+}: {
+  appId: string
+  active: boolean
+  available: boolean
+  spotsLeft: number
+}) {
+  const [state, action] = useActionState<CheckoutState, FormData>(startSponsorCheckout, {})
+  const price = advertising.monthlyPriceCents
+
+  return (
+    <Offer
+      title="Sponsor a rail"
+      meta={spotsLeft > 0 ? `${spotsLeft} of ${TOTAL_SPOTS} spots left` : 'Sold out'}
+      price={price != null ? `${formatMoney(price)}/mo` : null}
+      blurb="Your icon, name, and tagline rotate through the sponsor rails beside the index. Cancel anytime."
+      active={active}
+      activeLabel="Active — this app is sponsoring the rails."
+      available={available && spotsLeft > 0}
+      appId={appId}
+      action={action}
+      error={state.error}
+      cta="Sponsor"
+    />
+  )
+}
+
+/** Shared chrome for the two paid products, so they cannot drift apart. */
+function Offer({
+  title,
+  meta,
+  price,
+  blurb,
+  active,
+  activeLabel,
+  available,
+  appId,
+  action,
+  error,
+  cta,
+}: {
+  title: string
+  meta: string | null
+  price: string | null
+  blurb: string
+  active: boolean
+  activeLabel: string
+  available: boolean
+  appId: string
+  action: (formData: FormData) => void
+  error?: string
+  cta: string
+}) {
+  return (
+    <div className="border-border rounded-[10px] border border-dashed p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <span className="text-fg text-[13px] font-medium">
+          {title}
+          {meta && <span className="text-muted font-normal"> · {meta}</span>}
         </span>
-      </span>
-    </label>
+        {price && <span className="text-fg text-[13px] font-medium">{price}</span>}
+      </div>
+
+      <p className="text-muted mt-1.5 text-[12px] leading-relaxed">{blurb}</p>
+
+      {active ? (
+        <p className="text-green mt-3 text-[12px]">{activeLabel}</p>
+      ) : available ? (
+        <form action={action} className="mt-3">
+          <input type="hidden" name="appId" value={appId} />
+          <CheckoutButton label={cta} />
+        </form>
+      ) : (
+        /*
+         * No Polar product configured, or nothing left to sell. Saying so is
+         * better than a button that fails once clicked.
+         */
+        <p className="text-dim mt-3 text-[11px]">Not available right now.</p>
+      )}
+
+      {error && (
+        <p role="alert" className="text-red mt-2 text-[12px]">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function CheckoutButton({ label }: { label: string }) {
+  const { pending } = useFormStatus()
+  return (
+    <Button type="submit" size="sm" disabled={pending}>
+      {pending ? 'Opening checkout…' : label}
+    </Button>
   )
 }
 

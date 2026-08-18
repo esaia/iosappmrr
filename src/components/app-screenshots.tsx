@@ -14,7 +14,7 @@ export function AppScreenshots({ urls, appName }: { urls: string[]; appName: str
   if (urls.length === 0) return null
 
   return (
-    <section className="border-border bg-surface mt-3 rounded-[10px] border p-5 sm:p-6">
+    <section className="border-border bg-surface mt-12 rounded-[10px] border p-5 sm:p-6">
       <div className="flex items-baseline gap-3">
         <h2 className="display text-xl font-semibold">Screenshots</h2>
         <span className="text-muted text-[11px]">From the App Store listing</span>
