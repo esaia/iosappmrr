@@ -8,6 +8,20 @@
       "when": 1787030205138,
       "tag": "0000_famous_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787044723337,
+      "tag": "0001_clear_slapstick",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787044772663,
+      "tag": "0002_married_photon",
+      "breakpoints": true
     }
   ]
 }

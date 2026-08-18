@@ -35,6 +35,7 @@ export const connectionStatus = pgEnum('connection_status', [
   'revoked',
 ])
 export const userRole = pgEnum('user_role', ['founder', 'admin'])
+export const audienceType = pgEnum('audience_type', ['B2C', 'B2B', 'B2B2C'])
 
 /* -------------------------------------------------------------------------- */
 /*                                  Profiles                                   */
@@ -55,6 +56,7 @@ export const profiles = pgTable(
     bio: text('bio'),
     website: text('website'),
     twitter: text('twitter'),
+
     role: userRole('role').notNull().default('founder'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -122,6 +124,15 @@ export const apps = pgTable(
 
     website: text('website'),
     twitter: text('twitter'),
+    // Startup insights. Founder-written, unlike revenue, which is provider-read.
+    // Every field is optional; the profile hides whichever are blank.
+    valueProposition: text('value_proposition'),
+    problemSolved: text('problem_solved'),
+    audience: text('audience'),
+    audienceType: audienceType('audience_type'),
+    marketTags: jsonb('market_tags').$type<string[]>().notNull().default([]),
+    marketingChannels: jsonb('marketing_channels').$type<string[]>().notNull().default([]),
+    additionalInfo: text('additional_info'),
 
     // Reserved for the marketplace phase. Unused in v1.
     forSale: boolean('for_sale').notNull().default(false),

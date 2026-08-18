@@ -17,7 +17,9 @@
     "db:seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:policies && npm run db:seed",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",
+    "db:reference": "tsx --tsconfig tsconfig.scripts.json scripts/seed-reference.ts",
+    "stripe:testdata": "tsx --tsconfig tsconfig.scripts.json scripts/stripe-test-data.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -170,12 +170,18 @@ export async function getAppBySlug(slug: string) {
   return { ...row, tech }
 }
 
-/** Daily MRR totals for the app profile chart, oldest first. */
+/** Daily totals for the app profile chart, oldest first. One row per day, summed
+ * across providers, carrying every series the chart can plot. */
 export async function getRevenueHistory(appId: string, days = 180) {
   const rows = await db
     .select({
       date: revenueSnapshots.capturedOn,
       mrrCents: sql<string>`sum(${revenueSnapshots.mrrCents})`,
+      // Null stays null: a provider that never reports subscriptions should read
+      // as "no data", not as zero subscribers.
+      activeSubscriptions: sql<string | null>`sum(${revenueSnapshots.activeSubscriptions})`,
+      activeTrials: sql<string | null>`sum(${revenueSnapshots.activeTrials})`,
+      revenue28dCents: sql<string | null>`sum(${revenueSnapshots.revenue28dCents})`,
     })
     .from(revenueSnapshots)
     .where(
@@ -187,7 +193,15 @@ export async function getRevenueHistory(appId: string, days = 180) {
     .groupBy(revenueSnapshots.capturedOn)
     .orderBy(asc(revenueSnapshots.capturedOn))
 
-  return rows.map((row) => ({ date: row.date, mrrCents: Number(row.mrrCents) }))
+  const num = (v: string | null) => (v == null ? null : Number(v))
+
+  return rows.map((row) => ({
+    date: row.date,
+    mrrCents: Number(row.mrrCents),
+    activeSubscriptions: num(row.activeSubscriptions),
+    activeTrials: num(row.activeTrials),
+    revenue28dCents: num(row.revenue28dCents),
+  }))
 }
 
 export async function listCategories() {

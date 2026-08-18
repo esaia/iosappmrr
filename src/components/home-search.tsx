@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 /** Hero search. Submits to /apps, which owns filtering and pagination. */
@@ -32,8 +32,8 @@ export function HomeSearch() {
         />
       </div>
       <Button type="submit" size="lg" className="shrink-0">
-        <Plus className="size-4" />
-        Add app
+        <Search className="size-4" />
+        Search
       </Button>
     </form>
   )

@@ -125,3 +125,23 @@ export async function listConnections(appId: string) {
 export async function listAllTechTags() {
   return db.select().from(techStackTags).orderBy(techStackTags.name)
 }
+
+/** Founder-written profile copy. Blank strings are stored as null so the
+ * profile page can treat "not filled in" and "cleared" identically. */
+export async function updateAppInsights(
+  appId: string,
+  values: {
+    valueProposition: string | null
+    problemSolved: string | null
+    audience: string | null
+    audienceType: 'B2C' | 'B2B' | 'B2B2C' | null
+    marketTags: string[]
+    marketingChannels: string[]
+    additionalInfo: string | null
+  },
+) {
+  await db
+    .update(apps)
+    .set({ ...values, updatedAt: new Date() })
+    .where(eq(apps.id, appId))
+}

@@ -5,9 +5,12 @@ import { ExternalLink, Star } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { GrowthPill } from '@/components/growth-pill'
 import { RevenueChart } from '@/components/revenue-chart'
+import { AppScreenshots } from '@/components/app-screenshots'
+import { AddAppCta } from '@/components/add-app-cta'
+import { AppCard } from '@/components/app-card'
+import { StartupInsights } from '@/components/startup-insights'
 import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
-import { Badge } from '@/components/ui/badge'
-import { getAppBySlug, getRevenueHistory } from '@/lib/data/apps'
+import { getAppBySlug, getRevenueHistory, listApps } from '@/lib/data/apps'
 import { formatCount, formatMoney, formatMrr, timeAgo } from '@/lib/utils'
 import { site } from '@/lib/site'
 
@@ -39,7 +42,11 @@ export default async function AppPage({ params }: Params) {
   if (!record) notFound()
 
   const { app, metadata, metrics, category, founder, tech } = record
-  const history = await getRevenueHistory(app.id)
+  const history = await getRevenueHistory(app.id, 365)
+  // Same category where we have one, otherwise the top apps overall.
+  const related = (await listApps({ categorySlug: category?.slug, sort: 'mrr', limit: 7 })).filter(
+    (item) => item.slug !== app.slug,
+  )
   const providers = metrics?.providers ?? []
   const mrrCents = Number(metrics?.mrrCents ?? 0)
 
@@ -123,32 +130,35 @@ export default async function AppPage({ params }: Params) {
         </div>
       </header>
 
-      {/* Revenue — the reason anyone is on this page. */}
-      <section className="border-border bg-surface mt-10 rounded-[10px] border p-5 sm:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="label">Verified monthly recurring revenue</h2>
-            <p className="display tabular mt-1.5 text-4xl font-semibold sm:text-5xl">
-              {formatMoney(mrrCents)}
-              <span className="text-muted text-lg font-normal">/mo</span>
-            </p>
-            <div className="mt-2 flex items-center gap-3">
-              <GrowthPill value={metrics?.growth30d ?? null} />
-              <span className="text-muted text-xs">vs. 30 days ago</span>
-            </div>
+      {/* Headline figures, one card each, ahead of the chart. */}
+      <dl className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="MRR" value={formatMoney(mrrCents)} suffix="/mo">
+          <div className="mt-2 flex items-center gap-2">
+            <GrowthPill value={metrics?.growth30d ?? null} />
+            <span className="text-muted text-[11px]">vs. 30 days ago</span>
           </div>
+        </StatCard>
+        <StatCard label="ARR" value={formatMrr(Number(metrics?.arrCents ?? 0))}>
+          <p className="text-muted mt-2 text-[11px]">Annualised run rate</p>
+        </StatCard>
+        <StatCard
+          label="Subscribers"
+          value={metrics?.activeSubscriptions ? formatCount(metrics.activeSubscriptions) : '—'}
+        >
+          <p className="text-muted mt-2 text-[11px]">
+            {metrics?.activeSubscriptions ? 'Active subscriptions' : 'Not reported by provider'}
+          </p>
+        </StatCard>
+        <StatCard label="90-day change" value={growthLabel(metrics?.growth90d)}>
+          <p className="text-muted mt-2 text-[11px]">
+            {metrics?.growth90d == null ? 'Needs 90 days of history' : 'vs. 90 days ago'}
+          </p>
+        </StatCard>
+      </dl>
 
-          <dl className="grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3">
-            <Figure label="ARR" value={formatMrr(Number(metrics?.arrCents ?? 0))} />
-            <Figure
-              label="Subscribers"
-              value={metrics?.activeSubscriptions ? formatCount(metrics.activeSubscriptions) : '—'}
-            />
-            <Figure label="90-day change" value={growthLabel(metrics?.growth90d)} />
-          </dl>
-        </div>
-
-        <div className="mt-6">
+      {/* Revenue — the reason anyone is on this page. */}
+      <section className="border-border bg-surface mt-3 rounded-[10px] border p-5 sm:p-6">
+        <div>
           <RevenueChart data={history} />
         </div>
 
@@ -167,24 +177,6 @@ export default async function AppPage({ params }: Params) {
               <p className="text-muted mt-3 leading-relaxed">{app.description}</p>
             </section>
           )}
-
-          {metadata?.screenshotUrls && metadata.screenshotUrls.length > 0 && (
-            <section className="mt-8">
-              <h2 className="display text-xl font-semibold">Screenshots</h2>
-              <div className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                {metadata.screenshotUrls.slice(0, 6).map((url) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={url}
-                    src={url}
-                    alt=""
-                    loading="lazy"
-                    className="border-border h-72 w-auto shrink-0 rounded-[10px] border"
-                  />
-                ))}
-              </div>
-            </section>
-          )}
         </div>
 
         <aside className="space-y-6">
@@ -201,22 +193,46 @@ export default async function AppPage({ params }: Params) {
               value={metadata?.minimumOsVersion ? `iOS ${metadata.minimumOsVersion}+` : '—'}
             />{' '}
           </Panel>
-
-          {tech.length > 0 && (
-            <Panel title="Built with">
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {tech.map((tag) => (
-                  <Link key={tag.slug} href={`/apps?tech=${tag.slug}`}>
-                    <Badge tone="outline" className="hover:border-border-strong hover:text-fg">
-                      {tag.name}
-                    </Badge>
-                  </Link>
-                ))}
-              </div>
-            </Panel>
-          )}
         </aside>
       </div>
+
+      <StartupInsights
+        insights={{
+          valueProposition: app.valueProposition,
+          problemSolved: app.problemSolved,
+          audience: app.audience,
+          audienceType: app.audienceType,
+          marketTags: app.marketTags,
+          marketingChannels: app.marketingChannels,
+          additionalInfo: app.additionalInfo,
+        }}
+        tech={tech}
+      />
+
+      <AppScreenshots urls={metadata?.screenshotUrls ?? []} appName={app.name} />
+
+      {related.length > 0 && (
+        <section className="mt-8">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="display text-xl font-semibold">
+              {category?.name ? `More ${category.name} apps` : 'More apps'}
+            </h2>
+            <Link
+              href={category?.slug ? `/categories/${category.slug}` : '/apps'}
+              className="text-muted hover:text-fg text-[13px] transition-colors"
+            >
+              View all →
+            </Link>
+          </div>
+          <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+            {related.slice(0, 6).map((item) => (
+              <AppCard key={item.slug} app={item} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <AddAppCta />
     </div>
   )
 }
@@ -233,11 +249,27 @@ function priceLabel(cents: number | null | undefined, currency: string | null | 
   return cents === 0 ? 'Free' : formatMoney(cents, currency ?? 'USD')
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function StatCard({
+  label,
+  value,
+  suffix,
+  children,
+}: {
+  label: string
+  value: string
+  suffix?: string
+  children?: React.ReactNode
+}) {
   return (
-    <div>
+    <div className="border-border bg-surface rounded-[10px] border p-4 sm:p-5">
       <dt className="label">{label}</dt>
-      <dd className="tabular text-fg mt-0.5 text-base font-medium">{value}</dd>
+      <dd>
+        <p className="tabular text-fg mt-2 text-2xl font-semibold tracking-tight">
+          {value}
+          {suffix && <span className="text-muted text-sm font-normal">{suffix}</span>}
+        </p>
+        {children}
+      </dd>
     </div>
   )
 }

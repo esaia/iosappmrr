@@ -114,6 +114,12 @@ export default async function DashboardPage() {
                 >
                   {appConnections.length === 0 ? 'Connect revenue' : 'Manage sources'}{' '}
                 </Link>
+                <Link
+                  href={`/dashboard/${row.id}/insights`}
+                  className="text-muted hover:text-fg text-sm"
+                >
+                  Insights
+                </Link>
                 {row.status === 'live' && (
                   <Link href={`/apps/${row.slug}`} className="text-muted hover:text-fg text-sm">
                     View page

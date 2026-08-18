@@ -58,9 +58,27 @@ export function SiteFooter() {
         ))}
       </div>
 
-      <div className="border-border mx-auto max-w-6xl border-t px-4 py-6 sm:px-6">
+      <div className="border-border mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t px-4 py-6 sm:px-6">
         <p className="text-dim text-[11px]">
           {site.name} — not affiliated with Apple Inc. App Store data via the public iTunes API.
+        </p>
+
+        <p className="text-muted flex items-center gap-1.5 text-[13px]">
+          Built by
+          <a
+            href="https://x.com/esaia__"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-fg inline-flex items-center gap-1.5 hover:underline"
+          >
+            <span
+              aria-hidden
+              className="bg-surface-3 text-fg flex size-5 items-center justify-center rounded-full text-[10px] font-bold"
+            >
+              E
+            </span>
+            Esaia
+          </a>
         </p>
       </div>
     </footer>
