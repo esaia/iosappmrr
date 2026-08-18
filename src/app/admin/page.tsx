@@ -2,17 +2,16 @@ import Link from 'next/link'
 import { AlertTriangle, Gift, Megaphone } from 'lucide-react'
 import { Card, CardBody, Stat } from '@/components/ui/card'
 import { getAdminOverview, listAdminActions } from '@/lib/data/admin'
-import { countActiveSponsors } from '@/lib/data/purchases'
-import { getSponsorSlots } from '@/lib/settings'
 import { timeAgo } from '@/lib/utils'
 
 export default async function AdminOverviewPage() {
-  const [overview, slots, sponsorsBooked, recent] = await Promise.all([
-    getAdminOverview(),
-    getSponsorSlots(),
-    countActiveSponsors(),
-    listAdminActions(8),
-  ])
+  /*
+   * Two queries, not a dozen. Every count on this page comes back in one
+   * statement, including the sponsor-slot setting — see `getAdminOverview`.
+   */
+  const [overview, recent] = await Promise.all([getAdminOverview(), listAdminActions(8)])
+  const slots = overview.sponsorSlots
+  const sponsorsBooked = overview.activeSponsors
 
   return (
     <div className="space-y-6">

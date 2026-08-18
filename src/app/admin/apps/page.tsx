@@ -4,8 +4,7 @@ import { AlertTriangle } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { Badge } from '@/components/ui/badge'
 import { listAdminApps, type AdminAppRow } from '@/lib/data/admin'
-import { countActiveSponsors } from '@/lib/data/purchases'
-import { getSponsorSlots } from '@/lib/settings'
+import { getSlotInventory } from '@/lib/data/purchases'
 import { formatMoney } from '@/lib/utils'
 import { ActionForm } from '../action-form'
 import {
@@ -38,13 +37,12 @@ export default async function AdminAppsPage({
     ? (status as 'draft' | 'pending' | 'live' | 'hidden')
     : undefined
 
-  const [rows, slots, booked] = await Promise.all([
+  const [rows, inventory] = await Promise.all([
     listAdminApps({ q, status: validStatus }),
-    getSponsorSlots(),
-    countActiveSponsors(),
+    getSlotInventory(),
   ])
 
-  const free = Math.max(0, slots - booked)
+  const { slots, booked, free } = inventory
 
   return (
     <div>

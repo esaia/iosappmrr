@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, count, desc, eq, gt, ilike, isNull, or, sql } from 'drizzle-orm'
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import {
   adminActions,
@@ -9,7 +9,9 @@ import {
   profiles,
   purchases,
   revenueConnections,
+  siteSettings,
 } from '@/db/schema'
+import { clampSlots } from '@/lib/settings'
 import { escapeLike } from '@/lib/utils'
 
 /* -------------------------------------------------------------------------- */
@@ -59,12 +61,6 @@ export async function listAdminActions(limit = 50) {
 /* -------------------------------------------------------------------------- */
 /*                                    Apps                                     */
 /* -------------------------------------------------------------------------- */
-
-/** A sponsor slot counts as held only while its paid period is still running. */
-const sponsorIsLive = or(
-  isNull(purchases.currentPeriodEnd),
-  gt(purchases.currentPeriodEnd, sql`now()`),
-)
 
 export type AdminAppRow = Awaited<ReturnType<typeof listAdminApps>>[number]
 
@@ -256,62 +252,86 @@ export async function listAdminPurchases({
 /* -------------------------------------------------------------------------- */
 
 /**
- * The numbers on the admin landing page.
+ * Every number on the admin landing page, in one round trip.
+ *
+ * Deliberately a single statement rather than a `Promise.all` of a dozen tidy
+ * little counts. The database is in ap-southeast-2 and this app is developed
+ * from the other side of the world, so a round trip costs the better part of a
+ * second — eleven of them made this page take half a minute and read as a hang.
+ * Postgres computes all of these in well under a millisecond; the only cost that
+ * matters is how many times we ask.
+ *
+ * So: when adding a figure here, add a scalar subquery to this statement. Do not
+ * add a second query.
  *
  * `stuckCheckouts` is the one that matters operationally: a pending row is a
  * checkout that was opened and never settled. Some are simply abandoned carts,
- * but a webhook outage looks exactly the same from here, which is why the
- * figure is surfaced rather than buried in a list.
+ * but a webhook outage looks exactly the same from here, which is why the figure
+ * is surfaced rather than buried in a list.
  */
 export async function getAdminOverview() {
-  const [
-    [appCounts],
-    [userCount],
-    [adminCount],
-    [pendingCount],
-    [sponsorCount],
-    [dofollowCount],
-    [giftCount],
-    [failingCount],
-  ] = await Promise.all([
-    db
-      .select({
-        total: count(),
-        live: sql<number>`count(*) filter (where ${apps.status} = 'live')::int`,
-        draft: sql<number>`count(*) filter (where ${apps.status} = 'draft')::int`,
-        hidden: sql<number>`count(*) filter (where ${apps.status} = 'hidden')::int`,
-        verified: sql<number>`count(*) filter (where ${apps.isVerified})::int`,
-      })
-      .from(apps),
-    db.select({ count: count() }).from(profiles),
-    db.select({ count: count() }).from(profiles).where(eq(profiles.role, 'admin')),
-    db.select({ count: count() }).from(purchases).where(eq(purchases.status, 'pending')),
-    db
-      .select({ count: count() })
-      .from(purchases)
-      .where(and(eq(purchases.kind, 'sponsor'), eq(purchases.status, 'active'), sponsorIsLive)),
-    db
-      .select({ count: count() })
-      .from(purchases)
-      .where(and(eq(purchases.kind, 'dofollow'), eq(purchases.status, 'active'))),
-    db
-      .select({ count: count() })
-      .from(purchases)
-      .where(and(eq(purchases.source, 'admin'), eq(purchases.status, 'active'))),
-    db
-      .select({ count: count() })
-      .from(revenueConnections)
-      .where(eq(revenueConnections.status, 'error')),
-  ])
+  const rows = await db.execute<{
+    apps_total: number
+    apps_live: number
+    apps_draft: number
+    apps_hidden: number
+    apps_verified: number
+    users: number
+    admins: number
+    stuck_checkouts: number
+    active_sponsors: number
+    active_dofollow: number
+    active_gifts: number
+    failing_connections: number
+    sponsor_slots: number | null
+  }>(sql`
+    select
+      (select count(*) from ${apps})::int                                as apps_total,
+      (select count(*) from ${apps} where status = 'live')::int           as apps_live,
+      (select count(*) from ${apps} where status = 'draft')::int          as apps_draft,
+      (select count(*) from ${apps} where status = 'hidden')::int         as apps_hidden,
+      (select count(*) from ${apps} where is_verified)::int               as apps_verified,
+      (select count(*) from ${profiles})::int                            as users,
+      (select count(*) from ${profiles} where role = 'admin')::int        as admins,
+      (select count(*) from ${purchases} where status = 'pending')::int   as stuck_checkouts,
+      (select count(*) from ${purchases}
+        where kind = 'sponsor' and status = 'active'
+          and (current_period_end is null or current_period_end > now()))::int
+                                                                         as active_sponsors,
+      (select count(*) from ${purchases}
+        where kind = 'dofollow' and status = 'active')::int               as active_dofollow,
+      (select count(*) from ${purchases}
+        where source = 'admin' and status = 'active')::int                as active_gifts,
+      (select count(*) from ${revenueConnections}
+        where status = 'error')::int                                     as failing_connections,
+      /*
+       * The sponsor-slot setting rides along here instead of costing its own
+       * round trip. The jsonb_typeof guard keeps a hand-edited non-numeric value
+       * from failing the cast and taking the whole page down; null falls back to
+       * the code default once it reaches clampSlots below.
+       */
+      (select case when jsonb_typeof(value) = 'number' then (value #>> '{}')::int end
+        from ${siteSettings} where key = 'sponsor_slots')                 as sponsor_slots
+  `)
+
+  const r = rows[0]
 
   return {
-    apps: appCounts,
-    users: userCount.count,
-    admins: adminCount.count,
-    stuckCheckouts: pendingCount.count,
-    activeSponsors: sponsorCount.count,
-    activeDofollow: dofollowCount.count,
-    activeGifts: giftCount.count,
-    failingConnections: failingCount.count,
+    apps: {
+      total: r.apps_total,
+      live: r.apps_live,
+      draft: r.apps_draft,
+      hidden: r.apps_hidden,
+      verified: r.apps_verified,
+    },
+    users: r.users,
+    admins: r.admins,
+    stuckCheckouts: r.stuck_checkouts,
+    activeSponsors: r.active_sponsors,
+    activeDofollow: r.active_dofollow,
+    activeGifts: r.active_gifts,
+    failingConnections: r.failing_connections,
+    /** Clamped and defaulted exactly as `getSponsorSlots()` would. */
+    sponsorSlots: clampSlots(r.sponsor_slots),
   }
 }

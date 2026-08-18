@@ -1,7 +1,8 @@
 import 'server-only'
 import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
-import { appStoreMetadata, apps, purchases } from '@/db/schema'
+import { appStoreMetadata, apps, purchases, siteSettings } from '@/db/schema'
+import { clampSlots } from '@/lib/settings'
 import type { PurchaseKind } from '@/lib/polar'
 
 /**
@@ -340,4 +341,29 @@ export async function revokeActivePurchasesForApp(
 
   await applyRevoke(kind, appId)
   return rows.length
+}
+
+/**
+ * The slot count and how many are taken, in one round trip.
+ *
+ * Every screen that offers or withholds a rail slot needs both numbers
+ * together, and asking for them separately doubled the latency of the pages
+ * that do. The database is on the other side of the world from where this is
+ * developed, so a round trip costs the better part of a second — cheap in
+ * Postgres, expensive on the wire.
+ */
+export async function getSlotInventory() {
+  const rows = await db.execute<{ slots: number | null; booked: number }>(sql`
+    select
+      (select case when jsonb_typeof(value) = 'number' then (value #>> '{}')::int end
+        from ${siteSettings} where key = 'sponsor_slots')  as slots,
+      (select count(*) from ${purchases}
+        where kind = 'sponsor' and status = 'active'
+          and (current_period_end is null or current_period_end > now()))::int
+                                                           as booked
+  `)
+
+  const slots = clampSlots(rows[0].slots)
+  const booked = rows[0].booked
+  return { slots, booked, free: Math.max(0, slots - booked) }
 }

@@ -6,9 +6,8 @@ import { db } from '@/db'
 import { purchases } from '@/db/schema'
 import { requireUser } from '@/lib/auth'
 import { getOwnedApp } from '@/lib/data/mutations'
-import { countActiveSponsors, recordPendingPurchase } from '@/lib/data/purchases'
+import { getSlotInventory, recordPendingPurchase } from '@/lib/data/purchases'
 import { isPolarConfigured, polarClient, productId, type PurchaseKind } from '@/lib/polar'
-import { getSponsorSlots } from '@/lib/settings'
 import { site } from '@/lib/site'
 
 export type CheckoutState = { error?: string }
@@ -48,8 +47,11 @@ async function startCheckout(kind: PurchaseKind, appId: string): Promise<Checkou
     }
   }
 
-  if (kind === 'sponsor' && (await countActiveSponsors()) >= (await getSponsorSlots())) {
-    return { error: 'All sponsor spots are currently taken.' }
+  if (kind === 'sponsor') {
+    // One query for both numbers — they were two serial round trips, and this
+    // runs while someone is waiting to be sent to a payment page.
+    const { free } = await getSlotInventory()
+    if (free <= 0) return { error: 'All sponsor spots are currently taken.' }
   }
 
   let checkoutId: string

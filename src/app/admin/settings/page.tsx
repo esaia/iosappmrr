@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { countActiveSponsors } from '@/lib/data/purchases'
-import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
+import { getSlotInventory } from '@/lib/data/purchases'
+import { SETTING_LIMITS } from '@/lib/settings'
 import { advertising, ROTATE_MS } from '@/lib/ads'
 import { dofollow } from '@/lib/dofollow'
 import { formatMoney } from '@/lib/utils'
@@ -10,7 +10,7 @@ import { SlotsForm } from './slots-form'
 export const metadata: Metadata = { title: 'Settings' }
 
 export default async function AdminSettingsPage() {
-  const [slots, booked] = await Promise.all([getSponsorSlots(), countActiveSponsors()])
+  const { slots, booked } = await getSlotInventory()
   const { min, max } = SETTING_LIMITS.sponsor_slots
 
   return (

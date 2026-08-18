@@ -14,13 +14,13 @@ import {
 } from '@/lib/data/admin'
 import {
   activatePurchaseById,
-  countActiveSponsors,
+  getSlotInventory,
   grantPurchase,
   hasActivePurchase,
   revokeActivePurchasesForApp,
   revokePurchaseById,
 } from '@/lib/data/purchases'
-import { getSponsorSlots, setSetting, SETTING_LIMITS } from '@/lib/settings'
+import { setSetting, SETTING_LIMITS } from '@/lib/settings'
 
 export type AdminState = { error?: string; ok?: string }
 
@@ -240,8 +240,8 @@ export async function giftSponsorAction(
     return { error: `${app.name} already holds a sponsor slot.` }
   }
 
-  const [taken, slots] = await Promise.all([countActiveSponsors(), getSponsorSlots()])
-  if (taken >= slots) {
+  const { slots, free } = await getSlotInventory()
+  if (free <= 0) {
     return { error: `All ${slots} sponsor slots are taken. Raise the count in Settings first.` }
   }
 
@@ -438,9 +438,8 @@ export async function setSponsorSlotsAction(
     return { error: `Enter a whole number between ${min} and ${max}.` }
   }
 
-  const before = await getSponsorSlots()
+  const { slots: before, booked: taken } = await getSlotInventory()
   const saved = await setSetting('sponsor_slots', value, admin.id)
-  const taken = await countActiveSponsors()
 
   await logAdminAction(admin, {
     action: 'set_sponsor_slots',

@@ -32,6 +32,29 @@ export const SETTING_LIMITS: Record<SettingKey, { min: number; max: number }> = 
 }
 
 /**
+ * Applies a setting's default and bounds to a raw value.
+ *
+ * Exported because some callers read these rows as part of a larger statement
+ * rather than through `getSetting` — the database is far enough away that an
+ * extra round trip is worth avoiding, and this keeps the fallback and clamping
+ * identical wherever the raw value came from.
+ *
+ * Clamping happens on read as well as write: a value stored before a limit
+ * changed, or edited straight in the database, must not escape the bounds the
+ * rest of the code assumes.
+ */
+export function clampSetting<K extends SettingKey>(key: K, value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULTS[key]
+  const { min, max } = SETTING_LIMITS[key]
+  return Math.min(max, Math.max(min, Math.round(value)))
+}
+
+/** Convenience wrapper for the only numeric setting that exists so far. */
+export function clampSlots(value: unknown) {
+  return clampSetting('sponsor_slots', value)
+}
+
+/**
  * Reads one setting, falling back to its default.
  *
  * Not request-cached: an admin changing a value and reloading has to see the
@@ -44,14 +67,7 @@ export async function getSetting<K extends SettingKey>(key: K): Promise<number> 
     .where(eq(siteSettings.key, key))
     .limit(1)
 
-  const value = row?.value
-  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULTS[key]
-
-  const { min, max } = SETTING_LIMITS[key]
-  // Clamp on read as well as write: a value written before a limit changed, or
-  // edited straight in the database, should not escape the bounds the rest of
-  // the code assumes.
-  return Math.min(max, Math.max(min, Math.round(value)))
+  return clampSetting(key, row?.value)
 }
 
 /** How many sponsor rail slots are on sale right now. */
@@ -64,8 +80,7 @@ export function getSponsorSlots() {
  * the caller here, so do not export a path to this that a founder can reach.
  */
 export async function setSetting(key: SettingKey, value: number, updatedBy: string) {
-  const { min, max } = SETTING_LIMITS[key]
-  const clamped = Math.min(max, Math.max(min, Math.round(value)))
+  const clamped = clampSetting(key, value)
 
   await db
     .insert(siteSettings)

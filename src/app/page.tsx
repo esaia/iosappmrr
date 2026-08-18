@@ -6,7 +6,7 @@ import { HomeSearch } from '@/components/home-search'
 import { CategoryPills } from '@/components/category-pills'
 import { listApps, listCategories } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
-import { getSponsorSlots } from '@/lib/settings'
+import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
 
 export const revalidate = 600
 
@@ -18,14 +18,23 @@ const QUICK_LINKS = [
 ]
 
 export default async function HomePage() {
-  const totalSpots = await getSponsorSlots()
-  const [top, recent, categories, sponsors] = await Promise.all([
+  /*
+   * The slot count is fetched alongside the sponsors rather than before them.
+   * Awaiting it first to use as the query's limit read naturally but cost an
+   * extra serial round trip on the site's most visited page — and the database
+   * is far enough away for that to be most of a second. Fetching at the highest
+   * count an admin could ever set and trimming here is one round trip cheaper,
+   * and the list is at most a few dozen rows.
+   */
+  const [totalSpots, top, recent, categories, allSponsors] = await Promise.all([
+    getSponsorSlots(),
     listApps({ sort: 'mrr', limit: 100 }),
     listApps({ sort: 'newest', limit: 8 }),
     listCategories(),
-    listActiveSponsors(totalSpots),
+    listActiveSponsors(SETTING_LIMITS.sponsor_slots.max),
   ])
 
+  const sponsors = allSponsors.slice(0, totalSpots)
   const spotsLeft = Math.max(0, totalSpots - sponsors.length)
 
   return (
