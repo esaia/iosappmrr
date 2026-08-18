@@ -228,6 +228,38 @@ Gifting a sponsor slot respects the slot cap, exactly as checkout does. If the
 rails are full, raise the count in **Settings** first — overselling would mean
 every paying sponsor gets less rotation than they bought.
 
+### A payment always beats a gift, and admins cannot undo one
+
+Three rules, because a sponsor slot is a subscription and someone is paying for
+it:
+
+**An admin cannot switch off anything paid for.** Not the sponsor slot, not the
+dofollow link. Both end when Polar says they end — `subscription.revoked` and
+`order.refunded` already withdraw them without anyone clicking anything — so the
+button would exist only to make it possible to take away something a founder is
+paying for. The Apps screen says who is paying instead of offering a control.
+`revokeActivePurchasesForApp` takes a `source` filter and the admin screens pass
+`'admin'`, so the restriction holds in the data layer rather than only in the UI.
+
+**A gift can only be given where nothing is already active.** Gifting on top of a
+paid subscription is refused; there is nothing to give.
+
+**A founder can pay for a slot they were gifted, and the payment takes over.**
+Checkout treats an existing gift as an upgrade rather than a duplicate, and skips
+the slot-cap check because the gift already occupies a slot. When the webhook
+confirms payment, `activatePurchase` marks the gift `superseded` — not `revoked`,
+since nothing was withdrawn; the founder started paying for what they had been
+given. Without that the app would hold two live sponsor rows, appear in the rails
+twice, and consume two of the slots on sale.
+
+A superseded gift does not come back if the subscription later lapses. The slot
+then ends the way any sponsor's does, and an admin can gift again deliberately —
+a gift that silently resurrected months later would be impossible to reason about.
+
+Slot counting and the rails both count distinct apps rather than purchase rows,
+so even the brief window where a gift and its replacement are both active cannot
+show one sponsor twice or report the rails as fuller than they are.
+
 ### Sponsor slots
 
 The number of slots on sale lives in `site_settings`, not in code, so it changes

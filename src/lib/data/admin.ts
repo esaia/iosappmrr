@@ -172,7 +172,7 @@ export async function listAdminPurchases({
   status,
   limit = 100,
 }: {
-  status?: 'pending' | 'active' | 'revoked'
+  status?: 'pending' | 'active' | 'revoked' | 'superseded'
   limit?: number
 }) {
   return db
@@ -249,7 +249,7 @@ export async function getAdminOverview() {
       (select count(*) from ${profiles})::int                            as users,
       (select count(*) from ${profiles} where role = 'admin')::int        as admins,
       (select count(*) from ${purchases} where status = 'pending')::int   as stuck_checkouts,
-      (select count(*) from ${purchases}
+      (select count(distinct app_id) from ${purchases}
         where kind = 'sponsor' and status = 'active'
           and (current_period_end is null or current_period_end > now()))::int
                                                                          as active_sponsors,

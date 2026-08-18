@@ -1,5 +1,5 @@
 import 'server-only'
-import { and, desc, eq, gt, isNull, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { appStoreMetadata, apps, purchases, siteSettings } from '@/db/schema'
 import { clampSlots } from '@/lib/settings'
@@ -56,12 +56,49 @@ export async function activatePurchase(input: {
       updatedAt: new Date(),
     })
     .where(eq(purchases.polarCheckoutId, input.polarCheckoutId))
-    .returning({ id: purchases.id, kind: purchases.kind, appId: purchases.appId })
+    .returning({
+      id: purchases.id,
+      kind: purchases.kind,
+      appId: purchases.appId,
+      source: purchases.source,
+    })
 
   if (!row) return false
 
   await applyGrant(row.kind, row.appId)
+  if (row.source === 'polar') await supersedeGifts(row.kind, row.appId, row.id)
   return true
+}
+
+/**
+ * Retires a gift that a real payment has replaced.
+ *
+ * A payment always wins. Without this an app could hold a gifted and a paid
+ * entitlement of the same kind at once, and for a sponsor slot that is not
+ * merely untidy: the rails and the slot count both read one row per purchase, so
+ * the app would appear in the rails twice and consume two of the slots on sale.
+ *
+ * The gift is marked superseded rather than revoked — nothing was taken away,
+ * the founder started paying for what they had been given, and the ledger should
+ * say so. It also does not come back if the subscription later lapses: the slot
+ * then ends the way any sponsor's does, and an admin can gift again
+ * deliberately. A gift that silently resurrected months later would be
+ * impossible to reason about.
+ */
+async function supersedeGifts(kind: PurchaseKind, appId: string, keepId: string) {
+  await db
+    .update(purchases)
+    .set({ status: 'superseded', note: 'Replaced by a paid subscription.', updatedAt: new Date() })
+    .where(
+      and(
+        eq(purchases.appId, appId),
+        eq(purchases.kind, kind),
+        eq(purchases.status, 'active'),
+        eq(purchases.source, 'admin'),
+        // Never touch the row that was just paid for.
+        ne(purchases.id, keepId),
+      ),
+    )
 }
 
 /**
@@ -225,10 +262,33 @@ export async function activatePurchaseById(id: string, note?: string | null) {
   return true
 }
 
-/** Whether an app already holds a live entitlement of this kind. */
-export async function hasActivePurchase(appId: string, kind: PurchaseKind) {
+export type Entitlement = {
+  id: string
+  source: 'polar' | 'admin'
+  /** Null for a one-off purchase, or for a gift with no expiry. */
+  currentPeriodEnd: Date | null
+  polarSubscriptionId: string | null
+}
+
+/**
+ * The live entitlement of one kind for one app, and where it came from.
+ *
+ * `source` is what the admin screens branch on: a gift can be withdrawn, a paid
+ * subscription cannot. The paid row is returned in preference to a gifted one,
+ * so a brief overlap — a payment that landed before its gift was superseded —
+ * still reports the answer that matters.
+ */
+export async function getAppEntitlement(
+  appId: string,
+  kind: PurchaseKind,
+): Promise<Entitlement | null> {
   const [row] = await db
-    .select({ id: purchases.id })
+    .select({
+      id: purchases.id,
+      source: purchases.source,
+      currentPeriodEnd: purchases.currentPeriodEnd,
+      polarSubscriptionId: purchases.polarSubscriptionId,
+    })
     .from(purchases)
     .where(
       and(
@@ -238,9 +298,13 @@ export async function hasActivePurchase(appId: string, kind: PurchaseKind) {
         or(isNull(purchases.currentPeriodEnd), gt(purchases.currentPeriodEnd, sql`now()`)),
       ),
     )
+    .orderBy(
+      sql`case when ${purchases.source} = 'polar' then 0 else 1 end`,
+      desc(purchases.createdAt),
+    )
     .limit(1)
 
-  return Boolean(row)
+  return row ?? null
 }
 
 /** The purchase state the edit screen renders for one app. */
@@ -276,7 +340,7 @@ export type Sponsor = {
  * lapsed sponsor stops appearing the moment their period ends.
  */
 export async function listActiveSponsors(limit: number): Promise<Sponsor[]> {
-  return db
+  const rows = await db
     .select({
       appId: apps.id,
       slug: apps.slug,
@@ -298,12 +362,27 @@ export async function listActiveSponsors(limit: number): Promise<Sponsor[]> {
     )
     .orderBy(purchases.createdAt)
     .limit(limit)
+
+  /*
+   * One card per app. An app can hold a gift and the paid row that replaced it
+   * for the moment between the two writes, and showing it in two rails at once
+   * would be visible to every reader.
+   */
+  const seen = new Set<string>()
+  return rows.filter((row) => !seen.has(row.appId) && seen.add(row.appId))
 }
 
-/** How many rail slots are still unsold. */
+/**
+ * How many rail slots are occupied.
+ *
+ * Counts distinct apps rather than purchase rows. An app can briefly hold both a
+ * gift and the paid row that replaces it, and counting rows would report the
+ * rails as fuller than they are — and could refuse a sale on inventory that is
+ * actually free.
+ */
 export async function countActiveSponsors() {
   const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`count(distinct ${purchases.appId})::int` })
     .from(purchases)
     .where(
       and(
@@ -330,12 +409,27 @@ export async function revokeActivePurchasesForApp(
   appId: string,
   kind: PurchaseKind,
   note?: string | null,
+  /**
+   * Restricts the revoke to one source.
+   *
+   * The admin screens pass 'admin', because a slot someone is paying for is not
+   * theirs to switch off — it ends when the subscription ends, and Polar's
+   * webhook is what tells us that. Expressing it as a filter here, rather than
+   * only as a check in the action, means the safe behaviour survives a future
+   * caller that forgets to look first.
+   */
+  source?: 'admin' | 'polar',
 ) {
   const rows = await db
     .update(purchases)
     .set({ status: 'revoked', note: note ?? undefined, updatedAt: new Date() })
     .where(
-      and(eq(purchases.appId, appId), eq(purchases.kind, kind), eq(purchases.status, 'active')),
+      and(
+        eq(purchases.appId, appId),
+        eq(purchases.kind, kind),
+        eq(purchases.status, 'active'),
+        source ? eq(purchases.source, source) : undefined,
+      ),
     )
     .returning({ id: purchases.id })
 
@@ -357,7 +451,7 @@ export async function getSlotInventory() {
     select
       (select case when jsonb_typeof(value) = 'number' then (value #>> '{}')::int end
         from ${siteSettings} where key = 'sponsor_slots')  as slots,
-      (select count(*) from ${purchases}
+      (select count(distinct app_id) from ${purchases}
         where kind = 'sponsor' and status = 'active'
           and (current_period_end is null or current_period_end > now()))::int
                                                            as booked

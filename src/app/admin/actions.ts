@@ -8,9 +8,9 @@ import { requireAdmin } from '@/lib/auth'
 import { getAdminApp, logAdminAction, type AdminActor } from '@/lib/data/admin'
 import {
   activatePurchaseById,
+  getAppEntitlement,
   getSlotInventory,
   grantPurchase,
-  hasActivePurchase,
   revokeActivePurchasesForApp,
   revokePurchaseById,
 } from '@/lib/data/purchases'
@@ -103,8 +103,15 @@ export async function giftDofollowAction(
 
   const app = await getAdminApp(appId)
   if (!app) return { error: 'App not found.' }
-  if (await hasActivePurchase(appId, 'dofollow')) {
-    return { error: `${app.name} already has a dofollow link.` }
+
+  const existing = await getAppEntitlement(appId, 'dofollow')
+  if (existing) {
+    return {
+      error:
+        existing.source === 'polar'
+          ? `${app.name} already paid for a dofollow link — there is nothing to gift.`
+          : `${app.name} already has a gifted dofollow link.`,
+    }
   }
 
   await grantPurchase({
@@ -141,7 +148,14 @@ export async function revokeDofollowAction(
   const app = await getAdminApp(appId)
   if (!app) return { error: 'App not found.' }
 
-  const revoked = await revokeActivePurchasesForApp(appId, 'dofollow', note)
+  const existing = await getAppEntitlement(appId, 'dofollow')
+  if (existing?.source === 'polar') {
+    return {
+      error: `${app.name} paid for this link. Refund it in Polar, or revoke the purchase from the Purchases screen if you mean to.`,
+    }
+  }
+
+  const revoked = await revokeActivePurchasesForApp(appId, 'dofollow', note, 'admin')
 
   /*
    * Some listings carry the flag with no purchase behind it — seeded rows, or
@@ -187,8 +201,14 @@ export async function giftSponsorAction(
   if (app.status !== 'live') {
     return { error: 'Only a live app can sponsor a rail — its listing is what the rail shows.' }
   }
-  if (await hasActivePurchase(appId, 'sponsor')) {
-    return { error: `${app.name} already holds a sponsor slot.` }
+  const existing = await getAppEntitlement(appId, 'sponsor')
+  if (existing) {
+    return {
+      error:
+        existing.source === 'polar'
+          ? `${app.name} is a paying sponsor — there is nothing to gift.`
+          : `${app.name} already holds a gifted sponsor slot.`,
+    }
   }
 
   const { slots, free } = await getSlotInventory()
@@ -240,8 +260,21 @@ export async function revokeSponsorAction(
   const app = await getAdminApp(appId)
   if (!app) return { error: 'App not found.' }
 
-  const revoked = await revokeActivePurchasesForApp(appId, 'sponsor', note)
-  if (revoked === 0) return { error: `${app.name} does not hold a sponsor slot.` }
+  /*
+   * A slot someone is paying for is not the admin's to switch off. It ends when
+   * the subscription ends, and Polar's webhook is what tells us that — which
+   * also means a cancellation or refund already removes it without anyone
+   * clicking anything here.
+   */
+  const existing = await getAppEntitlement(appId, 'sponsor')
+  if (existing?.source === 'polar') {
+    return {
+      error: `${app.name} pays for this slot. It ends when their subscription does — cancel or refund it in Polar instead.`,
+    }
+  }
+
+  const revoked = await revokeActivePurchasesForApp(appId, 'sponsor', note, 'admin')
+  if (revoked === 0) return { error: `${app.name} does not hold a gifted sponsor slot.` }
 
   await logAdminAction(admin, {
     action: 'revoke_sponsor',

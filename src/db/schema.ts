@@ -338,8 +338,18 @@ export const purchaseKind = pgEnum('purchase_kind', ['dofollow', 'sponsor'])
  * `pending` is written when the checkout is created, before any money moves.
  * Only the webhook promotes a row to `active` — the browser coming back from a
  * success URL proves nothing, since anyone can navigate to it.
+ *
+ * `superseded` is a gift that a real payment replaced. It is not `revoked`:
+ * nothing was withdrawn and nobody lost anything, the founder simply started
+ * paying for what they had been given. Recording that as a revocation would
+ * make the ledger read as if a benefit had been taken away.
  */
-export const purchaseStatus = pgEnum('purchase_status', ['pending', 'active', 'revoked'])
+export const purchaseStatus = pgEnum('purchase_status', [
+  'pending',
+  'active',
+  'revoked',
+  'superseded',
+])
 
 /**
  * Where the entitlement came from.

@@ -1,12 +1,9 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { and, eq } from 'drizzle-orm'
-import { db } from '@/db'
-import { purchases } from '@/db/schema'
 import { requireUser } from '@/lib/auth'
 import { getOwnedApp } from '@/lib/data/mutations'
-import { getSlotInventory, recordPendingPurchase } from '@/lib/data/purchases'
+import { getAppEntitlement, getSlotInventory, recordPendingPurchase } from '@/lib/data/purchases'
 import { isPolarConfigured, polarClient, productId, type PurchaseKind } from '@/lib/polar'
 import { site } from '@/lib/site'
 
@@ -29,16 +26,18 @@ async function startCheckout(kind: PurchaseKind, appId: string): Promise<Checkou
   const app = await getOwnedApp(appId, user.id)
   if (!app) return { error: 'App not found.' }
 
-  // Don't sell the same thing twice. Polar would happily take the money.
-  const [existing] = await db
-    .select({ id: purchases.id })
-    .from(purchases)
-    .where(
-      and(eq(purchases.appId, appId), eq(purchases.kind, kind), eq(purchases.status, 'active')),
-    )
-    .limit(1)
+  /*
+   * Don't sell the same thing twice — Polar would happily take the money.
+   *
+   * A gift is the exception. Someone who was given a slot and then chooses to
+   * pay for it is upgrading, not buying a duplicate: the payment takes over and
+   * the gift is retired by `activatePurchase` once the webhook confirms it.
+   * Refusing here would mean an admin's goodwill permanently blocked a founder
+   * from becoming a customer.
+   */
+  const existing = await getAppEntitlement(appId, kind)
 
-  if (existing) {
+  if (existing?.source === 'polar') {
     return {
       error:
         kind === 'dofollow'
@@ -47,9 +46,14 @@ async function startCheckout(kind: PurchaseKind, appId: string): Promise<Checkou
     }
   }
 
-  if (kind === 'sponsor') {
-    // One query for both numbers — they were two serial round trips, and this
-    // runs while someone is waiting to be sent to a payment page.
+  const upgradingFromGift = existing?.source === 'admin'
+
+  if (kind === 'sponsor' && !upgradingFromGift) {
+    /*
+     * Skipped when upgrading: the gift already occupies a slot, so the paid row
+     * that replaces it is net zero. Charging the cap twice would tell a founder
+     * the rails were full while they were standing in one of them.
+     */
     const { free } = await getSlotInventory()
     if (free <= 0) return { error: 'All sponsor spots are currently taken.' }
   }

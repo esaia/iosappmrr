@@ -91,6 +91,14 @@ export default async function AdminAppsPage({
 function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
   const sponsoring = row.sponsorSource !== null
   const dofollow = row.websiteDofollow
+  /*
+   * A paid slot or link is not the admin's to switch off. Both are bought
+   * through Polar, and Polar's webhook already removes them on cancellation or
+   * refund — so there is nothing here that needs a button, and a button would
+   * only make it possible to take away something a founder is paying for.
+   */
+  const slotIsPaid = row.sponsorSource === 'polar'
+  const dofollowIsPaid = row.dofollowSource === 'polar'
 
   return (
     <li className="border-border bg-surface rounded-[10px] border p-4">
@@ -168,15 +176,20 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
             sponsoring
               ? row.sponsorSource === 'admin'
                 ? 'Enabled — gifted'
-                : 'Enabled — paying'
+                : 'Enabled — paid subscription'
               : 'Not in the rails'
           }
         >
-          {sponsoring ? (
+          {slotIsPaid ? (
+            <p className="text-dim text-[12px]">
+              Paying sponsor — the slot ends when their subscription does. Cancel or refund it in
+              Polar.
+            </p>
+          ) : sponsoring ? (
             <ActionForm
               action={revokeSponsorAction}
               fields={{ appId: row.id }}
-              label="Disable slot"
+              label="Disable gifted slot"
               variant="danger"
               confirm
               note="Why (optional)"
@@ -216,7 +229,11 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
                 : 'No website set'
           }
         >
-          {dofollow ? (
+          {dofollowIsPaid ? (
+            <p className="text-dim text-[12px]">
+              Paid for — refund it in Polar, or revoke the purchase from Purchases.
+            </p>
+          ) : dofollow ? (
             <ActionForm
               action={revokeDofollowAction}
               fields={{ appId: row.id }}

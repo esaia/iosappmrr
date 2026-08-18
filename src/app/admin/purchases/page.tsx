@@ -14,6 +14,7 @@ const STATUS_FILTERS = [
   { value: 'pending', label: 'Pending' },
   { value: 'active', label: 'Active' },
   { value: 'revoked', label: 'Revoked' },
+  { value: 'superseded', label: 'Superseded' },
 ]
 
 export default async function AdminPurchasesPage({
@@ -22,8 +23,8 @@ export default async function AdminPurchasesPage({
   searchParams: Promise<{ status?: string }>
 }) {
   const { status } = await searchParams
-  const validStatus = ['pending', 'active', 'revoked'].includes(status ?? '')
-    ? (status as 'pending' | 'active' | 'revoked')
+  const validStatus = ['pending', 'active', 'revoked', 'superseded'].includes(status ?? '')
+    ? (status as 'pending' | 'active' | 'revoked' | 'superseded')
     : undefined
 
   const rows = await listAdminPurchases({ status: validStatus })
@@ -140,5 +141,8 @@ function PurchaseRow({ row }: { row: AdminPurchaseRow }) {
 function StatusBadge({ status, expired }: { status: string; expired: boolean }) {
   if (status === 'active') return expired ? <Badge>Lapsed</Badge> : <Badge tone="up">Active</Badge>
   if (status === 'pending') return <Badge tone="flag">Pending</Badge>
+  // Neutral, not red: a superseded gift is a founder who started paying, which
+  // is the best outcome available and should not read as a withdrawal.
+  if (status === 'superseded') return <Badge tone="outline">Superseded by payment</Badge>
   return <Badge tone="down">Revoked</Badge>
 }
