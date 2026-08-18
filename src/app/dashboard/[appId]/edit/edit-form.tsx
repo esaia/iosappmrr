@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
 import { dofollow } from '@/lib/dofollow'
-import { advertising, TOTAL_SPOTS } from '@/lib/ads'
+import { advertising } from '@/lib/ads'
 import { formatMoney } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +37,7 @@ export function EditForm({
     sponsorAvailable: boolean
     sponsorActive: boolean
     spotsLeft: number
+    totalSpots: number
   }
   initial: {
     name: string
@@ -137,6 +138,7 @@ export function EditForm({
           active={offers.sponsorActive}
           available={offers.sponsorAvailable}
           spotsLeft={offers.spotsLeft}
+          totalSpots={offers.totalSpots}
         />
       </section>
 
@@ -193,11 +195,13 @@ function SponsorOffer({
   active,
   available,
   spotsLeft,
+  totalSpots,
 }: {
   appId: string
   active: boolean
   available: boolean
   spotsLeft: number
+  totalSpots: number
 }) {
   const [state, action] = useActionState<CheckoutState, FormData>(startSponsorCheckout, {})
   const price = advertising.monthlyPriceCents
@@ -205,7 +209,7 @@ function SponsorOffer({
   return (
     <Offer
       title="Sponsor a rail"
-      meta={spotsLeft > 0 ? `${spotsLeft} of ${TOTAL_SPOTS} spots left` : 'Sold out'}
+      meta={spotsLeft > 0 ? `${spotsLeft} of ${totalSpots} spots left` : 'Sold out'}
       price={price != null ? `${formatMoney(price)}/mo` : null}
       blurb="Your icon, name, and tagline rotate through the sponsor rails beside the index. Cancel anytime."
       active={active}

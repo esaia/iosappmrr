@@ -32,6 +32,20 @@ export async function SiteHeader() {
         <div className="ml-auto flex items-center gap-2">
           {user ? (
             <>
+              {/*
+                Only admins see this. Not a security measure — the route and its
+                actions check the role themselves — but showing a link that
+                redirects everyone else straight back to the dashboard would be
+                a dead end presented as navigation.
+              */}
+              {user.profile.role === 'admin' && (
+                <Link
+                  href="/admin"
+                  className="text-gold hover:text-fg hidden px-2 py-1.5 text-[13px] transition-colors sm:block"
+                >
+                  Admin
+                </Link>
+              )}
               <Link
                 href="/dashboard"
                 className="text-muted hover:text-fg hidden px-2 py-1.5 text-[13px] transition-colors sm:block"
@@ -86,6 +100,14 @@ export async function SiteHeader() {
         */}
         {user ? (
           <>
+            {user.profile.role === 'admin' && (
+              <Link
+                href="/admin"
+                className="text-gold hover:text-fg shrink-0 px-2.5 py-1 text-xs transition-colors sm:hidden"
+              >
+                Admin
+              </Link>
+            )}
             <Link
               href="/dashboard"
               className="text-muted hover:text-fg shrink-0 px-2.5 py-1 text-xs transition-colors sm:hidden"

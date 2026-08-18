@@ -178,6 +178,59 @@ something they did not receive.
 > list Georgia among its supported seller countries. Checkout and webhooks work
 > regardless; receiving the money needs an entity Polar supports.
 
+## Admin
+
+Everything at `/admin` requires `profiles.role = 'admin'`. The first admin has to
+be made from the command line, because the only screen that can change a role
+lives behind the check:
+
+```bash
+npm run role -- <handle> admin      # promote
+npm run role -- <handle> founder    # demote
+npm run role                        # usage, plus a list of handles and roles
+```
+
+Sign out and back in afterwards — the role is read into the session.
+
+The section is five screens:
+
+| Screen        | What it does                                                                                                                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Overview**  | Counts, plus the two failures that are invisible on the public site: checkouts that never settled, and revenue connections that have stopped refreshing.                                                           |
+| **Apps**      | Every app including drafts and hidden ones. Search by name, slug, or founder handle. Turn a sponsor slot on or off per app, gift or withdraw a dofollow link, publish or hide a listing, set verification by hand. |
+| **Users**     | Every account, with app counts. Promote to admin or demote to founder.                                                                                                                                             |
+| **Purchases** | The full ledger — paid and gifted, pending and revoked. Settle a stuck checkout or revoke a purchase after a refund.                                                                                               |
+| **Settings**  | How many sponsor slots exist to sell. Everything priced or worded stays in code, and the screen says which file.                                                                                                   |
+
+### Gifts
+
+A gift is written as a `purchases` row with `source = 'admin'`, `amount_cents = 0`,
+and no checkout id — not as a flipped flag on the app. So a gifted upgrade and a
+bought one grant exactly the same thing through the same code, expire the same
+way, and are withdrawn by the same path; `source` is the only thing that
+separates them, which is what keeps the revenue figures honest.
+
+Gifting a sponsor slot respects the slot cap, exactly as checkout does. If the
+rails are full, raise the count in **Settings** first — overselling would mean
+every paying sponsor gets less rotation than they bought.
+
+### Sponsor slots
+
+The number of slots on sale lives in `site_settings`, not in code, so it changes
+without a deploy. `src/lib/ads.ts` holds only the value a fresh database starts
+with; server code must read `getSponsorSlots()` instead. Lowering the count never
+evicts a booked sponsor — it stops new checkouts and lets the number fall back as
+slots lapse.
+
+### Audit log
+
+Every change made from these screens appends a row to `admin_actions`, with the
+actor's handle snapshotted rather than joined so the entry still reads correctly
+after an account is renamed or deleted. The log records before/after values,
+because reversing a mistaken change by hand needs the exact previous value. There
+is no way to edit or delete an entry from the site — that is the only thing that
+makes it worth reading. `npm run role` writes to it too, as `@cli`.
+
 ## Security model
 
 `revenue_connections` holds provider credentials and **has RLS enabled with no
@@ -185,15 +238,40 @@ policy at all**. Anon and authenticated roles cannot read, insert, or update a
 single row — including the founders who own them. Only server code holding the
 service-role key can reach it. Do not add a policy to that table.
 
-`purchases` is locked down the same way, for the same reason: a client that
-could write a row could grant itself a paid upgrade for free.
+`purchases`, `site_settings`, and `admin_actions` are locked down the same way,
+for the same reason: a client that could write to them could grant itself a paid
+upgrade for free, put more inventory on sale, or erase the record of having done
+either.
 
-Verify this at any time:
+RLS decides which **rows** a client may write, not which **columns** — and
+`profiles_update_own` / `apps_update_own` both grant a signed-in user write
+access to their own row. Those rows hold the fields the site's claims rest on:
+`profiles.role`, and `apps.is_verified` / `apps.website_dofollow` / `apps.status`
+/ `apps.founder_id`. Without a further guard, anyone with the anon key and a
+session could make themselves an admin, award their own app a verified badge, or
+take the paid dofollow link for free — from a browser console, with no server
+code involved.
+
+`supabase/policies.sql` closes that two ways: column-level `revoke update` for
+the `anon` and `authenticated` roles, and a `deny_client_column_change` trigger
+that raises if a guarded column changes while `current_user` is one of those
+roles. Server code connects as the database owner and is deliberately unaffected
+— it checks the caller's admin role itself before granting anything.
+
+Verify all of it at any time:
 
 ```sql
 set role anon;
 select count(*) from revenue_connections;  -- must be 0
 select count(*) from purchases;            -- must be 0
+select count(*) from site_settings;        -- must be 0
+select count(*) from admin_actions;        -- must be 0
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '<a real profile id>', false);
+update profiles set role = 'admin' where id = '<that id>';        -- must raise
+update apps set is_verified = true where founder_id = '<that id>'; -- must raise
+update apps set tagline = 'still editable' where founder_id = '<that id>'; -- must succeed
 ```
 
 ## Testing
@@ -247,5 +325,9 @@ revenue and refuses non-local databases unless forced.
 ## Not built yet
 
 The marketplace (buy/sell listings, asking price, buyer inquiries), the activity
-feed, co-founder matching, and the admin review queue. The schema reserves
-nullable columns on `apps` for the marketplace phase.
+feed, and co-founder matching. The schema reserves nullable columns on `apps` for
+the marketplace phase.
+
+There is no submission review queue: an app goes live when a provider connection
+succeeds, not when someone approves it. `/admin` can hide a listing after the
+fact, which is the moderation the site actually needs.

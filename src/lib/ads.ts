@@ -11,8 +11,15 @@
  * "advertise here" placeholder rather than blank space.
  */
 
-/** How many sponsors you are willing to sell at once. */
-export const TOTAL_SPOTS = 6
+/**
+ * How many sponsors to sell at once, before an admin says otherwise.
+ *
+ * The live number lives in `site_settings` and is read through
+ * `getSponsorSlots()` — this is only the value a fresh database starts with.
+ * Server code must not import this constant to decide whether a slot is
+ * available; it would ignore whatever the admin set.
+ */
+export const DEFAULT_SPONSOR_SLOTS = 6
 
 /** How long each sponsor holds a rail before the next one takes it. */
 export const ROTATE_MS = 10_000

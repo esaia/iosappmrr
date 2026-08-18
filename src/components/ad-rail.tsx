@@ -27,10 +27,12 @@ export function AdRail({
   side,
   sponsors,
   spotsLeft,
+  totalSpots,
 }: {
   side: 'left' | 'right'
   sponsors: Sponsor[]
   spotsLeft: number
+  totalSpots: number
 }) {
   const slots = forSide(sponsors, side)
   const [index, setIndex] = useState(0)
@@ -58,7 +60,11 @@ export function AdRail({
         side === 'left' ? 'left-6' : 'right-6',
       ].join(' ')}
     >
-      {sponsor ? <Slot sponsor={sponsor} /> : <EmptySlot spotsLeft={spotsLeft} />}
+      {sponsor ? (
+        <Slot sponsor={sponsor} />
+      ) : (
+        <EmptySlot spotsLeft={spotsLeft} totalSpots={totalSpots} />
+      )}
 
       {slots.length > 1 && (
         <div className="mt-2 flex justify-center gap-1.5" aria-hidden>
@@ -153,9 +159,14 @@ function Slot({ sponsor }: { sponsor: Sponsor }) {
   )
 }
 
-function EmptySlot({ spotsLeft }: { spotsLeft: number }) {
+function EmptySlot({ spotsLeft, totalSpots }: { spotsLeft: number; totalSpots: number }) {
   return (
-    <AdvertiseModal contactEmail={site.contactEmail} siteName={site.name} spotsLeft={spotsLeft}>
+    <AdvertiseModal
+      contactEmail={site.contactEmail}
+      siteName={site.name}
+      spotsLeft={spotsLeft}
+      totalSpots={totalSpots}
+    >
       <span
         className={`border-border text-muted hover:border-border-strong hover:text-fg flex ${SLOT_MIN_HEIGHT} flex-col items-center justify-center rounded-[10px] border border-dashed p-4 text-center transition-colors`}
       >

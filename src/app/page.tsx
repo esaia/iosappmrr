@@ -6,7 +6,7 @@ import { HomeSearch } from '@/components/home-search'
 import { CategoryPills } from '@/components/category-pills'
 import { listApps, listCategories } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
-import { TOTAL_SPOTS } from '@/lib/ads'
+import { getSponsorSlots } from '@/lib/settings'
 
 export const revalidate = 600
 
@@ -18,19 +18,20 @@ const QUICK_LINKS = [
 ]
 
 export default async function HomePage() {
+  const totalSpots = await getSponsorSlots()
   const [top, recent, categories, sponsors] = await Promise.all([
     listApps({ sort: 'mrr', limit: 100 }),
     listApps({ sort: 'newest', limit: 8 }),
     listCategories(),
-    listActiveSponsors(TOTAL_SPOTS),
+    listActiveSponsors(totalSpots),
   ])
 
-  const spotsLeft = Math.max(0, TOTAL_SPOTS - sponsors.length)
+  const spotsLeft = Math.max(0, totalSpots - sponsors.length)
 
   return (
     <>
-      <AdRail side="left" sponsors={sponsors} spotsLeft={spotsLeft} />
-      <AdRail side="right" sponsors={sponsors} spotsLeft={spotsLeft} />
+      <AdRail side="left" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
+      <AdRail side="right" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
 
       <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
         {/* Hero */}

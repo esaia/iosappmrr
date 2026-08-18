@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ExternalLink, Eye, Star, Users, X, Zap } from 'lucide-react'
 import Link from 'next/link'
-import { advertising, ROTATE_MS, TOTAL_SPOTS, type Testimonial } from '@/lib/ads'
+import { advertising, ROTATE_MS, type Testimonial } from '@/lib/ads'
 import { formatCount, formatMoney } from '@/lib/utils'
 
 /**
@@ -18,12 +18,15 @@ export function AdvertiseModal({
   contactEmail,
   siteName,
   spotsLeft,
+  totalSpots,
 }: {
   children: React.ReactNode
   contactEmail: string
   siteName: string
   /** Counted from live sponsor purchases by the server, not from a constant. */
   spotsLeft: number
+  /** Inventory size, set by an admin. Passed in because it lives in the database. */
+  totalSpots: number
 }) {
   const [open, setOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -107,7 +110,7 @@ export function AdvertiseModal({
                 />
                 <StatCard
                   icon={<Zap className="text-gold size-4" />}
-                  value={`${remaining}/${TOTAL_SPOTS}`}
+                  value={`${remaining}/${totalSpots}`}
                   label={remaining === 1 ? 'Spot left' : 'Spots left'}
                   highlight
                 />
@@ -115,7 +118,7 @@ export function AdvertiseModal({
 
               <h3 className="mt-7 text-sm font-semibold">How it works</h3>
               <p className="text-muted mt-2 text-[13px] leading-relaxed">
-                Your product appears in the sponsor rails beside the index. There are {TOTAL_SPOTS}{' '}
+                Your product appears in the sponsor rails beside the index. There are {totalSpots}{' '}
                 spots and two rails, so sponsors rotate every {Math.round(ROTATE_MS / 1000)} seconds
                 — everyone gets an equal share of the margin, and no one is buried.
               </p>

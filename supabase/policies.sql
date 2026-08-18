@@ -255,3 +255,91 @@ create policy follows_write_own on public.follows for all
 -- drafts or edits a verdict.
 create policy vibecode_verdicts_read on public.vibecode_verdicts for select
   using (public.can_read_app(app_id));
+
+-- -----------------------------------------------------------------------------
+-- Column-level guards on client writes
+--
+-- RLS decides which *rows* a client may update, not which *columns*. Both
+-- `profiles_update_own` and `apps_update_own` grant a signed-in user write
+-- access to their own row, and that row holds fields the site's own claims rest
+-- on: `profiles.role`, and `apps.is_verified` / `apps.website_dofollow`.
+--
+-- Left as they were, anyone with the anon key and a session could make
+-- themselves an admin, award their own app a verified badge, or hand themselves
+-- the paid dofollow link — straight from a browser console, with no server code
+-- involved. Nothing in the app needs those writes from a client: every one of
+-- them happens in a server action holding the service-role key, which bypasses
+-- both mechanisms below.
+--
+-- Two overlapping guards, because they fail differently. The column privileges
+-- are declarative and enforced by the planner, but only exist if the PostgREST
+-- roles do — on a plain local Postgres they do not. The triggers work
+-- everywhere and also cover a future policy that grants writes more broadly.
+-- -----------------------------------------------------------------------------
+
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if exists (select 1 from pg_roles where rolname = r) then
+      execute format('revoke update (role) on public.profiles from %I', r);
+      execute format(
+        'revoke update (is_verified, verified_at, website_dofollow, founder_id, status)
+         on public.apps from %I', r);
+    end if;
+  end loop;
+end
+$$;
+
+/*
+ * PostgREST switches to `anon` or `authenticated` for the duration of a
+ * request, so `current_user` names the caller's trust level. Server code
+ * connects as the database owner and is deliberately not restricted — it is the
+ * only thing that is allowed to make these changes, and it checks the caller's
+ * admin role itself before doing so.
+ */
+create or replace function public.deny_client_column_change()
+returns trigger language plpgsql as $$
+declare
+  guarded text;
+begin
+  if current_user not in ('anon', 'authenticated') then
+    return new;
+  end if;
+
+  foreach guarded in array tg_argv loop
+    if to_jsonb(new) -> guarded is distinct from to_jsonb(old) -> guarded then
+      raise exception
+        'column %.% cannot be changed from a client session', tg_table_name, guarded
+        using hint = 'This is granted by server code after an authorisation check.';
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists deny_role_change on public.profiles;
+create trigger deny_role_change
+  before update on public.profiles
+  for each row execute function public.deny_client_column_change('role');
+
+drop trigger if exists deny_entitlement_change on public.apps;
+create trigger deny_entitlement_change
+  before update on public.apps
+  for each row execute function public.deny_client_column_change(
+    'is_verified', 'verified_at', 'website_dofollow', 'founder_id', 'status');
+
+-- -----------------------------------------------------------------------------
+-- Admin tables
+--
+-- Both get RLS with no policy at all, the same treatment as
+-- `revenue_connections` and `purchases`. `site_settings` decides how much
+-- inventory is on sale and `admin_actions` is the record of who changed what —
+-- a client that could write to either could sell itself a slot, or erase the
+-- evidence that it did. Only server code holding the service-role key reads or
+-- writes these.
+-- -----------------------------------------------------------------------------
+
+alter table public.site_settings enable row level security;
+alter table public.admin_actions enable row level security;

@@ -59,11 +59,51 @@ export async function activatePurchase(input: {
 
   if (!row) return false
 
-  if (row.kind === 'dofollow') {
-    await db.update(apps).set({ websiteDofollow: true }).where(eq(apps.id, row.appId))
-  }
-
+  await applyGrant(row.kind, row.appId)
   return true
+}
+
+/**
+ * Turns on whatever a purchase entitles, given only its kind and app.
+ *
+ * Shared by the webhook and the admin screens so a gifted entitlement and a
+ * bought one are indistinguishable to the rest of the site — there is no second
+ * definition of "has a dofollow link" that could drift from this one.
+ *
+ * A sponsor slot needs nothing here: the rails read `purchases` directly, so
+ * the row being `active` is the entitlement.
+ */
+async function applyGrant(kind: PurchaseKind, appId: string) {
+  if (kind === 'dofollow') {
+    await db.update(apps).set({ websiteDofollow: true }).where(eq(apps.id, appId))
+  }
+}
+
+/**
+ * Turns off what a purchase entitled, unless another live purchase still covers
+ * it. That check is why this cannot be a plain inverse of `applyGrant`: a
+ * founder who bought, refunded, then bought again keeps the link the second
+ * purchase paid for, and an admin revoking a gift must not take away a slot
+ * someone is paying for.
+ */
+async function applyRevoke(kind: PurchaseKind, appId: string) {
+  if (kind !== 'dofollow') return
+
+  const [survivor] = await db
+    .select({ id: purchases.id })
+    .from(purchases)
+    .where(
+      and(
+        eq(purchases.appId, appId),
+        eq(purchases.kind, 'dofollow'),
+        eq(purchases.status, 'active'),
+      ),
+    )
+    .limit(1)
+
+  if (!survivor) {
+    await db.update(apps).set({ websiteDofollow: false }).where(eq(apps.id, appId))
+  }
 }
 
 /**
@@ -92,30 +132,114 @@ export async function revokePurchase(input: {
 
   if (!row) return false
 
-  if (row.kind === 'dofollow') {
-    /*
-     * Only drop the link if no other active dofollow purchase covers this app.
-     * A founder who bought, refunded, then bought again should keep the link
-     * the second purchase paid for.
-     */
-    const [survivor] = await db
-      .select({ id: purchases.id })
-      .from(purchases)
-      .where(
-        and(
-          eq(purchases.appId, row.appId),
-          eq(purchases.kind, 'dofollow'),
-          eq(purchases.status, 'active'),
-        ),
-      )
-      .limit(1)
-
-    if (!survivor) {
-      await db.update(apps).set({ websiteDofollow: false }).where(eq(apps.id, row.appId))
-    }
-  }
-
+  await applyRevoke(row.kind, row.appId)
   return true
+}
+
+/* -------------------------------------------------------------------------- */
+/*                              Admin-granted rows                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Grants an entitlement without a payment — a gift, or a repair after a webhook
+ * that never arrived.
+ *
+ * Written as a `purchases` row rather than by flipping the app's flag directly,
+ * so gifts appear in the same ledger as sales, expire the same way, and can be
+ * withdrawn by the same code. `source` is what separates them at reporting
+ * time; nothing else in the site distinguishes the two.
+ *
+ * Callers must already have checked that the actor is an admin.
+ */
+export async function grantPurchase(input: {
+  kind: PurchaseKind
+  appId: string
+  /** The founder who owns the app — the gift belongs to them, not to the admin. */
+  profileId: string
+  grantedBy: string
+  note?: string | null
+  /** When a gifted sponsor slot lapses. Null means it does not expire. */
+  currentPeriodEnd?: Date | null
+}) {
+  const [row] = await db
+    .insert(purchases)
+    .values({
+      kind: input.kind,
+      appId: input.appId,
+      profileId: input.profileId,
+      status: 'active',
+      source: 'admin',
+      grantedBy: input.grantedBy,
+      note: input.note ?? null,
+      // Zero rather than null: the row did settle, for nothing. Null would read
+      // as "amount unknown" alongside the pending checkouts that use it.
+      amountCents: 0,
+      currency: 'USD',
+      currentPeriodEnd: input.currentPeriodEnd ?? null,
+    })
+    .returning({ id: purchases.id })
+
+  await applyGrant(input.kind, input.appId)
+  return row.id
+}
+
+/**
+ * Withdraws one purchase by its own id, whoever granted it.
+ *
+ * This is the admin counterpart to `revokePurchase`, which finds its row
+ * through Polar's identifiers. An admin is looking at a specific row on screen
+ * and means that one — including a paid row, which is how a refund handled
+ * outside Polar gets reflected here.
+ */
+export async function revokePurchaseById(id: string, note?: string | null) {
+  const [row] = await db
+    .update(purchases)
+    .set({ status: 'revoked', note: note ?? undefined, updatedAt: new Date() })
+    .where(eq(purchases.id, id))
+    .returning({ kind: purchases.kind, appId: purchases.appId })
+
+  if (!row) return false
+
+  await applyRevoke(row.kind, row.appId)
+  return true
+}
+
+/**
+ * Promotes a stuck `pending` row to `active` by hand.
+ *
+ * The escape hatch for a webhook that never arrived and a Polar order that
+ * `polar:reconcile` cannot see. It grants without proof of payment, so it is
+ * deliberately a separate, logged action rather than part of the normal flow.
+ */
+export async function activatePurchaseById(id: string, note?: string | null) {
+  const [row] = await db
+    .update(purchases)
+    .set({ status: 'active', note: note ?? undefined, updatedAt: new Date() })
+    .where(eq(purchases.id, id))
+    .returning({ kind: purchases.kind, appId: purchases.appId })
+
+  if (!row) return false
+
+  await applyGrant(row.kind, row.appId)
+  return true
+}
+
+/** Whether an app already holds a live entitlement of this kind. */
+export async function hasActivePurchase(appId: string, kind: PurchaseKind) {
+  const [row] = await db
+    .select({ id: purchases.id })
+    .from(purchases)
+    .where(
+      and(
+        eq(purchases.appId, appId),
+        eq(purchases.kind, kind),
+        eq(purchases.status, 'active'),
+        or(isNull(purchases.currentPeriodEnd), gt(purchases.currentPeriodEnd, sql`now()`)),
+      ),
+    )
+    .limit(1)
+
+  return Boolean(row)
 }
 
 /** The purchase state the edit screen renders for one app. */
@@ -189,4 +313,31 @@ export async function countActiveSponsors() {
     )
 
   return row?.count ?? 0
+}
+
+/**
+ * Withdraws every live entitlement of one kind from an app.
+ *
+ * "Turn this app's dofollow link off" is one intention, but it can span several
+ * rows — a gift layered on top of an old paid purchase, say. Revoking them one
+ * at a time through the UI would leave the flag on until the last one went, so
+ * the whole set moves together and the flag is settled once at the end.
+ *
+ * Returns how many rows were withdrawn, which is what the audit entry records.
+ */
+export async function revokeActivePurchasesForApp(
+  appId: string,
+  kind: PurchaseKind,
+  note?: string | null,
+) {
+  const rows = await db
+    .update(purchases)
+    .set({ status: 'revoked', note: note ?? undefined, updatedAt: new Date() })
+    .where(
+      and(eq(purchases.appId, appId), eq(purchases.kind, kind), eq(purchases.status, 'active')),
+    )
+    .returning({ id: purchases.id })
+
+  await applyRevoke(kind, appId)
+  return rows.length
 }

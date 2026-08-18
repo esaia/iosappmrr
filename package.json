@@ -14,6 +14,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:policies": "tsx --tsconfig tsconfig.scripts.json scripts/apply-policies.ts",
+    "role": "tsx --tsconfig tsconfig.scripts.json scripts/set-role.ts",
     "db:seed": "tsx --tsconfig tsconfig.scripts.json scripts/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:policies && npm run db:seed",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.ts\"",

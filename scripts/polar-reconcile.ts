@@ -1,5 +1,5 @@
 import './load-env'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNotNull } from 'drizzle-orm'
 import { Polar } from '@polar-sh/sdk'
 import { db } from '../src/db'
 import { purchases } from '../src/db/schema'
@@ -44,7 +44,15 @@ async function main() {
   const server = process.env.POLAR_SERVER === 'production' ? 'production' : 'sandbox'
   const polar = new Polar({ accessToken, server })
 
-  const pending = await db.select().from(purchases).where(eq(purchases.status, 'pending'))
+  /*
+   * Admin grants are excluded by the checkout-id filter rather than by source:
+   * they never had a checkout, so there is nothing at Polar to reconcile them
+   * against, and asking would only produce a confusing "no paid order" line.
+   */
+  const pending = await db
+    .select()
+    .from(purchases)
+    .where(and(eq(purchases.status, 'pending'), isNotNull(purchases.polarCheckoutId)))
 
   if (pending.length === 0) {
     console.log('\nNo pending purchases. Nothing to reconcile.\n')
@@ -56,7 +64,9 @@ async function main() {
   let settled = 0
 
   for (const purchase of pending) {
-    const orders = await polar.orders.list({ checkoutId: purchase.polarCheckoutId, limit: 10 })
+    // Narrowed by the `isNotNull` filter above; TypeScript cannot see that.
+    const checkoutId = purchase.polarCheckoutId!
+    const orders = await polar.orders.list({ checkoutId, limit: 10 })
 
     let paidOrder: PaidOrder | null = null
 
@@ -70,7 +80,7 @@ async function main() {
       if (paidOrder) break
     }
 
-    const label = `${purchase.kind} / checkout ${purchase.polarCheckoutId.slice(0, 8)}…`
+    const label = `${purchase.kind} / checkout ${checkoutId.slice(0, 8)}…`
 
     if (!paidOrder) {
       console.log(`  ${label}\n    no paid order — genuinely unpaid, leaving pending\n`)
@@ -92,7 +102,7 @@ async function main() {
 
     if (apply) {
       const ok = await activatePurchase({
-        polarCheckoutId: purchase.polarCheckoutId,
+        polarCheckoutId: checkoutId,
         polarOrderId: paidOrder.id,
         polarSubscriptionId: paidOrder.subscriptionId,
         amountCents: paidOrder.totalAmount,

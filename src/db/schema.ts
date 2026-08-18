@@ -341,12 +341,23 @@ export const purchaseKind = pgEnum('purchase_kind', ['dofollow', 'sponsor'])
  */
 export const purchaseStatus = pgEnum('purchase_status', ['pending', 'active', 'revoked'])
 
+/**
+ * Where the entitlement came from.
+ *
+ * `admin` covers the two cases Polar cannot: a gift, and a repair after a
+ * webhook that never arrived. Recording it on the row rather than inferring it
+ * from a null checkout id means the books stay readable — a gifted slot and a
+ * paid one grant exactly the same thing, but only one of them is revenue.
+ */
+export const purchaseSource = pgEnum('purchase_source', ['polar', 'admin'])
+
 export const purchases = pgTable(
   'purchases',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     kind: purchaseKind('kind').notNull(),
     status: purchaseStatus('status').notNull().default('pending'),
+    source: purchaseSource('source').notNull().default('polar'),
 
     /** Who paid. Kept even if the app is deleted, so refunds can be traced. */
     profileId: uuid('profile_id')
@@ -360,8 +371,12 @@ export const purchases = pgTable(
      * Polar's checkout id. Unique because it is the idempotency key: webhooks
      * are delivered at least once, and a retry must update this row rather than
      * grant the benefit twice.
+     *
+     * Null for an admin grant, which never went through a checkout. Postgres
+     * treats nulls as distinct in a unique index, so any number of grants can
+     * coexist without colliding.
      */
-    polarCheckoutId: text('polar_checkout_id').notNull(),
+    polarCheckoutId: text('polar_checkout_id'),
     polarOrderId: text('polar_order_id'),
     /** Set for `sponsor` only — dofollow is a one-time charge. */
     polarSubscriptionId: text('polar_subscription_id'),
@@ -375,6 +390,11 @@ export const purchases = pgTable(
      * without a nightly job.
      */
     currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
+
+    /** The admin who granted this, for `source = 'admin'` rows. */
+    grantedBy: uuid('granted_by').references(() => profiles.id, { onDelete: 'set null' }),
+    /** Why it was granted or revoked by hand. Free text, admin-facing only. */
+    note: text('note'),
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -446,4 +466,65 @@ export const vibecodeVerdicts = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('vibecode_verdicts_app_key').on(t.appId)],
+)
+
+/* -------------------------------------------------------------------------- */
+/*                              Admin & settings                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Operational knobs an admin can turn without a deploy.
+ *
+ * Deliberately a key/value table rather than a column per setting: these are
+ * numbers a human adjusts a handful of times a year, and each new one would
+ * otherwise cost a migration. Values that describe the *product* — prices,
+ * copy, rotation speed — stay in code where they are reviewable; only
+ * inventory that changes with demand lives here.
+ *
+ * Every key has a default in `src/lib/settings.ts`, so an empty table is a
+ * working configuration rather than a broken one.
+ */
+export const siteSettings = pgTable('site_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updatedBy: uuid('updated_by').references(() => profiles.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+})
+
+/**
+ * An append-only record of everything done from the admin screens.
+ *
+ * The admin role can hand out paid placements, hide listings, and promote other
+ * admins. None of that leaves a trace anywhere else — a gifted dofollow link is
+ * indistinguishable from a bought one once it is granted — so the log is the
+ * only way to answer "who did this, and when".
+ *
+ * `actorHandle` is a snapshot rather than a join, so the entry still reads
+ * correctly after the account behind it is renamed or deleted.
+ */
+export const adminActions = pgTable(
+  'admin_actions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    actorId: uuid('actor_id').references(() => profiles.id, { onDelete: 'set null' }),
+    actorHandle: text('actor_handle').notNull(),
+
+    /** Machine-readable verb, e.g. `grant_dofollow` or `set_role`. */
+    action: text('action').notNull(),
+    /** One line in plain English, written for whoever reads the log later. */
+    summary: text('summary').notNull(),
+
+    /** `app` | `profile` | `purchase` | `setting` */
+    targetType: text('target_type'),
+    targetId: text('target_id'),
+
+    /** Before/after values, so a mistaken change can be reversed by hand. */
+    detail: jsonb('detail').$type<Record<string, unknown>>().notNull().default({}),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('admin_actions_created_idx').on(t.createdAt),
+    index('admin_actions_target_idx').on(t.targetType, t.targetId),
+  ],
 )

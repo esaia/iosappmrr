@@ -8,7 +8,7 @@ import { requireUser } from '@/lib/auth'
 import { getOwnedApp } from '@/lib/data/mutations'
 import { countActiveSponsors, recordPendingPurchase } from '@/lib/data/purchases'
 import { isPolarConfigured, polarClient, productId, type PurchaseKind } from '@/lib/polar'
-import { TOTAL_SPOTS } from '@/lib/ads'
+import { getSponsorSlots } from '@/lib/settings'
 import { site } from '@/lib/site'
 
 export type CheckoutState = { error?: string }
@@ -48,7 +48,7 @@ async function startCheckout(kind: PurchaseKind, appId: string): Promise<Checkou
     }
   }
 
-  if (kind === 'sponsor' && (await countActiveSponsors()) >= TOTAL_SPOTS) {
+  if (kind === 'sponsor' && (await countActiveSponsors()) >= (await getSponsorSlots())) {
     return { error: 'All sponsor spots are currently taken.' }
   }
 
