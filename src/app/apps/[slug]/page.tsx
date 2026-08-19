@@ -149,7 +149,7 @@ export default async function AppPage({ params }: Params) {
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="display text-3xl font-semibold sm:text-4xl">
+              <h1 className="display text-2xl font-semibold sm:text-3xl">
                 {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
               </h1>
               <VerifiedBadge providers={providers} />
@@ -166,7 +166,7 @@ export default async function AppPage({ params }: Params) {
               </span>
             </div>
             {app.tagline && (
-              <p className="text-muted mt-2 text-lg">
+              <p className="text-muted mt-2 text-base">
                 {app.isAnonymous ? <AnonymousName block>{app.tagline}</AnonymousName> : app.tagline}
               </p>
             )}
