@@ -23,6 +23,8 @@ export default async function DashboardPage() {
       slug: apps.slug,
       name: apps.name,
       status: apps.status,
+      appStoreId: apps.appStoreId,
+      appStoreUrl: apps.appStoreUrl,
       iconUrl: appStoreMetadata.iconUrl,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
@@ -93,7 +95,21 @@ export default async function DashboardPage() {
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-fg truncate font-medium">{row.name}</h2>
+                  {/*
+                    The name links out to the App Store rather than to the
+                    listing here: every other link on this row already goes
+                    somewhere inside the dashboard, and the one thing a founder
+                    cannot reach from any of them is the app itself. New tab,
+                    because leaving the dashboard is not what they asked for.
+                  */}
+                  <a
+                    href={row.appStoreUrl ?? `https://apps.apple.com/app/id${row.appStoreId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-fg hover:text-blue truncate font-medium transition-colors"
+                  >
+                    <h2 className="truncate">{row.name}</h2>
+                  </a>
                   <StatusBadge status={row.status} hasError={hasError} />
                 </div>
                 <p className="text-muted text-[11px]">
