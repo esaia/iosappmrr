@@ -48,6 +48,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     '/verification',
     '/submit',
     '/about',
+    '/faq',
     '/marketplace',
     '/privacy',
     '/terms',
@@ -57,9 +58,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages.map((path) => {
       // Honest frequencies. A sitemap that claims every page changes daily,
       // including the terms, teaches crawlers to disregard the whole file.
-      const rarely = ['/about', '/privacy', '/terms', '/marketplace', '/verification'].includes(
-        path,
-      )
+      const rarely = [
+        '/about',
+        '/faq',
+        '/privacy',
+        '/terms',
+        '/marketplace',
+        '/verification',
+      ].includes(path)
       return {
         url: `${site.url}${path}`,
         lastModified: new Date(),

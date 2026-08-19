@@ -28,6 +28,12 @@ export const site = {
   // TODO: replace with the real contact address before launch. Used on the
   // privacy and terms pages, which are legally required to name one.
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? 'hello@example.com',
+  /**
+   * Where a reader is asked to get in touch. The site is one person, and a
+   * reply on X arrives faster than one to the address the terms have to name —
+   * so the FAQ points here and the legal pages keep the email.
+   */
+  x: { handle: 'esaia__', url: 'https://x.com/esaia__' },
   /** Jurisdiction whose law governs the terms. TODO: confirm before launch. */
   jurisdiction: 'Georgia',
 } as const

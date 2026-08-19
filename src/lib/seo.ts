@@ -191,6 +191,34 @@ export function itemList(items: { slug: string; name: string }[]): Graph {
   }
 }
 
+/**
+ * The FAQ page's questions and answers.
+ *
+ * Takes the same items the page renders, and emits every one of them. A
+ * FAQPage that lists questions a reader cannot find on the page is the classic
+ * way to lose rich results, so this deliberately has no way to describe a
+ * subset — it is handed the whole list or nothing.
+ */
+export function faqPage(items: { question: string; answer: string[] }[]): Graph {
+  return {
+    '@type': 'FAQPage',
+    '@id': `${absolute('/faq')}#faq`,
+    url: absolute('/faq'),
+    mainEntity: items.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        // Paragraphs joined the way the page breaks them, because `text` is a
+        // single string and running two paragraphs together loses the break.
+        text: item.answer.join('\n\n'),
+      },
+    })),
+    isPartOf: { '@id': WEBSITE_ID },
+    publisher: { '@id': ORGANIZATION_ID },
+  }
+}
+
 /** Wraps nodes into the single `@graph` a page should emit. */
 export function graph(...nodes: (Graph | null | undefined)[]) {
   return {
