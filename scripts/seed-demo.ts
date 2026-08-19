@@ -36,10 +36,16 @@ type DemoApp = {
   }
 }
 
+/*
+ * Handles carry no prefix: they are public, they appear beside every app in the
+ * leaderboard, and `demo-` is not something a founder could type — handles are
+ * lowercase letters and numbers. The prefix lives on the e-mail instead, which
+ * nobody sees and which is what `--cleanup` matches on.
+ */
 const FOUNDERS: [handle: string, name: string][] = [
-  ['demo-ana', 'Ana Ferreira'],
-  ['demo-tomas', 'Tomás Lind'],
-  ['demo-priya', 'Priya Raman'],
+  ['ana', 'Ana Ferreira'],
+  ['tomas', 'Tomás Lind'],
+  ['priya', 'Priya Raman'],
 ]
 
 const APPS: DemoApp[] = [
@@ -50,7 +56,7 @@ const APPS: DemoApp[] = [
     description:
       'Fernweh turns a rough idea and a set of dates into a day-by-day itinerary you can actually follow, with offline maps and a shared list for whoever is coming with you.',
     category: 'utilities',
-    founder: 'demo-ana',
+    founder: 'ana',
     provider: 'revenuecat',
     startMrrCents: 410_000,
     monthlyGrowth: 0.058,
@@ -74,7 +80,7 @@ const APPS: DemoApp[] = [
     description:
       'Ledgerly reads your bank feed, proposes the categories, and closes the month for you. Built for sole traders who would rather not think about it.',
     category: 'finance',
-    founder: 'demo-tomas',
+    founder: 'tomas',
     provider: 'stripe',
     startMrrCents: 780_000,
     monthlyGrowth: 0.031,
@@ -96,7 +102,7 @@ const APPS: DemoApp[] = [
     description:
       'Tempo follows what you are actually playing and shows where you drift, so practice time turns into progress you can see.',
     category: 'education',
-    founder: 'demo-priya',
+    founder: 'priya',
     provider: 'app_store_connect',
     startMrrCents: 96_000,
     monthlyGrowth: 0.094,
@@ -109,7 +115,7 @@ const APPS: DemoApp[] = [
     description:
       'Scene cards, character threads and a timeline that stays readable at 400 scenes. Syncs with the desktop apps writers already use.',
     category: 'productivity',
-    founder: 'demo-ana',
+    founder: 'ana',
     provider: 'revenuecat',
     startMrrCents: 152_000,
     monthlyGrowth: 0.042,
@@ -122,7 +128,7 @@ const APPS: DemoApp[] = [
     description:
       'Grainline models the response curve of twenty stocks and applies it to raw captures, so the result holds up when you push the exposure.',
     category: 'photo-video',
-    founder: 'demo-priya',
+    founder: 'priya',
     provider: 'revenuecat',
     startMrrCents: 288_000,
     monthlyGrowth: -0.018,
@@ -135,7 +141,7 @@ const APPS: DemoApp[] = [
     description:
       'Wind, tide and swell for the next five days, drawn as one picture instead of three charts. Built with dinghy sailors and coastal crews.',
     category: 'utilities',
-    founder: 'demo-tomas',
+    founder: 'tomas',
     provider: 'app_store_connect',
     startMrrCents: 47_000,
     monthlyGrowth: 0.071,
@@ -187,7 +193,7 @@ async function main() {
     console.log('Creating demo founders…')
     const founderIds = new Map<string, string>()
     for (const [handle, name] of FOUNDERS) {
-      const email = `${handle}@trustmrr.invalid`
+      const email = `${PREFIX}${handle}@trustmrr.invalid`
       // auth.users has no plain unique index on email on hosted Supabase, so
       // look before inserting rather than relying on ON CONFLICT.
       let [user] = await sql<{ id: string }[]>`

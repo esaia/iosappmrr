@@ -36,7 +36,7 @@ const FOUNDERS = [
   ['tobiaslindqvist', 'Tobias Lindqvist'],
   ['ameliaokafor', 'Amelia Okafor'],
   ['renzoibarra', 'Renzo Ibarra'],
-  ['haruna-sato', 'Haruna Sato'],
+  ['harunasato', 'Haruna Sato'],
   ['kwesiboateng', 'Kwesi Boateng'],
 ] as const
 
@@ -148,7 +148,7 @@ const APPS: SeedApp[] = [
       'Five minutes of kanji, tuned to the train you take. Kanji Drift schedules reviews around the gaps in your calendar rather than a fixed daily target.',
     category: 'education',
     tech: ['flutter', 'firebase', 'revenuecat'],
-    founder: 'haruna-sato',
+    founder: 'harunasato',
     mrr: 17_800,
     monthlyGrowth: 0.043,
     provider: 'revenuecat',
@@ -261,7 +261,7 @@ const APPS: SeedApp[] = [
       'Drop-in SDK plus an iOS dashboard for cold start, hitch rate, and crash-free sessions. Alerts arrive as a Live Activity.',
     category: 'developer-tools',
     tech: ['swift', 'swiftui', 'supabase', 'revenuecat'],
-    founder: 'haruna-sato',
+    founder: 'harunasato',
     mrr: 39_500,
     monthlyGrowth: 0.101,
     provider: 'revenuecat',
