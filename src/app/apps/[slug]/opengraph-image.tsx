@@ -1,98 +1,40 @@
-import { ImageResponse } from 'next/og'
 import { getAppBySlug } from '@/lib/data/apps'
+import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og/card'
 import { formatMrr } from '@/lib/utils'
-import { site } from '@/lib/site'
-
-export const alt = 'Verified monthly revenue'
-export const size = { width: 1200, height: 630 }
-export const contentType = 'image/png'
 
 /**
- * The share card is the product's best advertisement: an app icon, one verified
- * number, and the badge. Shipped as an image so it survives every platform that
- * strips markup.
+ * An app's own card, which is the one that matters: these are the URLs founders
+ * paste into X, and the verified figure is the reason anyone clicks. Generated
+ * on demand and cached rather than at build time, because the figure changes
+ * daily and there is no point baking a stale one into the build.
  */
-export default async function OpengraphImage({ params }: { params: { slug: string } }) {
-  const record = await getAppBySlug(params.slug)
+export const alt = 'Verified monthly revenue'
+export const size = OG_SIZE
+export const contentType = OG_CONTENT_TYPE
+export const revalidate = 3600
 
-  const name = record?.app.name ?? 'App'
-  const tagline = record?.app.tagline ?? ''
-  const mrr = record?.metrics ? formatMrr(Number(record.metrics.mrrCents)) : null
-  const icon = record?.metadata?.iconUrl ?? null
+export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const record = await getAppBySlug(slug)
 
-  return new ImageResponse(
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        background: '#0b1020',
-        color: '#f2f5fb',
-        padding: 72,
-        fontFamily: 'sans-serif',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-        {icon ? (
-          <img src={icon} width={120} height={120} style={{ borderRadius: 28 }} alt="" />
-        ) : (
-          <div
-            style={{
-              width: 120,
-              height: 120,
-              borderRadius: 28,
-              background: '#1b4dff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 56,
-              fontWeight: 700,
-            }}
-          >
-            {name.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', maxWidth: 820 }}>
-          <div style={{ fontSize: 60, fontWeight: 700, letterSpacing: -1.5 }}>{name}</div>
-          {tagline && (
-            <div style={{ fontSize: 28, color: '#b3bcd8', marginTop: 8 }}>
-              {tagline.slice(0, 70)}
-            </div>
-          )}
-        </div>
-      </div>
+  if (!record) {
+    return ogCard({ title: 'App not found' })
+  }
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div
-            style={{ fontSize: 22, color: '#7f89ab', letterSpacing: 4, textTransform: 'uppercase' }}
-          >
-            Verified MRR
-          </div>
-          <div style={{ fontSize: 132, fontWeight: 700, letterSpacing: -4, lineHeight: 1 }}>
-            {mrr ?? '—'}
-            <span style={{ fontSize: 44, color: '#7f89ab', fontWeight: 400 }}>/mo</span>
-          </div>
-        </div>
+  const { app, metadata, metrics } = record
+  const mrrCents = Number(metrics?.mrrCents ?? 0)
 
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            background: '#17224d',
-            color: '#6b8cff',
-            padding: '14px 24px',
-            borderRadius: 14,
-            fontSize: 26,
-          }}
-        >
-          {site.name}
-        </div>
-      </div>
-    </div>,
-    size,
-  )
+  return ogCard({
+    title: app.name,
+    subtitle: app.tagline,
+    // The number, set as large as the card allows. It is the reason the link
+    // gets clicked, so nothing on the card competes with it.
+    hero:
+      mrrCents > 0
+        ? { label: 'Verified MRR', value: formatMrr(mrrCents), unit: '/mo' }
+        : { label: 'Verified revenue', value: '—' },
+    // Apple's CDN serves these at up to 1024px; 256 is all the card needs and
+    // fetching the smaller variant keeps image generation quick.
+    iconUrl: metadata?.iconUrl?.replace(/\/\d+x\d+bb\./, '/256x256bb.') ?? metadata?.iconUrl,
+  })
 }
