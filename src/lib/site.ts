@@ -12,11 +12,15 @@ export const site = {
   jurisdiction: 'Georgia',
 } as const
 
+/**
+ * The header only. Categories and Stats are deliberately absent: they are ways
+ * of slicing the index rather than places someone arrives wanting to go, and
+ * the footer's Browse column already lists both. A header short enough to read
+ * at a glance is worth more than one that repeats the footer.
+ */
 export const nav = [
   { href: '/leaderboard', label: 'Leaderboard' },
   { href: '/apps', label: 'Apps' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/stats', label: 'Stats' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/verification', label: 'How we verify' },
 ] as const
