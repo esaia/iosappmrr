@@ -4,15 +4,15 @@ export const site = {
    * and as the publisher in structured data. Carries the domain, because that
    * is what the site is called.
    */
-  name: 'iosAppMRR.com',
+  name: 'IosAppMRR.com',
   /**
    * The same name where it is a label rather than a subject: page titles, the
    * title template, share cards. A browser tab is narrow and truncates from the
    * right, so the `.com` there costs four characters of the tagline and adds
    * nothing a reader looking at the tab does not already know.
    *
-   * Capitalised, unlike `wordmark`, which keeps the lowercase `i` that reads as
-   * "iOS". A title is a sentence's worth of text and starts like one.
+   * Drops the `.com` only — the capitalisation matches the wordmark, so the tab
+   * and the logo read as the same name.
    */
   shortName: 'IosAppMRR',
   /*
@@ -20,7 +20,7 @@ export const site = {
    * should be an edit to this file and nothing else. `suffix` is set in the
    * dimmer grey after the main word — leave it empty for a one-word name.
    */
-  wordmark: { main: 'iosAppMRR', suffix: '.com' },
+  wordmark: { main: 'IosAppMRR', suffix: '.com' },
   tagline: 'Verified revenue for App Store apps',
   description:
     'Every number on this site is pulled straight from RevenueCat or App Store Connect — never typed in by hand. Browse verified iOS app revenue, or connect your own.',
