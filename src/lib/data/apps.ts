@@ -26,6 +26,7 @@ export type AppListing = {
   categorySlug: string | null
   founderHandle: string | null
   founderName: string | null
+  founderAvatarUrl: string | null
   mrrCents: number
   growth30d: number | null
   sparkline: number[]
@@ -97,6 +98,7 @@ export async function listApps(
       categorySlug: categories.slug,
       founderHandle: profiles.handle,
       founderName: profiles.name,
+      founderAvatarUrl: profiles.avatarUrl,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
       sparkline: appMetrics.sparkline,
@@ -338,6 +340,7 @@ export async function getFounderByHandle(handle: string) {
       categorySlug: categories.slug,
       founderHandle: profiles.handle,
       founderName: profiles.name,
+      founderAvatarUrl: profiles.avatarUrl,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
       sparkline: appMetrics.sparkline,

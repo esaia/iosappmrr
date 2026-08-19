@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AppIcon } from '@/components/app-icon'
+import { FounderAvatar } from '@/components/founder-avatar'
 import { GrowthPill } from '@/components/growth-pill'
 import type { AppListing } from '@/lib/data/apps'
 import { cn, formatMoney } from '@/lib/utils'
@@ -26,7 +27,7 @@ export function AppRow({
     <Link
       href={`/apps/${app.slug}`}
       className={cn(
-        'group border-border hover:bg-surface-2 flex items-center gap-3 border-b px-3 py-2.5 transition-colors last:border-b-0 sm:gap-4 sm:px-4',
+        'group border-border flex items-center gap-3 border-b px-3 py-3 transition-colors last:border-b-0 hover:bg-white/6 sm:gap-4 sm:px-4',
         className,
       )}
     >
@@ -45,7 +46,20 @@ export function AppRow({
 
       <div className="hidden w-40 shrink-0 lg:block">
         {app.founderHandle && (
-          <span className="text-muted truncate text-[12px]">@{app.founderHandle}</span>
+          <span className="flex items-center gap-2.5">
+            <FounderAvatar
+              avatarUrl={app.founderAvatarUrl}
+              name={app.founderName ?? app.founderHandle}
+            />
+            {/*
+              The person's name, not their slug. A handle identifies a row in the
+              database; a name is what a reader recognises. Falls back to the
+              handle — with its @ — for founders who never set one.
+            */}
+            <span className="text-muted min-w-0 truncate text-[12px]">
+              {app.founderName ?? `@${app.founderHandle}`}
+            </span>
+          </span>
         )}
       </div>
 
