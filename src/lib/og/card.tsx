@@ -51,7 +51,11 @@ async function loadFonts() {
   ]
 }
 
-function fonts() {
+/**
+ * Exported because the share card renders in the same typeface and would
+ * otherwise read the same two files into a second cache.
+ */
+export function cardFonts() {
   fontCache ??= loadFonts()
   return fontCache
 }
@@ -266,6 +270,6 @@ export async function ogCard({ title, subtitle, figure, hero, iconUrl, eyebrow }
         )}
       </div>
     </div>,
-    { ...OG_SIZE, fonts: await fonts() },
+    { ...OG_SIZE, fonts: await cardFonts() },
   )
 }

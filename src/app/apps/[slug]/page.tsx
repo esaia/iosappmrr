@@ -14,7 +14,7 @@ import { AsoScore } from '@/components/aso-score'
 import { AddAppCta } from '@/components/add-app-cta'
 import { AppCard } from '@/components/app-card'
 import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
-import { ShareButton } from '@/components/share-button'
+import { ShareButton } from '@/components/share-dialog'
 import { ExpandableText } from '@/components/expandable-text'
 import { VibecodeVerdict } from '@/components/vibecode-verdict'
 import { TechIcon } from '@/components/tech-icon'
@@ -155,9 +155,13 @@ export default async function AppPage({ params }: Params) {
               <VerifiedBadge providers={providers} />
               <span className="ml-auto">
                 <ShareButton
+                  slug={app.slug}
                   url={`${site.url}/apps/${app.slug}`}
-                  title={app.name}
+                  name={app.name}
                   mrr={mrrCents > 0 ? formatMoney(mrrCents) : undefined}
+                  // A line needs two points; below that the dialog offers the
+                  // badge alone rather than a chart with nothing in it.
+                  hasHistory={history.length >= 2}
                 />
               </span>
             </div>
