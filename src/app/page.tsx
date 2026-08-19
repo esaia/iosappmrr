@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AdRail } from '@/components/ad-rail'
+import { AppleMark } from '@/components/apple-mark'
 import { AppRail } from '@/components/app-card'
 import { AppRow, AppRowHeader } from '@/components/app-row'
 import { HomeSearch } from '@/components/home-search'
@@ -61,7 +62,14 @@ export default async function HomePage() {
       <Container className="pb-4">
         {/* Hero */}
         <section className="pt-12 text-center sm:pt-16">
-          <h1 className="display mx-auto max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)] text-balance">
+          {/* Names the source above the headline. The headline says what the
+              numbers are; this says where the apps come from, which is the one
+              thing about the site a first-time reader cannot infer. */}
+          <p className="label flex items-center justify-center gap-1.5">
+            <AppleMark />
+            App Store
+          </p>
+          <h1 className="display mx-auto mt-3 max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)] text-balance">
             The database of verified iOS app revenue
           </h1>
           <p className="text-muted mx-auto mt-5 max-w-xl text-[13px] leading-relaxed">
