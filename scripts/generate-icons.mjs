@@ -218,7 +218,22 @@ writeFileSync(
 // Apple wants no transparency and no rounding — iOS masks it itself.
 writeFileSync(join(app, 'apple-icon.png'), png(180, render(180, { bleed: true })))
 writeFileSync(join(pub, 'icon-192.png'), png(192, render(192)))
-writeFileSync(join(pub, 'icon-512.png'), png(512, render(512)))
+
+/*
+ * The 512 is written twice under two names on purpose.
+ *
+ * `icon-512.png` is claimed by the web manifest, so it is not a file to hand to
+ * anyone else — a service that wanted a different size would have us edit the
+ * manifest's icon to suit it. `logo.png` is the copy for everywhere off this
+ * site: the X developer portal's app icon, Polar, anywhere asking for a square
+ * mark to upload. Same pixels, rendered once, so the two cannot disagree.
+ */
+const square512 = png(512, render(512))
+writeFileSync(join(pub, 'icon-512.png'), square512)
+writeFileSync(join(pub, 'logo.png'), square512)
+
 writeFileSync(join(pub, 'icon-maskable-512.png'), png(512, render(512, { bleed: true })))
 
-console.log(`wrote icon.svg, favicon.ico (${icoSizes.join(', ')}), apple-icon.png, and 3 manifest icons`)
+console.log(
+  `wrote icon.svg, favicon.ico (${icoSizes.join(', ')}), apple-icon.png, logo.png, and 3 manifest icons`,
+)
