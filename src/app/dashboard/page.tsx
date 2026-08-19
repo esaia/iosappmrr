@@ -4,6 +4,7 @@ import { desc, eq } from 'drizzle-orm'
 import { AlertTriangle, Plus } from 'lucide-react'
 import { db } from '@/db'
 import { appMetrics, appStoreMetadata, apps, revenueConnections } from '@/db/schema'
+import { AccountTabs } from '@/components/account-tabs'
 import { AppIcon } from '@/components/app-icon'
 import { GrowthPill } from '@/components/growth-pill'
 import { ButtonLink } from '@/components/ui/button'
@@ -46,7 +47,9 @@ export default async function DashboardPage() {
   const failing = connections.filter((c) => c.status === 'error')
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <AccountTabs />
+
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="display text-4xl font-semibold">Your apps</h1>
           <p className="text-muted mt-2">

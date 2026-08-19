@@ -3,7 +3,6 @@ import { ButtonLink } from '@/components/ui/button'
 import { Logo } from '@/components/logo'
 import { nav } from '@/lib/site'
 import { getCurrentUser } from '@/lib/auth'
-import { signOutAction } from '@/app/auth/actions'
 
 /**
  * Reads the session so the right-hand side reflects who is signed in. This
@@ -46,20 +45,17 @@ export async function SiteHeader() {
                   Admin
                 </Link>
               )}
+              {/*
+                One entry, not three. The dashboard and the account screen are
+                tabs of each other, and signing out lives with the account it
+                ends rather than beside the navigation.
+              */}
               <Link
                 href="/dashboard"
                 className="text-muted hover:text-fg hidden px-2 py-1.5 text-[13px] transition-colors sm:block"
               >
                 @{user.profile.handle}
               </Link>
-              <form action={signOutAction} className="hidden sm:block">
-                <button
-                  type="submit"
-                  className="text-muted hover:text-fg px-2 py-1.5 text-[13px] transition-colors"
-                >
-                  Sign out
-                </button>
-              </form>
             </>
           ) : (
             <Link
@@ -114,14 +110,6 @@ export async function SiteHeader() {
             >
               @{user.profile.handle}
             </Link>
-            <form action={signOutAction} className="shrink-0 sm:hidden">
-              <button
-                type="submit"
-                className="text-muted hover:text-fg px-2.5 py-1 text-xs transition-colors"
-              >
-                Sign out
-              </button>
-            </form>
           </>
         ) : (
           <Link
