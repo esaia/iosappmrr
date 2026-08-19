@@ -10,8 +10,11 @@ export const site = {
    * title template, share cards. A browser tab is narrow and truncates from the
    * right, so the `.com` there costs four characters of the tagline and adds
    * nothing a reader looking at the tab does not already know.
+   *
+   * Capitalised, unlike `wordmark`, which keeps the lowercase `i` that reads as
+   * "iOS". A title is a sentence's worth of text and starts like one.
    */
-  shortName: 'iosAppMRR',
+  shortName: 'IosAppMRR',
   /*
    * The wordmark, split so the logo does not hardcode it: renaming the site
    * should be an edit to this file and nothing else. `suffix` is set in the

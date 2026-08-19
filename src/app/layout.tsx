@@ -22,7 +22,7 @@ export const metadata: Metadata = {
    */
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.shortName} — ${site.tagline}`,
+    default: `${site.shortName} - ${site.tagline}`,
     template: `%s · ${site.shortName}`,
   },
   description: site.description,
@@ -37,12 +37,12 @@ export const metadata: Metadata = {
     siteName: site.name,
     url: site.url,
     locale: 'en_US',
-    title: `${site.shortName} — ${site.tagline}`,
+    title: `${site.shortName} - ${site.tagline}`,
     description: site.description,
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${site.shortName} — ${site.tagline}`,
+    title: `${site.shortName} - ${site.tagline}`,
     description: site.description,
   },
   robots: {

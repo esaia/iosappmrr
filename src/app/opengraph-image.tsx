@@ -6,7 +6,7 @@ import { site } from '@/lib/site'
  * inherits this one, which is most of them — only app, founder, and category
  * pages have a figure worth putting on a card of their own.
  */
-export const alt = `${site.shortName} — ${site.tagline}`
+export const alt = `${site.shortName} - ${site.tagline}`
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 
