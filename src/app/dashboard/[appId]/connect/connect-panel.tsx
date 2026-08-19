@@ -3,6 +3,8 @@
 import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react'
+import { ProviderInstructions } from '@/components/provider-instructions'
+import type { ProviderStep } from '@/lib/providers/types'
 import { Button } from '@/components/ui/button'
 import { providerLabel } from '@/components/verified-badge'
 import { formatMoney, timeAgo } from '@/lib/utils'
@@ -15,7 +17,14 @@ type Field = {
   placeholder?: string
   multiline?: boolean
 }
-type Provider = { id: string; name: string; instructions: string; docsUrl: string; fields: Field[] }
+type Provider = {
+  id: string
+  name: string
+  instructions: string
+  steps?: readonly ProviderStep[]
+  docsUrl: string
+  fields: Field[]
+}
 type Connection = {
   provider: string
   status: string
@@ -149,18 +158,12 @@ export function ConnectPanel({
             <input type="hidden" name="appId" value={appId} />
             <input type="hidden" name="provider" value={provider.id} />
 
-            <div className="border-border bg-surface-2 rounded-card border p-4">
-              <p className="text-muted text-sm leading-relaxed">{provider.instructions}</p>
-              <a
-                href={provider.docsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue mt-2 inline-flex items-center gap-1 text-[11px] hover:underline"
-              >
-                {provider.name} docs
-                <ExternalLink className="size-3" />
-              </a>
-            </div>
+            <ProviderInstructions
+              name={provider.name}
+              instructions={provider.instructions}
+              steps={provider.steps}
+              docsUrl={provider.docsUrl}
+            />
 
             {provider.fields.map((field) => (
               <div key={field.name}>

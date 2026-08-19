@@ -2,10 +2,12 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ExternalLink, Loader2, LogIn, Search } from 'lucide-react'
+import { Loader2, LogIn, Search } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
+import { ProviderInstructions } from '@/components/provider-instructions'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { useCheckedSync } from '@/components/ui/checked-sync'
+import type { ProviderStep } from '@/lib/providers/types'
 import { lookupAppAction, submitAppAction, type LookupState, type SubmitState } from './actions'
 
 type Category = { slug: string; name: string; genre: string | null }
@@ -17,7 +19,14 @@ type Field = {
   placeholder?: string
   multiline?: boolean
 }
-type Provider = { id: string; name: string; instructions: string; docsUrl: string; fields: Field[] }
+type Provider = {
+  id: string
+  name: string
+  instructions: string
+  steps?: readonly ProviderStep[]
+  docsUrl: string
+  fields: Field[]
+}
 
 const input =
   'border-border bg-surface text-fg placeholder:text-muted focus:border-accent/60 focus:ring-accent/25 focus:ring-4 w-full rounded-card border px-4 py-2.5 text-sm focus:outline-none'
@@ -254,18 +263,12 @@ export function SubmitFlow({
 
         {selectedProvider && (
           <div key={selectedProvider.id} className="mt-4 space-y-4">
-            <div className="border-border bg-surface-2 rounded-card border p-4">
-              <p className="text-muted text-sm leading-relaxed">{selectedProvider.instructions}</p>
-              <a
-                href={selectedProvider.docsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue mt-2 inline-flex items-center gap-1 text-[11px] hover:underline"
-              >
-                {selectedProvider.name} docs
-                <ExternalLink className="size-3" />
-              </a>
-            </div>
+            <ProviderInstructions
+              name={selectedProvider.name}
+              instructions={selectedProvider.instructions}
+              steps={selectedProvider.steps}
+              docsUrl={selectedProvider.docsUrl}
+            />
 
             {selectedProvider.fields.map((credential) => (
               <div key={credential.name}>

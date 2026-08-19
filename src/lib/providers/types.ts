@@ -28,11 +28,29 @@ export type ValidationResult = {
   metrics: NormalizedMetrics
 }
 
+/**
+ * One numbered step in a provider's setup, with the permissions to tick if that
+ * is what the step is about.
+ *
+ * The permissions ride along with their step rather than sitting in a list of
+ * their own: a founder reads "turn on Read for these", and the boxes to find
+ * are the next thing on the screen.
+ */
+export type ProviderStep = {
+  text: string
+  permissions?: readonly string[]
+}
+
 export type ProviderAdapter<TCredentials> = {
   id: ProviderId
   name: string
   /** Rendered on the connect screen, above the credential fields. */
   instructions: string
+  /**
+   * The click-by-click, for a key that takes more than a sentence to make.
+   * Optional: a provider whose summary covers it should not pad this out.
+   */
+  steps?: readonly ProviderStep[]
   /** Where the founder gets the credential. */
   docsUrl: string
   schema: z.ZodType<TCredentials>

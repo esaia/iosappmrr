@@ -45,6 +45,7 @@ export default async function ConnectPage({ params }: { params: Promise<{ appId:
             id: provider.id,
             name: provider.name,
             instructions: provider.instructions,
+            steps: provider.steps,
             docsUrl: provider.docsUrl,
             fields: PROVIDER_FIELDS[provider.id],
           }))}

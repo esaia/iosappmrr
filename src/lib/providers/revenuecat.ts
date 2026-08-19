@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { site } from '@/lib/site'
 import {
   ProviderError,
   todayUtc,
@@ -125,10 +126,27 @@ export const revenueCatAdapter: ProviderAdapter<RevenueCatCredentials> = {
   name: 'RevenueCat',
   docsUrl: 'https://www.revenuecat.com/docs/api-v2',
   instructions:
-    'In RevenueCat, open Project settings → API keys and create a new V2 secret key. ' +
-    'Give it one permission: charts_metrics:overview:read. That key can read your ' +
-    'revenue charts and nothing else — it cannot see customers, issue refunds, or change ' +
-    'anything in your project.',
+    'A V2 secret key, read-only. It can see your revenue charts and nothing else — ' +
+    'it cannot read customers, issue refunds, or change anything in your project.',
+  steps: [
+    { text: 'Open RevenueCat and go to Project settings → API keys.' },
+    {
+      text: `Click + New secret API key. Name it whatever you like — ${site.shortName} keeps it obvious later — and set the version to V2.`,
+    },
+    {
+      text: 'Turn on Read for these permissions, and leave everything else off:',
+      permissions: [
+        'project_configuration:projects',
+        'project_configuration:apps',
+        'charts_metrics:charts',
+        'charts_metrics:overview',
+      ],
+    },
+    { text: 'Click Generate, then paste the key below. It starts with sk_.' },
+    {
+      text: 'The project ID is on that same settings page, and starts with proj. It goes in the field above the key.',
+    },
+  ],
   schema: revenueCatCredentials,
 
   async validate(credentials): Promise<ValidationResult> {
