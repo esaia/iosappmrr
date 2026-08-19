@@ -19,7 +19,7 @@ export default async function AccountPage() {
 
   return (
     <Container className="py-10 sm:py-14">
-      <Measure className="max-w-2xl">
+      <Measure className="mx-auto">
         <AccountTabs />
 
         <h1 className="display mt-8 text-4xl font-semibold">Account &amp; billing</h1>

@@ -26,9 +26,11 @@ export function Container({ className, ...props }: React.ComponentProps<'div'>) 
  * past the eye's comfortable line length, and a text input that wide looks
  * broken.
  *
- * Left-aligned rather than centred, deliberately. Centring it would put its
- * first character somewhere different from every list page's, which is the
- * misalignment this whole arrangement exists to remove.
+ * Left-aligned by default, deliberately. Centring it would put its first
+ * character somewhere different from every list page's, which is the
+ * misalignment this whole arrangement exists to remove. A page with nothing
+ * but the column on it — a form, say — has no list to line up with, so it can
+ * opt into the middle by passing `mx-auto`.
  */
 export function Measure({ className, ...props }: React.ComponentProps<'div'>) {
   return <div className={cn('max-w-2xl', className)} {...props} />
