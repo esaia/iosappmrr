@@ -70,7 +70,11 @@ export default async function HomePage() {
             App Store
           </p>
           <h1 className="display mx-auto mt-3 max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)] text-balance">
-            The database of verified iOS app revenue
+            The database of verified{' '}
+            {/* Sized in em so it grows with the headline and stays a word in the
+                sentence rather than a mark stamped on it. */}
+            <AppleMark className="text-fg inline-block size-[0.9em] align-[-0.11em]" /> IOS app
+            revenue
           </h1>
           <p className="text-muted mx-auto mt-5 max-w-xl text-[13px] leading-relaxed">
             See what iOS apps really earn — or connect your own and prove yours. One read-only key,
