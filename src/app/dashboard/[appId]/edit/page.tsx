@@ -23,7 +23,7 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
   const app = await getOwnedApp(appId, user.id)
   if (!app) notFound()
 
-  const [categoryList, techList, currentTech, currentCategory, inventory, sponsorRow] =
+  const [categoryList, techList, currentTech, currentCategory, inventory, livePurchases] =
     await Promise.all([
       db
         .select({ slug: categories.slug, name: categories.name })
@@ -43,18 +43,24 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
             .limit(1)
         : Promise.resolve([]),
       getSlotInventory(),
+      /*
+       * Both kinds in one query. The cards need more than "is it on" now: the
+       * row's id, so the switch has something to act on, and whether it is
+       * hidden, so the card cannot claim to be sponsoring the rails while it
+       * is switched off.
+       */
       db
-        .select({ id: purchases.id })
+        .select({ id: purchases.id, kind: purchases.kind, hidden: purchases.hidden })
         .from(purchases)
-        .where(
-          and(
-            eq(purchases.appId, app.id),
-            eq(purchases.kind, 'sponsor'),
-            eq(purchases.status, 'active'),
-          ),
-        )
-        .limit(1),
+        .where(and(eq(purchases.appId, app.id), eq(purchases.status, 'active'))),
     ])
+
+  /*
+   * A dofollow link can be held twice — a gift layered over an older paid row —
+   * so the switch acts on the newest, which is the one the site is reading.
+   */
+  const sponsorPurchase = livePurchases.find((row) => row.kind === 'sponsor') ?? null
+  const dofollowPurchase = livePurchases.find((row) => row.kind === 'dofollow') ?? null
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
@@ -79,7 +85,9 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
         offers={{
           dofollowAvailable: isPolarConfigured('dofollow'),
           sponsorAvailable: isPolarConfigured('sponsor'),
-          sponsorActive: sponsorRow.length > 0,
+          sponsorActive: Boolean(sponsorPurchase),
+          sponsorPurchase,
+          dofollowPurchase,
           spotsLeft: inventory.free,
           totalSpots: inventory.slots,
         }}
@@ -89,7 +97,6 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
           description: app.description ?? '',
           categorySlug: currentCategory[0]?.slug ?? '',
           website: app.website ?? '',
-          websiteDofollow: app.websiteDofollow,
           tech: currentTech.map((t) => t.slug),
         }}
       />

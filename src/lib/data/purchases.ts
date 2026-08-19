@@ -146,9 +146,11 @@ async function supersedeGifts(kind: PurchaseKind, appId: string, keepId: string)
  * after checking for a survivor, and a third caller would have had to
  * rediscover that rule.
  *
- * A row that is hidden does not count. The founder still holds it — and a paid
- * one is still being billed — but they have asked for the link not to be
- * passed, and the rendered page must agree with that.
+ * A hidden row does not count. Only sponsor slots can be hidden today, so this
+ * is a condition the flag is not currently reached by — it is written in
+ * because the flag is derived from what is live and shown, and a rule that
+ * holds only while a neighbouring screen happens not to offer a control is the
+ * kind that breaks the day it does.
  */
 async function syncDofollowFlag(appId: string) {
   const [live] = await db

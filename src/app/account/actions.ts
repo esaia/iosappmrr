@@ -171,15 +171,15 @@ export async function setSponsorCancellationAction(
 }
 
 /**
- * Shows or hides what an active purchase entitles, without ending it.
+ * Shows or hides an active sponsor slot, without ending it.
  *
- * Offered on gifted rows as well as paid ones: the reason to switch a sponsor
- * slot off for a week, or to stop passing a link while a domain moves, is about
- * the app rather than about who paid for it.
+ * Offered on gifted rows as well as paid ones: the reason to leave the rails
+ * for a week is about the app rather than about who paid for it.
  *
- * Restricted to `active` rows because there is nothing to show or hide
- * otherwise — a revoked or pending purchase entitles nothing, and offering the
- * control there would imply it could be switched back on.
+ * Restricted to `active` sponsor rows. A revoked or pending purchase entitles
+ * nothing, and a dofollow link is a one-time purchase of an attribute on one
+ * link, with nothing worth switching. Checked here and not only in the UI,
+ * because a form post is not a permission.
  */
 export async function setPurchaseVisibilityAction(
   _previous: BillingActionState,
@@ -188,22 +188,26 @@ export async function setPurchaseVisibilityAction(
   const user = await requireUser('/account')
 
   const purchaseId = String(formData.get('purchaseId') ?? '')
-  if (!/^[0-9a-f-]{36}$/i.test(purchaseId)) return { error: 'That purchase is not active.' }
+  if (!/^[0-9a-f-]{36}$/i.test(purchaseId)) {
+    return { error: 'That purchase is not an active sponsor slot.' }
+  }
 
   const hidden = formData.get('hidden') === 'true'
 
   // Ownership and status are checked together, so neither the id nor the state
   // it is in comes from the form.
   const [row] = await db
-    .select({ status: purchases.status, appId: purchases.appId })
+    .select({ status: purchases.status, kind: purchases.kind, appId: purchases.appId })
     .from(purchases)
     .where(and(eq(purchases.id, purchaseId), eq(purchases.profileId, user.id)))
     .limit(1)
 
-  if (!row || row.status !== 'active') return { error: 'That purchase is not active.' }
+  if (!row || row.status !== 'active' || row.kind !== 'sponsor') {
+    return { error: 'That purchase is not an active sponsor slot.' }
+  }
 
   const updated = await setPurchaseHidden(purchaseId, hidden)
-  if (!updated) return { error: 'That purchase is not active.' }
+  if (!updated) return { error: 'That purchase is not an active sponsor slot.' }
 
   const [app] = await db
     .select({ slug: apps.slug })

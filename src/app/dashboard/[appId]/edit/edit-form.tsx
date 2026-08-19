@@ -8,6 +8,7 @@ import { dofollow } from '@/lib/dofollow'
 import { advertising } from '@/lib/ads'
 import { formatMoney } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { VisibilitySwitch } from '@/components/visibility-switch'
 import {
   startDofollowCheckout,
   startSponsorCheckout,
@@ -16,6 +17,7 @@ import {
 import { deleteAppAction, updateAppAction, type DeleteState, type EditState } from './actions'
 
 type Option = { slug: string; name: string }
+type LivePurchase = { id: string; kind: 'dofollow' | 'sponsor'; hidden: boolean }
 
 const field =
   'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-border-strong w-full rounded-[10px] border px-3 py-2 text-[13px] focus:outline-none'
@@ -39,6 +41,9 @@ export function EditForm({
     sponsorActive: boolean
     spotsLeft: number
     totalSpots: number
+    /** The live rows, so an active card can offer to switch itself off. */
+    sponsorPurchase: LivePurchase | null
+    dofollowPurchase: LivePurchase | null
   }
   initial: {
     name: string
@@ -46,7 +51,6 @@ export function EditForm({
     description: string
     categorySlug: string
     website: string
-    websiteDofollow: boolean
     tech: string[]
   }
 }) {
@@ -131,12 +135,13 @@ export function EditForm({
         <h2 className="label">Paid upgrades</h2>
         <DofollowOffer
           appId={appId}
-          active={initial.websiteDofollow}
+          active={Boolean(offers.dofollowPurchase)}
           available={offers.dofollowAvailable}
         />
         <SponsorOffer
           appId={appId}
           active={offers.sponsorActive}
+          purchase={offers.sponsorPurchase}
           available={offers.sponsorAvailable}
           spotsLeft={offers.spotsLeft}
           totalSpots={offers.totalSpots}
@@ -176,6 +181,8 @@ function DofollowOffer({
       blurb={dofollow.blurb}
       active={active}
       activeLabel="Active — your website link is dofollow."
+      // No switch on a one-time purchase — see the note on VisibilitySwitch.
+      purchase={null}
       manageLabel="View in billing"
       available={available}
       appId={appId}
@@ -195,12 +202,14 @@ function DofollowOffer({
 function SponsorOffer({
   appId,
   active,
+  purchase,
   available,
   spotsLeft,
   totalSpots,
 }: {
   appId: string
   active: boolean
+  purchase: LivePurchase | null
   available: boolean
   spotsLeft: number
   totalSpots: number
@@ -215,7 +224,12 @@ function SponsorOffer({
       price={price != null ? `${formatMoney(price)}/mo` : null}
       blurb="Your icon, name, and tagline rotate through the sponsor rails beside the index. Cancel anytime."
       active={active}
-      activeLabel="Active — this app is sponsoring the rails."
+      activeLabel={
+        purchase?.hidden
+          ? 'Active — switched off, so the rails skip this app.'
+          : 'Active — this app is sponsoring the rails.'
+      }
+      purchase={purchase}
       manageLabel="Manage subscription"
       available={available && spotsLeft > 0}
       appId={appId}
@@ -234,6 +248,7 @@ function Offer({
   blurb,
   active,
   activeLabel,
+  purchase,
   manageLabel,
   available,
   appId,
@@ -247,6 +262,12 @@ function Offer({
   blurb: string
   active: boolean
   activeLabel: string
+  /**
+   * The live sponsor row, when there is one. Present only for products whose
+   * card offers the rails switch, which is why the dofollow card passes null
+   * even while it is active.
+   */
+  purchase: LivePurchase | null
   /** What the link into the billing tab offers while this is live. */
   manageLabel: string
   available: boolean
@@ -268,17 +289,34 @@ function Offer({
       <p className="text-muted mt-1.5 text-[12px] leading-relaxed">{blurb}</p>
 
       {active ? (
-        <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <p className="text-green text-[12px]">{activeLabel}</p>
-          {/*
+        <>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <p className={purchase?.hidden ? 'text-muted text-[12px]' : 'text-green text-[12px]'}>
+              {activeLabel}
+            </p>
+            {/*
             Cancelling, resuming, and the receipt all live on the billing tab,
             which a founder looking at this card has no reason to know about.
             The card that sold it is where they will come back to change it.
           */}
-          <Link href="/account" className="text-blue text-[12px] hover:underline">
-            {manageLabel} →
-          </Link>
-        </div>
+            <Link href="/account" className="text-blue text-[12px] hover:underline">
+              {manageLabel} →
+            </Link>
+          </div>
+
+          {/*
+            Offered here as well as on the billing tab: this is the app's own
+            settings screen, and switching an upgrade off is a decision about
+            the app rather than about the payment behind it.
+          */}
+          {purchase && (
+            <VisibilitySwitch
+              purchaseId={purchase.id}
+              hidden={purchase.hidden}
+              className="mt-2.5"
+            />
+          )}
+        </>
       ) : available ? (
         <form action={action} className="mt-3">
           <input type="hidden" name="appId" value={appId} />

@@ -6,9 +6,9 @@ import { ExternalLink, Loader2, RotateCcw } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { Badge } from '@/components/ui/badge'
 import { formatMoney } from '@/lib/utils'
+import { VisibilitySwitch } from '@/components/visibility-switch'
 import {
   openBillingPortalAction,
-  setPurchaseVisibilityAction,
   setSponsorCancellationAction,
   type BillingActionState,
 } from './actions'
@@ -31,12 +31,6 @@ type Row = {
 const KIND_LABEL: Record<Row['kind'], string> = {
   dofollow: 'Dofollow link',
   sponsor: 'Sponsor rail slot',
-}
-
-/** Said in terms of what a reader would see, not of the flag being written. */
-const SHOWN_LABEL: Record<Row['kind'], { on: string; off: string }> = {
-  dofollow: { on: 'Link is dofollow', off: 'Link is nofollow while hidden' },
-  sponsor: { on: 'Showing in the rails', off: 'Hidden from the rails' },
 }
 
 /** Tone by what the status means for the founder, not by its name. */
@@ -108,9 +102,10 @@ function BillingRow({ row }: { row: Row }) {
   const cancellable =
     row.status === 'active' && row.source === 'polar' && Boolean(row.polarSubscriptionId)
   const ending = row.cancelAtPeriodEnd
-  // Only a live entitlement has anything to show or hide. On a revoked or
-  // pending row the switch would imply it could be turned back on.
-  const switchable = row.status === 'active'
+  // Live sponsor slots only. On a revoked or pending row the switch would
+  // imply something could be turned back on, and a dofollow link has nothing
+  // worth switching — see the note on VisibilitySwitch.
+  const switchable = row.status === 'active' && row.kind === 'sponsor'
 
   return (
     <li className="border-border bg-surface rounded-[10px] border p-4">
@@ -153,7 +148,7 @@ function BillingRow({ row }: { row: Row }) {
         </p>
       )}
 
-      {switchable && <VisibilitySwitch row={row} />}
+      {switchable && <VisibilitySwitch purchaseId={row.id} hidden={row.hidden} className="mt-3" />}
 
       {cancellable && (
         <form action={run} className="mt-3">
@@ -186,65 +181,6 @@ function BillingRow({ row }: { row: Row }) {
         </p>
       )}
     </li>
-  )
-}
-
-/**
- * A show/hide switch for one live entitlement.
- *
- * Its own form and its own action state, so a founder with several purchases
- * gets a result against the row they touched rather than one shared message.
- * Submitted by the switch itself — there is no separate confirm, because
- * nothing is lost: the row keeps its status and switching back costs nothing.
- */
-function VisibilitySwitch({ row }: { row: Row }) {
-  const [state, run, pending] = useActionState<BillingActionState, FormData>(
-    setPurchaseVisibilityAction,
-    {},
-  )
-
-  const shown = !row.hidden
-  const copy = SHOWN_LABEL[row.kind]
-
-  return (
-    <form action={run} className="mt-3">
-      <input type="hidden" name="purchaseId" value={row.id} />
-      {/* Posts the opposite of where the row stands, so the click is the
-          intent rather than the current value. */}
-      <input type="hidden" name="hidden" value={shown ? 'true' : 'false'} />
-      <button
-        type="submit"
-        disabled={pending}
-        role="switch"
-        aria-checked={shown}
-        className="group inline-flex items-center gap-2.5 disabled:opacity-50"
-      >
-        <span
-          className={
-            shown
-              ? 'bg-green/80 relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors'
-              : 'bg-surface-3 group-hover:bg-border-strong relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors'
-          }
-        >
-          <span
-            className={
-              shown
-                ? 'bg-bg size-3 translate-x-3.5 rounded-full transition-transform'
-                : 'bg-muted size-3 translate-x-0.5 rounded-full transition-transform'
-            }
-          />
-        </span>
-        <span className={shown ? 'text-muted text-xs' : 'text-dim text-xs'}>
-          {pending ? 'Saving…' : shown ? copy.on : copy.off}
-        </span>
-      </button>
-
-      {state.error && (
-        <p role="alert" className="text-red mt-1.5 text-xs">
-          {state.error}
-        </p>
-      )}
-    </form>
   )
 }
 
