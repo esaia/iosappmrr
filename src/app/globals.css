@@ -134,6 +134,80 @@
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*                          Arrival animations                                 */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * Used on the checkout return, which is the one page a founder reaches having
+ * just spent money and where a bare heading reads as though nothing happened.
+ * Everything below is decoration over content that is already in the HTML —
+ * the reduced-motion block at the end of this file collapses the durations,
+ * and because each keyframe ends at the resting state, the page still settles
+ * fully visible.
+ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Stroke length is set per-path; both the ring and the tick draw themselves. */
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* One ring leaving the mark, like something landing. */
+@keyframes halo {
+  from {
+    opacity: 0.5;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.1);
+  }
+}
+
+/* The mark itself takes the smallest possible bounce as the tick completes. */
+@keyframes settle {
+  0% {
+    transform: scale(0.82);
+  }
+  60% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@layer utilities {
+  .rise {
+    animation: rise 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .settle {
+    animation: settle 0.75s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  .halo {
+    animation: halo 1.9s cubic-bezier(0.2, 0.7, 0.3, 1) 0.35s both;
+  }
+
+  .draw {
+    animation: draw 0.75s cubic-bezier(0.5, 0, 0.2, 1) both;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
