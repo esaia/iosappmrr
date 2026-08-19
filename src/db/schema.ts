@@ -126,6 +126,16 @@ export const apps = pgTable(
       .references(() => profiles.id, { onDelete: 'cascade' }),
     categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
 
+    /**
+     * Hides who owns the listing without hiding the listing. The revenue is
+     * still provider-verified and the app still ranks — only the byline, the
+     * avatar and the link to the founder's page are withheld, and the app is
+     * left off their public founder page. Ownership itself is unchanged:
+     * `founder_id` still points at them, which is what the dashboard, the
+     * connection and every RLS policy run on.
+     */
+    isAnonymous: boolean('is_anonymous').notNull().default(false),
+
     status: appStatus('status').notNull().default('draft'),
     isVerified: boolean('is_verified').notNull().default(false),
     verifiedAt: timestamp('verified_at', { withTimezone: true }),

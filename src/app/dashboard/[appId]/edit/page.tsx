@@ -100,6 +100,7 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
             categorySlug: currentCategory[0]?.slug ?? '',
             website: app.website ?? '',
             tech: currentTech.map((t) => t.slug),
+            anonymous: app.isAnonymous,
           }}
         />
       </Measure>

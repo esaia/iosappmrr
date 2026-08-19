@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AnonymousName } from '@/components/anonymous-name'
 import { AppIcon } from '@/components/app-icon'
 import { Stat } from '@/components/ui/card'
 import type { AppListing } from '@/lib/data/apps'
@@ -34,13 +35,15 @@ export function AppCard({ app, className }: { app: AppListing; className?: strin
       <div className="flex items-start gap-2.5">
         <AppIcon src={app.iconUrl} name={app.name} size={34} />
         <div className="min-w-0 pr-14">
-          <h3 className="text-fg truncate text-[13px] font-bold">{app.name}</h3>
+          <h3 className="text-fg truncate text-[13px] font-bold">
+            {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
+          </h3>
           <p className="text-muted truncate text-[11px]">{app.categoryName ?? 'iOS app'}</p>
         </div>
       </div>
 
       <p className="text-muted mt-2.5 line-clamp-2 min-h-[30px] text-[11px] leading-relaxed">
-        {app.tagline}
+        {app.isAnonymous ? <AnonymousName>{app.tagline}</AnonymousName> : app.tagline}
       </p>
 
       <div className="border-border mt-3.5 grid grid-cols-3 gap-2 border-t pt-3">

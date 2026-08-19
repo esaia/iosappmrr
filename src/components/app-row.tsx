@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AppIcon } from '@/components/app-icon'
+import { AnonymousName } from '@/components/anonymous-name'
 import { FounderAvatar } from '@/components/founder-avatar'
 import { GrowthPill } from '@/components/growth-pill'
 import type { AppListing } from '@/lib/data/apps'
@@ -40,8 +41,16 @@ export function AppRow({
       <AppIcon src={app.iconUrl} name={app.name} size={36} />
 
       <div className="min-w-0 flex-1">
-        <h3 className="text-fg truncate text-[13px] font-bold">{app.name}</h3>
-        <p className="text-muted truncate text-[11px]">{app.tagline ?? app.categoryName}</p>
+        <h3 className="text-fg truncate text-[13px] font-bold">
+          {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
+        </h3>
+        <p className="text-muted truncate text-[11px]">
+          {app.isAnonymous ? (
+            <AnonymousName>{app.tagline}</AnonymousName>
+          ) : (
+            (app.tagline ?? app.categoryName)
+          )}
+        </p>
       </div>
 
       <div className="hidden w-40 shrink-0 lg:block">

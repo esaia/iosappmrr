@@ -6,11 +6,17 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
 import { apps, categories } from '@/db/schema'
+import { ANONYMOUS_NAME } from '@/lib/anonymous'
 import { AppStoreLookupError, lookupApp, parseAppStoreId } from '@/lib/appstore/lookup'
 import { getCurrentUser } from '@/lib/auth'
 import { createCheckout } from '@/lib/checkout'
 import { connectProvider } from '@/lib/data/connections'
-import { saveAppStoreMetadata, setAppTechStack, uniqueSlug } from '@/lib/data/mutations'
+import {
+  saveAppStoreMetadata,
+  setAppTechStack,
+  slugForAnonymity,
+  uniqueSlug,
+} from '@/lib/data/mutations'
 import { isPolarConfigured } from '@/lib/polar'
 import { isConnectable } from '@/lib/providers'
 import { PROVIDER_FIELDS } from '@/lib/provider-fields'
@@ -107,6 +113,7 @@ const submitSchema = z.object({
   tech: z.array(z.string()).default([]),
   provider: z.string().refine(isConnectable, 'Choose a provider to verify revenue with.'),
   dofollow: z.boolean().default(false),
+  anonymous: z.boolean().default(false),
 })
 
 export type SubmitState = {
@@ -146,6 +153,7 @@ export async function submitAppAction(
     tech: formData.getAll('tech').map(String),
     provider: formData.get('provider'),
     dofollow: formData.get('dofollow') === 'on',
+    anonymous: formData.get('anonymous') === 'on',
   })
 
   if (!parsed.success) {
@@ -201,6 +209,8 @@ export async function submitAppAction(
      * thing that was wrong — but keep the slug, because it is what any link
      * they have already shared points at.
      */
+    const rotated = await slugForAnonymity(duplicate.slug, data.name, data.anonymous)
+
     const [updated] = await db
       .update(apps)
       .set({
@@ -209,6 +219,14 @@ export async function submitAppAction(
         description: data.description || null,
         categoryId: category?.id ?? null,
         website: data.website || store?.website || null,
+        isAnonymous: data.anonymous,
+        /*
+         * Normally the slug is kept, because it is what any link they have
+         * already shared points at. The exception is a retry that flips
+         * anonymity: the old slug spells the name the listing is now hiding,
+         * and nothing has been shared yet — the app never went live.
+         */
+        ...(rotated ? { slug: rotated } : {}),
       })
       .where(eq(apps.id, duplicate.id))
       .returning({ id: apps.id, slug: apps.slug })
@@ -217,7 +235,13 @@ export async function submitAppAction(
     const [created] = await db
       .insert(apps)
       .values({
-        slug: await uniqueSlug(data.name),
+        /*
+         * A stealth listing cannot carry a slug spelling the name it is
+         * hiding — /apps/ledgerly gives it away before the page renders.
+         * `uniqueSlug` numbers the duplicates, so every one of them is
+         * stealth-company-2, -3, and so on.
+         */
+        slug: await uniqueSlug(data.anonymous ? ANONYMOUS_NAME : data.name),
         name: data.name,
         tagline: data.tagline || null,
         description: data.description || null,
@@ -227,6 +251,7 @@ export async function submitAppAction(
         founderId: user.id,
         categoryId: category?.id ?? null,
         website: data.website || store?.website || null,
+        isAnonymous: data.anonymous,
         launchedAt: store?.releasedAt?.toISOString().slice(0, 10) ?? null,
         // Draft until the connection below verifies revenue. Nothing reaches
         // the public index on the strength of a form submission alone.

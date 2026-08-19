@@ -8,6 +8,7 @@ import { dofollow } from '@/lib/dofollow'
 import { advertising } from '@/lib/ads'
 import { formatMoney } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { useCheckedSync } from '@/components/ui/checked-sync'
 import { VisibilitySwitch } from '@/components/visibility-switch'
 import {
   startDofollowCheckout,
@@ -52,11 +53,14 @@ export function EditForm({
     categorySlug: string
     website: string
     tech: string[]
+    anonymous: boolean
   }
 }) {
   const [state, action] = useActionState<EditState, FormData>(updateAppAction, {})
   // Controlled, because React resets uncontrolled fields once an action resolves.
   const [categorySlug, setCategorySlug] = useState(initial.categorySlug)
+  const [anonymous, setAnonymous] = useState(initial.anonymous)
+  const anonymousBox = useCheckedSync(anonymous)
 
   return (
     <>
@@ -106,6 +110,30 @@ export function EditForm({
         <Field label="Website" hint="Optional." error={state.fieldErrors?.website}>
           <input name="website" type="url" defaultValue={initial.website} className={field} />
         </Field>
+
+        {/*
+          The same choice the submit form offers, so an app can go anonymous
+          after the fact — or come out of it once it is doing well enough to be
+          worth naming.
+        */}
+        <label className="border-border rounded-card flex cursor-pointer items-start gap-3 border p-4">
+          <input
+            ref={anonymousBox}
+            type="checkbox"
+            name="anonymous"
+            checked={anonymous}
+            onChange={(event) => setAnonymous(event.target.checked)}
+            className="accent-accent mt-0.5 size-4 shrink-0"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="text-fg block text-[13px] font-medium">Anonymous mode</span>
+            <span className="text-muted mt-1.5 block text-xs leading-relaxed">
+              Blurs the name, tagline and description, and hides the icon, screenshots, reviews and
+              App Store link. You stay credited and the revenue stays verified. Turning it on or off
+              changes the page&apos;s address, so links you have already shared will stop working.
+            </span>
+          </span>
+        </label>
 
         <fieldset>
           <legend className="label">Built with</legend>
@@ -435,6 +463,10 @@ function TechChip({
   defaultChecked: boolean
 }) {
   const [checked, setChecked] = useState(defaultChecked)
+  // Same reset, same fix: the chip's colour comes from state, but the value the
+  // next save submits comes from the input the reset clears.
+  const box = useCheckedSync(checked)
+
   return (
     <label
       className={
@@ -444,6 +476,7 @@ function TechChip({
       }
     >
       <input
+        ref={box}
         type="checkbox"
         name="tech"
         value={slug}

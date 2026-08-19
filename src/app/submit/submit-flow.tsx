@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ExternalLink, Loader2, LogIn, Search } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { Button, ButtonLink } from '@/components/ui/button'
+import { useCheckedSync } from '@/components/ui/checked-sync'
 import { lookupAppAction, submitAppAction, type LookupState, type SubmitState } from './actions'
 
 type Category = { slug: string; name: string; genre: string | null }
@@ -55,6 +56,15 @@ export function SubmitFlow({
   const [categorySlug, setCategorySlug] = useState('')
   const [provider, setProvider] = useState(providers[0]?.id ?? '')
   const [dofollow, setDofollow] = useState(false)
+  const [anonymous, setAnonymous] = useState(false)
+
+  /*
+   * This form hands itself back whenever a key fails to verify, and React
+   * resets it on the way through. Controlled state alone does not survive that
+   * for a checkbox — see `useCheckedSync`.
+   */
+  const dofollowBox = useCheckedSync(dofollow)
+  const anonymousBox = useCheckedSync(anonymous)
 
   const suggestedSlug = lookup.app?.primaryGenre
     ? categories.find((category) => category.genre === lookup.app!.primaryGenre)?.slug
@@ -298,6 +308,40 @@ export function SubmitFlow({
       </section>
 
       {/*
+        Anonymous mode hides the app, not the founder. The point of the site is a
+        number somebody stands behind, so the byline stays and the app's own
+        name, icon, screenshots and store link go — including out of the URL,
+        which would otherwise spell it.
+      */}
+      <label
+        className={
+          anonymous
+            ? 'border-border-strong bg-surface rounded-card block cursor-pointer border p-4'
+            : 'border-border hover:border-border-strong rounded-card block cursor-pointer border border-dashed p-4'
+        }
+      >
+        <div className="flex items-start gap-3">
+          <input
+            ref={anonymousBox}
+            type="checkbox"
+            name="anonymous"
+            checked={anonymous}
+            onChange={(event) => setAnonymous(event.target.checked)}
+            className="accent-accent mt-0.5 size-4 shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <span className="text-fg text-[13px] font-medium">Anonymous mode</span>
+            <p className="text-muted mt-1.5 text-xs leading-relaxed">
+              Your app is listed as <span className="text-fg">Stealth Company</span>: the name,
+              tagline and description are blurred, and the icon, screenshots, reviews and App Store
+              link are withheld. The revenue is verified and ranked exactly the same, and you are
+              still credited as the founder. You can turn it off later from the dashboard.
+            </p>
+          </div>
+        </div>
+      </label>
+
+      {/*
         Offered here rather than only on the edit screen, where founders had to
         already know it existed. The charge comes after the app verifies, so
         ticking this is not a payment — it decides where the founder is sent
@@ -313,6 +357,7 @@ export function SubmitFlow({
         >
           <div className="flex items-start gap-3">
             <input
+              ref={dofollowBox}
               type="checkbox"
               name="dofollow"
               checked={dofollow}
@@ -456,6 +501,7 @@ function TextField({
 
 function TechCheckbox({ slug, name }: { slug: string; name: string }) {
   const [checked, setChecked] = useState(false)
+  const box = useCheckedSync(checked)
 
   return (
     <label
@@ -466,6 +512,7 @@ function TechCheckbox({ slug, name }: { slug: string; name: string }) {
       }
     >
       <input
+        ref={box}
         type="checkbox"
         name="tech"
         value={slug}

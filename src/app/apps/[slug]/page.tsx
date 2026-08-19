@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { ExternalLink, Star } from 'lucide-react'
 import { AdRail } from '@/components/ad-rail'
 import { AppIcon } from '@/components/app-icon'
+import { AnonymousName } from '@/components/anonymous-name'
+import { AppleMark } from '@/components/apple-mark'
 import { GrowthPill } from '@/components/growth-pill'
 import { RevenueChart } from '@/components/revenue-chart'
 import { AppScreenshots } from '@/components/app-screenshots'
@@ -74,7 +76,9 @@ export default async function AppPage({ params }: Params) {
 
   const related = relatedAll.filter((item) => item.slug !== app.slug)
   // Matches what AppReviews itself renders: no reviews and no histogram, no section.
-  const hasReviews = reviews.length > 0 || Boolean(metadata?.ratingHistogram)
+  // Reviews are quoted from the store listing and link back to it, so they say
+  // which app this is even when nothing else on the page does.
+  const hasReviews = !app.isAnonymous && (reviews.length > 0 || Boolean(metadata?.ratingHistogram))
   const providers = metrics?.providers ?? []
   const mrrCents = Number(metrics?.mrrCents ?? 0)
 
@@ -144,7 +148,9 @@ export default async function AppPage({ params }: Params) {
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="display text-3xl font-semibold sm:text-4xl">{app.name}</h1>
+              <h1 className="display text-3xl font-semibold sm:text-4xl">
+                {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
+              </h1>
               <VerifiedBadge providers={providers} />
               <span className="ml-auto">
                 <ShareButton
@@ -154,7 +160,11 @@ export default async function AppPage({ params }: Params) {
                 />
               </span>
             </div>
-            {app.tagline && <p className="text-muted mt-2 text-lg">{app.tagline}</p>}
+            {app.tagline && (
+              <p className="text-muted mt-2 text-lg">
+                {app.isAnonymous ? <AnonymousName block>{app.tagline}</AnonymousName> : app.tagline}
+              </p>
+            )}
 
             <div className="text-muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               {founder && (
@@ -222,6 +232,7 @@ export default async function AppPage({ params }: Params) {
                   rel="noopener noreferrer"
                   className="hover:text-blue inline-flex items-center gap-1"
                 >
+                  <AppleMark />
                   App Store
                   <ExternalLink className="size-3" />
                 </a>
@@ -288,7 +299,17 @@ export default async function AppPage({ params }: Params) {
               <section>
                 <h2 className="display text-xl font-semibold">About</h2>
                 <div className="mt-3">
-                  <ExpandableText text={app.description} />
+                  {/*
+                    Not run through ExpandableText: there is nothing to expand,
+                    and a "read more" on unreadable text is a broken promise.
+                  */}
+                  {app.isAnonymous ? (
+                    <AnonymousName block className="text-muted text-sm leading-relaxed">
+                      {app.description}
+                    </AnonymousName>
+                  ) : (
+                    <ExpandableText text={app.description} />
+                  )}
                 </div>
               </section>
             )}
@@ -303,7 +324,19 @@ export default async function AppPage({ params }: Params) {
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-20">
-            <Panel title="App Store">
+            {/*
+              The mark beside the words, naming where every figure in this
+              panel came from. Never on its own and never near the verified
+              badge — that badge is ours, and Apple has not vouched for it.
+            */}
+            <Panel
+              title={
+                <>
+                  <AppleMark />
+                  App Store
+                </>
+              }
+            >
               <Row label="Category" value={category?.name ?? metadata?.primaryGenre ?? '—'} />{' '}
               <Row label="Version" value={metadata?.version ?? '—'} />{' '}
               {/*
@@ -351,7 +384,12 @@ export default async function AppPage({ params }: Params) {
               Only once the metadata sync has scored the listing. An app added
               minutes ago shows no panel rather than a zero it has not earned.
             */}
-            {metadata?.asoScore != null && metadata.asoSignals && (
+            {/*
+              Scored from the store listing and quoting it back — the title, the
+              subtitle, the opening line of the description. It names the app in
+              the course of grading it, so a stealth listing does without.
+            */}
+            {metadata?.asoScore != null && metadata.asoSignals && !app.isAnonymous && (
               <AsoScore
                 total={metadata.asoScore}
                 signals={metadata.asoSignals}
@@ -361,7 +399,8 @@ export default async function AppPage({ params }: Params) {
           </aside>
         </div>
 
-        {verdict && (
+        {/* Written about a named app, so it can name it. Withheld with the rest. */}
+        {verdict && !app.isAnonymous && (
           <VibecodeVerdict
             verdict={verdict.verdict}
             headline={verdict.headline}
@@ -448,10 +487,10 @@ function StatCard({
   )
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="border-border bg-surface rounded-card border p-5">
-      <h2 className="label">{title}</h2>
+      <h2 className="label flex items-center gap-1.5">{title}</h2>
       <dl className="mt-3 space-y-2">{children}</dl>
     </section>
   )

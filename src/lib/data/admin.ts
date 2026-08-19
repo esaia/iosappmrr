@@ -95,6 +95,7 @@ export async function listAdminApps({
       name: apps.name,
       status: apps.status,
       isVerified: apps.isVerified,
+      isAnonymous: apps.isAnonymous,
       websiteDofollow: apps.websiteDofollow,
       website: apps.website,
       createdAt: apps.createdAt,

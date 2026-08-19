@@ -1,3 +1,4 @@
+import { ANONYMOUS_DESCRIPTION, ANONYMOUS_NAME, ANONYMOUS_TAGLINE } from '@/lib/anonymous'
 import { escapeLike } from '@/lib/utils'
 import 'server-only'
 import { and, asc, desc, eq, gte, ilike, or, sql } from 'drizzle-orm'
@@ -27,6 +28,7 @@ export type AppListing = {
   founderHandle: string | null
   founderName: string | null
   founderAvatarUrl: string | null
+  isAnonymous: boolean
   mrrCents: number
   growth30d: number | null
   sparkline: number[]
@@ -99,6 +101,7 @@ export async function listApps(
       founderHandle: profiles.handle,
       founderName: profiles.name,
       founderAvatarUrl: profiles.avatarUrl,
+      isAnonymous: apps.isAnonymous,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
       sparkline: appMetrics.sparkline,
@@ -119,12 +122,24 @@ export async function listApps(
 }
 
 function toListing(row: Record<string, unknown>): AppListing {
-  return {
+  const listing: AppListing = {
     ...(row as AppListing),
     mrrCents: Number(row.mrrCents ?? 0),
     sparkline: (row.sparkline as number[] | null) ?? [],
     providers: (row.providers as string[] | null) ?? [],
   }
+
+  /*
+   * Masked here rather than in the row component, so every list on the site
+   * inherits it and the real name is never serialised into the page — a blur
+   * that ships the name in the markup underneath it hides nothing. The icon
+   * goes with it: an App Store icon names an app as plainly as its title does.
+   */
+  if (listing.isAnonymous) {
+    return { ...listing, name: ANONYMOUS_NAME, tagline: ANONYMOUS_TAGLINE, iconUrl: null }
+  }
+
+  return listing
 }
 
 export async function countApps(options: { categorySlug?: string; search?: string } = {}) {
@@ -163,6 +178,24 @@ export async function getAppBySlug(slug: string) {
     .limit(1)
 
   if (!row) return null
+
+  /*
+   * The founder is left alone — they are the one whose key is being read, and a
+   * verified figure nobody stands behind is worth less than no figure. What
+   * goes is everything that says which app earned it: the name, the founder's
+   * own copy, the icon, the screenshots, and the two links that lead to it.
+   */
+  if (row.app.isAnonymous) {
+    row.app = {
+      ...row.app,
+      name: ANONYMOUS_NAME,
+      tagline: ANONYMOUS_TAGLINE,
+      description: ANONYMOUS_DESCRIPTION,
+      appStoreUrl: null,
+      website: null,
+    }
+    if (row.metadata) row.metadata = { ...row.metadata, iconUrl: null, screenshotUrls: [] }
+  }
 
   const tech = await db
     .select({ slug: techStackTags.slug, name: techStackTags.name, kind: techStackTags.kind })
@@ -341,6 +374,7 @@ export async function getFounderByHandle(handle: string) {
       founderHandle: profiles.handle,
       founderName: profiles.name,
       founderAvatarUrl: profiles.avatarUrl,
+      isAnonymous: apps.isAnonymous,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
       sparkline: appMetrics.sparkline,

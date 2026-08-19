@@ -118,6 +118,12 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
             </Link>
             <StatusBadge status={row.status} />
             {row.isVerified && <Badge tone="verified">Verified</Badge>}
+            {/*
+              The name above is the real one — admin reads the table, not the
+              masked query the public pages use — so the badge is the only thing
+              saying that the public sees a blur where that name is.
+            */}
+            {row.isAnonymous && <Badge tone="neutral">Anonymous</Badge>}
             {sponsoring && (
               <Badge tone="flag">
                 {row.sponsorSource === 'admin' ? 'Slot — gifted' : 'Slot — paid'}

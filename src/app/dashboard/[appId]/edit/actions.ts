@@ -7,7 +7,13 @@ import { z } from 'zod'
 import { db } from '@/db'
 import { categories } from '@/db/schema'
 import { requireUser } from '@/lib/auth'
-import { deleteApp, getOwnedApp, setAppTechStack, updateAppDetails } from '@/lib/data/mutations'
+import {
+  deleteApp,
+  getOwnedApp,
+  setAppTechStack,
+  slugForAnonymity,
+  updateAppDetails,
+} from '@/lib/data/mutations'
 
 export type EditState = { error?: string; fieldErrors?: Record<string, string>; saved?: boolean }
 
@@ -50,12 +56,23 @@ export async function updateAppAction(
     .where(eq(categories.slug, parsed.data.categorySlug))
     .limit(1)
 
+  const anonymous = formData.get('anonymous') === 'on'
+  /*
+   * Turning anonymity on has to move the URL as well: /apps/ledgerly names the
+   * app the rest of the page has just stopped naming. Turning it off gives the
+   * name back. Any link to the old slug 404s, which is the price of the switch
+   * and is why the form says so.
+   */
+  const rotated = await slugForAnonymity(app.slug, parsed.data.name, anonymous)
+
   await updateAppDetails(appId, {
     name: parsed.data.name,
     tagline: parsed.data.tagline || null,
     description: parsed.data.description || null,
     categoryId: category?.id ?? null,
     website: parsed.data.website || null,
+    isAnonymous: anonymous,
+    ...(rotated ? { slug: rotated } : {}),
     /*
      * `websiteDofollow` is deliberately not read from this form. It is granted
      * only by the Polar webhook once an order is paid — accepting it here
@@ -66,6 +83,7 @@ export async function updateAppAction(
   await setAppTechStack(appId, formData.getAll('tech').map(String))
 
   revalidatePath(`/apps/${app.slug}`)
+  if (rotated) revalidatePath(`/apps/${rotated}`)
   revalidatePath('/dashboard')
   return { saved: true }
 }

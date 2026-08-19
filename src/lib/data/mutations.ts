@@ -12,6 +12,7 @@ import {
 } from '@/db/schema'
 import type { AppStoreApp } from '@/lib/appstore/lookup'
 import type { AppStoreReviews } from '@/lib/appstore/reviews'
+import { ANONYMOUS_NAME } from '@/lib/anonymous'
 import { slugify } from '@/lib/utils'
 
 /** Finds a free slug, appending a counter only when the natural one is taken. */
@@ -27,6 +28,26 @@ export async function uniqueSlug(name: string) {
     if (!existing) return candidate
   }
   return `${base}-${Date.now()}`
+}
+
+/**
+ * The slug a listing should have for the anonymity it now has.
+ *
+ * The URL is the last thing that still names a stealth app once the page is
+ * masked, so it has to move with the flag: on, to a numbered stealth slug; off,
+ * back to the app's own name. Returns null when the current slug already fits,
+ * because a slug that changes for no reason breaks every link to it.
+ */
+export async function slugForAnonymity(
+  current: string,
+  name: string,
+  anonymous: boolean,
+): Promise<string | null> {
+  const stealth = slugify(ANONYMOUS_NAME)
+  const isStealthSlug = current === stealth || current.startsWith(`${stealth}-`)
+
+  if (anonymous === isStealthSlug) return null
+  return uniqueSlug(anonymous ? ANONYMOUS_NAME : name)
 }
 
 /**
@@ -213,6 +234,9 @@ export async function updateAppDetails(
     description: string | null
     categoryId: string | null
     website: string | null
+    isAnonymous: boolean
+    /** Only when anonymity changed; otherwise the URL stays as it is. */
+    slug?: string
   },
 ) {
   await db
