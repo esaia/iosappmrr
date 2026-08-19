@@ -1,0 +1,1 @@
+ALTER TABLE "app_store_metadata" DROP COLUMN "listing_terms";

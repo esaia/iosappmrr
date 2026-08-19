@@ -26,7 +26,8 @@
     "polar:products": "tsx --tsconfig tsconfig.scripts.json scripts/polar-products.ts",
     "polar:reconcile": "tsx --tsconfig tsconfig.scripts.json scripts/polar-reconcile.ts",
     "polar:reset": "tsx --tsconfig tsconfig.scripts.json scripts/reset-purchases.ts",
-    "vibecode": "tsx --tsconfig tsconfig.scripts.json scripts/vibecode-verdicts.ts"
+    "vibecode": "tsx --tsconfig tsconfig.scripts.json scripts/vibecode-verdicts.ts",
+    "aso": "tsx --tsconfig tsconfig.scripts.json scripts/aso-score.ts"
   },
   "dependencies": {
     "@polar-sh/sdk": "^0.49.0",

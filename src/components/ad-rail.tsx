@@ -110,10 +110,16 @@ const SLOT_MIN_HEIGHT = 'min-h-[148px]'
  * has not earned.
  */
 function Slot({ sponsor }: { sponsor: Sponsor }) {
-  // Sponsors pay for traffic to their own site. Without one, the click still
-  // has somewhere useful to go.
-  const href = sponsor.website ?? `/apps/${sponsor.slug}`
-  const external = Boolean(sponsor.website)
+  /*
+   * Sponsors pay for traffic, so the click goes somewhere that can convert:
+   * their own site if they gave one, otherwise their App Store listing, where
+   * the reader can actually install the thing. The profile page is the last
+   * resort — it sends a paid click back into this site rather than out to the
+   * sponsor.
+   */
+  const href = sponsor.website ?? sponsor.appStoreUrl ?? `/apps/${sponsor.slug}`
+  const external = Boolean(sponsor.website ?? sponsor.appStoreUrl)
+  const label = sponsor.website ? 'Visit site' : sponsor.appStoreUrl ? 'App Store' : 'View profile'
 
   return (
     <a
@@ -150,7 +156,7 @@ function Slot({ sponsor }: { sponsor: Sponsor }) {
       </div>
 
       <span className="border-border text-muted group-hover:text-fg mt-3 flex items-center gap-1 border-t pt-2.5 text-[11px] transition-colors">
-        {external ? 'Visit site' : 'View profile'}
+        {label}
         <span aria-hidden className="transition-transform motion-safe:group-hover:translate-x-0.5">
           →
         </span>

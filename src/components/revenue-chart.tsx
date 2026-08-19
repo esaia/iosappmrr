@@ -156,10 +156,14 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
     return seen
   }, [data])
 
-  /** All time means every day we hold; the rest are trailing windows. */
-  const windowDays = days === 0 ? data.length : days
-  const rangeAvailable = (range: number) =>
-    range === 0 ? data.length > 1 : data.length >= Math.min(range, 2) && range > 1
+  /**
+   * All time means every day we hold; the rest are trailing windows.
+   *
+   * Snapshots are captured once a day, so "last 24 hours" is the move from
+   * yesterday's capture to today's — two points, the fewest a line can join.
+   */
+  const windowDays = days === 0 ? data.length : days === 1 ? 2 : days
+  const rangeAvailable = (range: number) => (range === 0 ? data.length > 1 : data.length >= 2)
 
   const rows = useMemo<ChartRow[]>(() => {
     const current = data.slice(-windowDays)

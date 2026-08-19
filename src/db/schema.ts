@@ -16,6 +16,8 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core'
 
+import type { AsoSignal } from '@/lib/appstore/aso'
+
 /** Postgres `bytea`, used for AES-256-GCM ciphertext. Never exposed to the client. */
 const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
   dataType: () => 'bytea',
@@ -203,6 +205,15 @@ export const appStoreMetadata = pgTable('app_store_metadata', {
   fileSizeBytes: bigint('file_size_bytes', { mode: 'number' }),
   supportedDevices: jsonb('supported_devices').$type<string[]>().notNull().default([]),
   minimumOsVersion: text('minimum_os_version'),
+
+  /**
+   * Listing-quality score, 0–100, recomputed from the same lookup that fills in
+   * the rest of this row. Derived, so it is never hand-edited — see
+   * `src/lib/appstore/aso.ts` for what the six signals measure.
+   */
+  asoScore: integer('aso_score'),
+  asoSignals: jsonb('aso_signals').$type<AsoSignal[]>(),
+
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
 })
 

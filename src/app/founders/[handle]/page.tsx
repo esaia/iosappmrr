@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { ExternalLink } from 'lucide-react'
 import { AppRow, AppRowHeader } from '@/components/app-row'
 import { getFounderByHandle } from '@/lib/data/apps'
-import { formatMoney, highResAvatar } from '@/lib/utils'
+import { formatCount, formatMoney, highResAvatar } from '@/lib/utils'
 
 export const revalidate = 600
 
@@ -52,17 +52,35 @@ export default async function FounderPage({ params }: Params) {
           <h1 className="display text-3xl font-semibold">{founder.name ?? `@${founder.handle}`}</h1>
           <p className="text-muted text-sm">@{founder.handle}</p>
           {founder.bio && <p className="text-muted mt-2">{founder.bio}</p>}
-          {founder.website && (
-            <a
-              href={founder.website}
-              target="_blank"
-              rel="noopener noreferrer nofollow"
-              className="text-blue mt-2 inline-flex items-center gap-1 text-sm hover:underline"
-            >
-              {founder.website.replace(/^https?:\/\//, '')}
-              <ExternalLink className="size-3" />
-            </a>
-          )}
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+            {founder.website && (
+              <a
+                href={founder.website}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="text-blue inline-flex items-center gap-1 text-sm hover:underline"
+              >
+                {founder.website.replace(/^https?:\/\//, '')}
+                <ExternalLink className="size-3" />
+              </a>
+            )}
+            {founder.twitter && (
+              <a
+                href={`https://x.com/${founder.twitter}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted hover:text-fg inline-flex items-center gap-1.5 text-sm transition-colors"
+                title={`@${founder.twitter} on X`}
+              >
+                <XMark />@{founder.twitter}
+                {founder.twitterFollowers != null && (
+                  <span className="text-dim tabular">
+                    {formatCount(founder.twitterFollowers)} followers
+                  </span>
+                )}
+              </a>
+            )}
+          </div>
         </div>
       </header>
 
@@ -92,5 +110,14 @@ export default async function FounderPage({ params }: Params) {
         </p>
       )}
     </div>
+  )
+}
+
+/** lucide dropped brand marks, so the X logo lives here. */
+function XMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-3" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+    </svg>
   )
 }

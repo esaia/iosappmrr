@@ -1,0 +1,1 @@
+ALTER TABLE "app_store_metadata" ADD COLUMN "listing_terms" jsonb;

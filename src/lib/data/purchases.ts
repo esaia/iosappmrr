@@ -377,6 +377,7 @@ export type Sponsor = {
   tagline: string | null
   iconUrl: string | null
   website: string | null
+  appStoreUrl: string | null
 }
 
 /**
@@ -399,6 +400,7 @@ export async function listActiveSponsors(limit: number): Promise<Sponsor[]> {
       tagline: apps.tagline,
       iconUrl: appStoreMetadata.iconUrl,
       website: apps.website,
+      appStoreUrl: apps.appStoreUrl,
     })
     .from(purchases)
     .innerJoin(apps, eq(apps.id, purchases.appId))

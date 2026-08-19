@@ -122,6 +122,33 @@ thing that publishes a listing.
 
 Multiple providers on one app are summed once per day, never double-counted.
 
+## Listing quality
+
+Every profile carries a 0–100 score for how well its App Store listing is built,
+beside the revenue it earns. It is computed in `src/lib/appstore/aso.ts` from the
+same daily lookup that refreshes the icon and rating, and stored on
+`app_store_metadata` — no App Store Connect key, so the identical score can be
+run for any app in the store.
+
+| Signal          | Weight | Measured against                                                     |
+| --------------- | -----: | -------------------------------------------------------------------- |
+| Ratings         |     25 | Average over a 3.5★ floor, plus volume on a log scale                |
+| Title           |     20 | Use of the 30-character budget, and keywords past the brand name     |
+| Description     |     15 | Length, the ~170 characters shown before "more", scannable structure |
+| Screenshots     |     15 | Count against the 5 that fill the gallery, out of Apple's cap of 10  |
+| Update cadence  |     15 | Days since the last release; full marks inside 30                    |
+| Icon & category |     10 | Icon present, primary genre set, second genre claimed                |
+
+> **It is listing quality, not rank.** The subtitle, the 100-character keyword
+> field, impressions, and install conversion are what actually decide search
+> placement, and Apple publishes none of them. The panel says so on the page;
+> calling this an "ASO rank" would be the same unverifiable claim about
+> marketing that a typed-in MRR figure is about revenue.
+
+The score appears once the metadata sync has run. `npm run aso` prints it for
+every live app, and `npm run aso -- --refresh` re-reads Apple first rather than
+waiting for the 04:30 cron.
+
 ## Payments
 
 Polar is the merchant of record for the two paid products:

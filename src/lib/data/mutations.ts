@@ -1,6 +1,7 @@
 import 'server-only'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '@/db'
+import { scoreListing } from '@/lib/appstore/aso'
 import {
   appStoreMetadata,
   apps,
@@ -32,6 +33,10 @@ export async function uniqueSlug(name: string) {
  * merged — a field Apple stops returning should disappear here too.
  */
 export async function saveAppStoreMetadata(appId: string, data: AppStoreApp) {
+  // Scored here rather than at render time: the description it reads is the one
+  // field the lookup returns that this table does not keep.
+  const aso = scoreListing(data)
+
   await db
     .insert(appStoreMetadata)
     .values({
@@ -54,6 +59,8 @@ export async function saveAppStoreMetadata(appId: string, data: AppStoreApp) {
       fileSizeBytes: data.fileSizeBytes,
       supportedDevices: data.supportedDevices,
       minimumOsVersion: data.minimumOsVersion,
+      asoScore: aso.total,
+      asoSignals: aso.signals,
       fetchedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -76,6 +83,8 @@ export async function saveAppStoreMetadata(appId: string, data: AppStoreApp) {
         fileSizeBytes: data.fileSizeBytes,
         supportedDevices: data.supportedDevices,
         minimumOsVersion: data.minimumOsVersion,
+        asoScore: aso.total,
+        asoSignals: aso.signals,
         fetchedAt: new Date(),
       },
     })

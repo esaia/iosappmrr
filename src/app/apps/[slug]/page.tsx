@@ -7,6 +7,7 @@ import { AppIcon } from '@/components/app-icon'
 import { GrowthPill } from '@/components/growth-pill'
 import { RevenueChart } from '@/components/revenue-chart'
 import { AppScreenshots } from '@/components/app-screenshots'
+import { AsoScore } from '@/components/aso-score'
 import { AddAppCta } from '@/components/add-app-cta'
 import { AppCard } from '@/components/app-card'
 import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
@@ -254,6 +255,9 @@ export default async function AppPage({ params }: Params) {
           </p>
         </section>
 
+        {/* Apple's own screenshots straight after the revenue they belong to. */}
+        <AppScreenshots urls={metadata?.screenshotUrls ?? []} appName={app.name} />
+
         <div className="mt-12 grid gap-10 lg:grid-cols-[1.6fr_1fr]">
           <div>
             {app.description && (
@@ -288,6 +292,19 @@ export default async function AppPage({ params }: Params) {
               <Row label="Size" value={fileSizeLabel(metadata?.fileSizeBytes)} />
               <Row label="Age rating" value={metadata?.contentRating ?? '—'} />
             </Panel>
+
+            {/*
+              Only once the metadata sync has scored the listing. An app added
+              minutes ago shows no panel rather than a zero it has not earned.
+            */}
+            {metadata?.asoScore != null && metadata.asoSignals && (
+              <AsoScore
+                total={metadata.asoScore}
+                signals={metadata.asoSignals}
+                fetchedAt={metadata.fetchedAt}
+              />
+            )}
+
           </aside>
         </div>
 
@@ -301,8 +318,6 @@ export default async function AppPage({ params }: Params) {
             model={verdict.model}
           />
         )}
-
-        <AppScreenshots urls={metadata?.screenshotUrls ?? []} appName={app.name} />
 
         {related.length > 0 && (
           <section className="mt-8">
