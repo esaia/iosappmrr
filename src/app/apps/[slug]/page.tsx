@@ -50,7 +50,7 @@ export default async function AppPage({ params }: Params) {
   const record = await getAppBySlug(slug)
   if (!record) notFound()
 
-  const { app, metadata, metrics, category, founder } = record
+  const { app, metadata, metrics, category, founder, tech } = record
 
   /*
    * One batch, not four awaits in a row. Only the lookup above has to happen
@@ -315,6 +315,28 @@ export default async function AppPage({ params }: Params) {
               <Row label="Size" value={fileSizeLabel(metadata?.fileSizeBytes)} />
               <Row label="Age rating" value={metadata?.contentRating ?? '—'} />
             </Panel>
+
+            {/*
+              The founder's own answer to "how was this built", which is the
+              question the rest of the page cannot answer. Hidden when they have
+              not said, rather than shown as an empty panel.
+            */}
+            {tech.length > 0 && (
+              <section className="border-border bg-surface rounded-card border p-5">
+                <h2 className="label">Built with</h2>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {tech.map((tag) => (
+                    <Link
+                      key={tag.slug}
+                      href={`/apps?tech=${tag.slug}`}
+                      className="border-border text-muted hover:border-border-strong hover:text-fg rounded-lg border px-2.5 py-1.5 text-[13px] transition-colors"
+                    >
+                      {tag.name}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/*
               Only once the metadata sync has scored the listing. An app added
