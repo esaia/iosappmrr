@@ -42,9 +42,15 @@ export function SiteFooter() {
       <div className="border-border mx-auto grid max-w-6xl gap-10 border-t px-4 py-12 sm:px-6 md:grid-cols-[2fr_1fr_1fr_1fr]">
         <div>
           <Logo />
+          {/*
+            Names the site rather than re-arguing the method. The header, the
+            hero and the whole verification section above have already made the
+            case for the numbers; by the time a reader is down here, a fourth
+            telling reads as a site that does not trust its own claim.
+          */}
           <p className="text-muted mt-3 max-w-xs text-xs leading-relaxed">
-            Revenue is read directly from each app&apos;s payment provider and refreshed daily.
-            Nothing here is self-reported.
+            An index of what iOS apps actually earn. Built because nobody could find a straight
+            answer to that question.
           </p>
         </div>
 
