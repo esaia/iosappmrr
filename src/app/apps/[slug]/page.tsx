@@ -17,6 +17,7 @@ import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
 import { ShareButton } from '@/components/share-button'
 import { ExpandableText } from '@/components/expandable-text'
 import { VibecodeVerdict } from '@/components/vibecode-verdict'
+import { TechIcon } from '@/components/tech-icon'
 import { getAppBySlug, getAppReviews, getRevenueHistory, listApps } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
 import { getVerdict } from '@/lib/data/vibecode'
@@ -371,8 +372,9 @@ export default async function AppPage({ params }: Params) {
                     <Link
                       key={tag.slug}
                       href={`/apps?tech=${tag.slug}`}
-                      className="border-border text-muted hover:border-border-strong hover:text-fg rounded-lg border px-2.5 py-1.5 text-[13px] transition-colors"
+                      className="border-border text-muted hover:border-border-strong hover:text-fg inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] transition-colors"
                     >
+                      <TechIcon slug={tag.slug} />
                       {tag.name}
                     </Link>
                   ))}

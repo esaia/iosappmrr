@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AppRow, AppRowHeader } from '@/components/app-row'
+import { TechIcon } from '@/components/tech-icon'
 import { countApps, listApps, listCategories, listTechTags, type AppSort } from '@/lib/data/apps'
 import { Container } from '@/components/ui/container'
 
@@ -182,6 +183,7 @@ export default async function AppsPage({ searchParams }: Props) {
               href={linkWith({ tech: tag.slug })}
               active={params.tech === tag.slug}
             >
+              <TechIcon slug={tag.slug} className="size-3" />
               {tag.name}
             </FilterChip>
           ))}
@@ -233,8 +235,8 @@ function FilterChip({
       href={href}
       className={
         active
-          ? 'bg-blue-dim text-blue rounded-md px-2 py-1 text-xs font-medium'
-          : 'text-muted hover:bg-surface-2 hover:text-fg rounded-md px-2 py-1 text-xs transition-colors'
+          ? 'bg-blue-dim text-blue inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium'
+          : 'text-muted hover:bg-surface-2 hover:text-fg inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors'
       }
     >
       {children}
