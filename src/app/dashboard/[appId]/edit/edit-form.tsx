@@ -9,6 +9,7 @@ import { advertising } from '@/lib/ads'
 import { formatMoney } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useCheckedSync } from '@/components/ui/checked-sync'
+import { TechIcon } from '@/components/tech-icon'
 import { VisibilitySwitch } from '@/components/visibility-switch'
 import {
   startDofollowCheckout,
@@ -471,8 +472,8 @@ function TechChip({
     <label
       className={
         checked
-          ? 'bg-blue-dim text-blue cursor-pointer rounded-lg px-2.5 py-1.5 text-[13px]'
-          : 'border-border text-muted hover:border-border-strong hover:text-fg cursor-pointer rounded-lg border px-2.5 py-1.5 text-[13px] transition-colors'
+          ? 'bg-blue-dim text-blue inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px]'
+          : 'border-border text-muted hover:border-border-strong hover:text-fg inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] transition-colors'
       }
     >
       <input
@@ -484,6 +485,7 @@ function TechChip({
         onChange={(event) => setChecked(event.target.checked)}
         className="sr-only"
       />
+      <TechIcon slug={slug} />
       {name}
     </label>
   )

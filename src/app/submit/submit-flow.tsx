@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Loader2, LogIn, Search } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { ProviderInstructions } from '@/components/provider-instructions'
+import { TechIcon } from '@/components/tech-icon'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { useCheckedSync } from '@/components/ui/checked-sync'
 import type { ProviderStep } from '@/lib/providers/types'
@@ -510,8 +511,8 @@ function TechCheckbox({ slug, name }: { slug: string; name: string }) {
     <label
       className={
         checked
-          ? 'bg-blue-dim text-blue cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium'
-          : 'border-border text-muted hover:border-border-strong hover:text-fg cursor-pointer rounded-md border px-2.5 py-1 text-xs'
+          ? 'bg-blue-dim text-blue inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium'
+          : 'border-border text-muted hover:border-border-strong hover:text-fg inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors'
       }
     >
       <input
@@ -523,6 +524,7 @@ function TechCheckbox({ slug, name }: { slug: string; name: string }) {
         onChange={(event) => setChecked(event.target.checked)}
         className="sr-only"
       />
+      <TechIcon slug={slug} className="size-3" />
       {name}
     </label>
   )
