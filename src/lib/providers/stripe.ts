@@ -130,11 +130,27 @@ export const stripeAdapter: ProviderAdapter<StripeCredentials> = {
     'read access to Subscriptions and nothing else. Revenue from Stripe is added to your ' +
     'in-app revenue, not counted twice.',
   schema: stripeCredentials,
+  /*
+   * Stripe knows nothing about App Store listings: a subscription there names a
+   * price and a customer, never an app. So the figure covers the whole Stripe
+   * account and cannot be tied to the app being verified — which is why one
+   * account may back only one listing, and why Stripe stays off the connect
+   * screen as a source on its own.
+   */
+  appScoped: false,
 
   async validate(credentials): Promise<ValidationResult> {
     const result = await collectMrr(credentials)
     return {
       accountLabel: `Stripe ${credentials.secretKey.slice(0, 7)}…`,
+      /*
+       * The key itself, since Stripe offers nothing steadier that a restricted
+       * subscriptions-read key is allowed to see — `/v1/account` needs a
+       * permission we deliberately do not ask for. Rotating the key therefore
+       * reads as a new account here; the cost of that is one stale row, against
+       * asking every founder for a broader key than the job needs.
+       */
+      accountKey: credentials.secretKey,
       metrics: toMetrics(result),
     }
   },

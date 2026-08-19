@@ -2,14 +2,26 @@ import 'server-only'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { apps, revenueConnections, revenueSnapshots } from '@/db/schema'
-import { encryptCredentials } from '@/lib/crypto/credentials'
+import { encryptCredentials, fingerprintAccount } from '@/lib/crypto/credentials'
 import { recomputeAppMetrics } from '@/lib/metrics'
-import { getAdapter, ProviderError, type NormalizedMetrics, type ProviderId } from '@/lib/providers'
+import {
+  getAdapter,
+  ProviderError,
+  type NormalizedMetrics,
+  type ProviderId,
+  type VerificationTarget,
+} from '@/lib/providers'
 
 /**
  * Validates a credential against the live provider, and only persists it if the
  * call succeeds — so a broken key is never stored, and the first snapshot lands
  * in the same transaction as the connection itself.
+ *
+ * Validation is against the listing, not just the provider: the adapter is told
+ * which app is being claimed and is expected to refuse a credential that reads
+ * someone else's revenue. Without that, "verified" would mean no more than
+ * "this founder can read *an* account", and anyone could list Facebook and
+ * publish their own MRR under its name.
  */
 export async function connectProvider(options: {
   appId: string
@@ -30,12 +42,58 @@ export async function connectProvider(options: {
     }
   }
 
+  const [app] = await db
+    .select({ appStoreId: apps.appStoreId, bundleId: apps.bundleId, name: apps.name })
+    .from(apps)
+    .where(eq(apps.id, options.appId))
+    .limit(1)
+
+  if (!app) return { ok: false as const, error: 'App not found.' }
+
+  const target: VerificationTarget = {
+    appStoreId: app.appStoreId,
+    bundleId: app.bundleId,
+    name: app.name,
+  }
+
   let result
   try {
-    result = await adapter.validate(parsed.data)
+    result = await adapter.validate(parsed.data, target)
   } catch (error) {
     if (error instanceof ProviderError) return { ok: false as const, error: error.message }
     throw error
+  }
+
+  /*
+   * One account, one listing — unless the provider reports per app, in which
+   * case the app is part of the fingerprint and a founder's whole portfolio can
+   * share one Apple account.
+   *
+   * Checked here for the sentence a founder can act on, and again by a unique
+   * index for the two submissions that race each other.
+   */
+  const fingerprint = fingerprintAccount({
+    provider: options.provider,
+    accountKey: result.accountKey,
+    appStoreId: adapter.appScoped ? target.appStoreId : undefined,
+  })
+
+  const [taken] = await db
+    .select({ appId: revenueConnections.appId, slug: apps.slug })
+    .from(revenueConnections)
+    .innerJoin(apps, eq(apps.id, revenueConnections.appId))
+    .where(eq(revenueConnections.credentialFingerprint, fingerprint))
+    .limit(1)
+
+  if (taken && taken.appId !== options.appId) {
+    return {
+      ok: false as const,
+      error:
+        `This ${adapter.name} account is already the source for another listing ` +
+        `(/apps/${taken.slug}). Its figures cover the whole account, so it can only stand ` +
+        'behind one app. Disconnect it there first, or connect the account that belongs to ' +
+        'this app.',
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -47,6 +105,7 @@ export async function connectProvider(options: {
         status: 'active',
         encryptedCredentials: encryptCredentials(parsed.data),
         accountLabel: result.accountLabel,
+        credentialFingerprint: fingerprint,
         lastSyncedAt: new Date(),
         lastError: null,
         consecutiveFailures: 0,
@@ -57,6 +116,7 @@ export async function connectProvider(options: {
           status: 'active',
           encryptedCredentials: encryptCredentials(parsed.data),
           accountLabel: result.accountLabel,
+          credentialFingerprint: fingerprint,
           lastSyncedAt: new Date(),
           lastError: null,
           consecutiveFailures: 0,

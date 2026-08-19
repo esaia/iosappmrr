@@ -288,6 +288,17 @@ export const revenueConnections = pgTable(
     encryptedCredentials: bytea('encrypted_credentials').notNull(),
     /** Non-secret hint shown in the dashboard, e.g. "proj1ab…" or "Vendor 8123456". */
     accountLabel: text('account_label'),
+    /**
+     * Which revenue account is behind this connection, as an opaque hash — see
+     * `fingerprintAccount`. Not a secret and not reversible: it exists so the
+     * unique index below can stop one account from backing several listings,
+     * which is how one RevenueCat project would otherwise publish its MRR under
+     * two different apps' names.
+     *
+     * Null on connections made before the check existed, and Postgres treats
+     * nulls as distinct, so those rows neither collide nor need backfilling.
+     */
+    credentialFingerprint: text('credential_fingerprint'),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
     lastError: text('last_error'),
     consecutiveFailures: integer('consecutive_failures').notNull().default(0),
@@ -296,6 +307,7 @@ export const revenueConnections = pgTable(
   },
   (t) => [
     uniqueIndex('revenue_connections_app_provider_key').on(t.appId, t.provider),
+    uniqueIndex('revenue_connections_fingerprint_key').on(t.credentialFingerprint),
     index('revenue_connections_sync_idx').on(t.status, t.lastSyncedAt),
   ],
 )

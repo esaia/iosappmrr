@@ -1,0 +1,2 @@
+ALTER TABLE "revenue_connections" ADD COLUMN "credential_fingerprint" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "revenue_connections_fingerprint_key" ON "revenue_connections" USING btree ("credential_fingerprint");

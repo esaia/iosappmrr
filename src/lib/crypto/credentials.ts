@@ -1,5 +1,5 @@
 import 'server-only'
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12
@@ -61,4 +61,27 @@ export function maskSecret(secret: string) {
   const trimmed = secret.trim()
   if (trimmed.length <= 8) return '••••'
   return `${trimmed.slice(0, 4)}••••${trimmed.slice(-4)}`
+}
+
+/**
+ * A stable, opaque name for the revenue account behind a connection.
+ *
+ * Keyed with `CREDENTIALS_ENCRYPTION_KEY` rather than a plain hash: the inputs
+ * are low-entropy — a vendor number is eight digits — so an unkeyed digest of
+ * one could be recovered by trying every number. An HMAC of the same value
+ * cannot be, and the property we need is only that equal accounts produce equal
+ * strings.
+ *
+ * `appStoreId` is folded in for providers that report per app, so one Apple
+ * vendor account can back one listing per app it ships while a project-wide
+ * source like RevenueCat is pinned to a single listing.
+ */
+export function fingerprintAccount(input: {
+  provider: string
+  accountKey: string
+  appStoreId?: string
+}) {
+  return createHmac('sha256', key())
+    .update(`${input.provider}:${input.accountKey.trim()}:${input.appStoreId ?? ''}`)
+    .digest('hex')
 }

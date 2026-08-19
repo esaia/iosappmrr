@@ -51,6 +51,9 @@ export async function syncAllRevenue(options: { limit?: number } = {}): Promise<
       id: revenueConnections.id,
       appId: revenueConnections.appId,
       appSlug: apps.slug,
+      appStoreId: apps.appStoreId,
+      appName: apps.name,
+      bundleId: apps.bundleId,
       provider: revenueConnections.provider,
       credentials: revenueConnections.encryptedCredentials,
       consecutiveFailures: revenueConnections.consecutiveFailures,
@@ -85,7 +88,17 @@ export async function syncAllRevenue(options: { limit?: number } = {}): Promise<
             return
           }
 
-          const metrics = await adapter.fetchMetrics(credentials)
+          /*
+           * The same target the connection was validated against. App Store
+           * Connect needs it on every read, not just the first: its report
+           * covers the whole vendor account, and without the app to filter on
+           * the daily snapshot would drift back to a portfolio total.
+           */
+          const metrics = await adapter.fetchMetrics(credentials, {
+            appStoreId: connection.appStoreId,
+            bundleId: connection.bundleId,
+            name: connection.appName,
+          })
 
           await writeSnapshot(db, connection.appId, connection.provider as ProviderId, metrics)
 

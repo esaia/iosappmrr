@@ -54,7 +54,21 @@ async function mintToken(credentials: AppStoreConnectCredentials) {
  */
 const MAX_LOOKBACK_DAYS = 5
 
-async function fetchLatestSubscriptionReport(credentials: AppStoreConnectCredentials) {
+/**
+ * Walks back to the newest report this account published, parsed for one app.
+ *
+ * `requireMatch` is the ownership test. With it on, a report that exists but
+ * names other apps is treated like no report at all and the walk continues —
+ * so the only way to finish is with a day on which Apple itself attributed
+ * subscriptions for this App Store ID to this vendor account. That is a fact
+ * about Apple's records rather than a claim by whoever filled in the form,
+ * which is what makes App Store Connect the strongest source here.
+ */
+async function fetchLatestSubscriptionReport(
+  credentials: AppStoreConnectCredentials,
+  appStoreId: string,
+  requireMatch: boolean,
+) {
   const token = await mintToken(credentials)
 
   for (let daysAgo = 1; daysAgo <= MAX_LOOKBACK_DAYS; daysAgo++) {
@@ -118,7 +132,21 @@ async function fetchLatestSubscriptionReport(credentials: AppStoreConnectCredent
       })
     }
 
-    return { tsv, reportDate }
+    const parsed = parseSubscriptionReport(tsv, appStoreId)
+
+    // A report full of other apps is not this app's report.
+    if (requireMatch && parsed.rows === 0) continue
+
+    return { parsed, reportDate }
+  }
+
+  if (requireMatch) {
+    throw new ProviderError(
+      `This App Store Connect account published sales in the last ${MAX_LOOKBACK_DAYS} days, ` +
+        'but none of them are for this app. Either the account does not ship it, or it has no ' +
+        'subscribers yet — in which case connect RevenueCat instead, or try again once you ' +
+        'have sales.',
+    )
   }
 
   throw new ProviderError(
@@ -132,16 +160,27 @@ async function fetchLatestSubscriptionReport(credentials: AppStoreConnectCredent
  * Apple's subscription report is a tab-separated file with a header row. Each
  * row is one subscription offer in one territory, with an active count and the
  * proceeds Apple pays out. We sum proceeds normalised to a monthly value.
+ *
+ * Rows are kept only for `appStoreId`. A vendor number covers every app in the
+ * Apple account, so summing the file wholesale would credit one listing with a
+ * whole portfolio's revenue — an honest founder with five apps would see all
+ * five totals on whichever one they listed, and a dishonest one could point a
+ * real account at someone else's app. `rows` reports how many lines matched,
+ * which is what makes the difference between "no subscribers" and "not this
+ * account's app" visible to the caller.
  */
-export function parseSubscriptionReport(tsv: string): {
+export function parseSubscriptionReport(
+  tsv: string,
+  appStoreId: string,
+): {
   mrrCents: number
   activeSubscriptions: number
   currency: string
+  rows: number
 } {
+  const empty = { mrrCents: 0, activeSubscriptions: 0, currency: 'USD', rows: 0 }
   const lines = tsv.split(/\r?\n/).filter((line) => line.trim().length > 0)
-  if (lines.length < 2) {
-    return { mrrCents: 0, activeSubscriptions: 0, currency: 'USD' }
-  }
+  if (lines.length < 2) return empty
 
   const header = lines[0].split('\t').map((h) => h.trim())
   const columnIndex = (...candidates: string[]) => {
@@ -150,6 +189,19 @@ export function parseSubscriptionReport(tsv: string): {
       if (index !== -1) return index
     }
     return -1
+  }
+
+  /*
+   * Fail closed. A report we cannot attribute to one app is a report we cannot
+   * publish a number from, and quietly falling back to the whole account is the
+   * exact behaviour this filter exists to remove.
+   */
+  const appIdx = columnIndex('App Apple ID', 'App Apple Identifier', 'Apple Identifier')
+  if (appIdx === -1) {
+    throw new ProviderError(
+      'This sales report has no App Apple ID column, so we cannot tell which app its ' +
+        'figures belong to.',
+    )
   }
 
   const durationIdx = columnIndex('Standard Subscription Duration', 'Subscription Duration')
@@ -163,9 +215,13 @@ export function parseSubscriptionReport(tsv: string): {
   let mrrCents = 0
   let activeSubscriptions = 0
   let currency = 'USD'
+  let rows = 0
 
   for (const line of lines.slice(1)) {
     const cells = line.split('\t')
+
+    if (cells[appIdx]?.trim() !== appStoreId) continue
+    rows++
 
     const active = toNumber(cells[activeIdx])
     activeSubscriptions += active
@@ -183,7 +239,7 @@ export function parseSubscriptionReport(tsv: string): {
     if (trialIdx !== -1) activeSubscriptions += toNumber(cells[trialIdx])
   }
 
-  return { mrrCents, activeSubscriptions, currency }
+  return { mrrCents, activeSubscriptions, currency, rows }
 }
 
 /** Normalises any subscription term to its share of one month. */
@@ -213,21 +269,52 @@ export const appStoreConnectAdapter: ProviderAdapter<AppStoreConnectCredentials>
     'download it once. Your vendor number is on the Payments and Financial Reports page. ' +
     'Apple publishes sales data a day behind, so figures from this source lag by one day.',
   schema: appStoreConnectCredentials,
+  /*
+   * Apple names the app on every row, so one vendor account can legitimately
+   * back a listing per app it ships — which is the normal case for a founder
+   * with a portfolio.
+   */
+  appScoped: true,
 
-  async validate(credentials): Promise<ValidationResult> {
-    const metrics = await this.fetchMetrics(credentials)
-    return { accountLabel: `Vendor ${credentials.vendorNumber}`, metrics }
-  },
-
-  async fetchMetrics(credentials): Promise<NormalizedMetrics> {
-    const { tsv, reportDate } = await fetchLatestSubscriptionReport(credentials)
-    const parsed = parseSubscriptionReport(tsv)
+  async validate(credentials, target): Promise<ValidationResult> {
+    const { parsed, reportDate } = await fetchLatestSubscriptionReport(
+      credentials,
+      target.appStoreId,
+      true,
+    )
 
     return {
-      mrrCents: parsed.mrrCents,
-      currency: parsed.currency,
-      activeSubscriptions: parsed.activeSubscriptions,
-      capturedOn: new Date(`${reportDate}T00:00:00Z`),
+      accountLabel: `Vendor ${credentials.vendorNumber}`,
+      accountKey: credentials.vendorNumber,
+      metrics: toMetrics(parsed, reportDate),
     }
   },
+
+  async fetchMetrics(credentials, target): Promise<NormalizedMetrics> {
+    /*
+     * No match required on the daily re-read. Ownership was established when
+     * the connection was made, and an app whose last subscriber lapsed reports
+     * zero — failing here instead would spend the failure budget and disable a
+     * connection for the offence of having no customers this week.
+     */
+    const { parsed, reportDate } = await fetchLatestSubscriptionReport(
+      credentials,
+      target.appStoreId,
+      false,
+    )
+
+    return toMetrics(parsed, reportDate)
+  },
+}
+
+function toMetrics(
+  parsed: ReturnType<typeof parseSubscriptionReport>,
+  reportDate: string,
+): NormalizedMetrics {
+  return {
+    mrrCents: parsed.mrrCents,
+    currency: parsed.currency,
+    activeSubscriptions: parsed.activeSubscriptions,
+    capturedOn: new Date(`${reportDate}T00:00:00Z`),
+  }
 }
