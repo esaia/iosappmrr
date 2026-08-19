@@ -7,6 +7,7 @@ import { CategoryPills } from '@/components/category-pills'
 import { listApps, listCategories } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
 import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -42,10 +43,10 @@ export default async function HomePage() {
       <AdRail side="left" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
       <AdRail side="right" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
 
-      <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+      <Container className="pb-4">
         {/* Hero */}
         <section className="pt-12 text-center sm:pt-16">
-          <h1 className="display mx-auto max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)]">
+          <h1 className="display mx-auto max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)] text-balance">
             The database of verified iOS app revenue
           </h1>
           <p className="text-muted mx-auto mt-5 max-w-xl text-[13px] leading-relaxed">
@@ -53,7 +54,7 @@ export default async function HomePage() {
             refreshed daily.{' '}
             <Link
               href="/verification"
-              className="text-fg hover:text-blue underline underline-offset-4"
+              className="text-blue hover:text-fg decoration-blue/30 underline underline-offset-4 transition-colors"
             >
               See how we verify
             </Link>
@@ -81,11 +82,13 @@ export default async function HomePage() {
         />
 
         {/* Leaderboard panel */}
-        <section className="border-border bg-surface mt-10 overflow-hidden rounded-[10px] border">
-          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+        <section className="glass border-border rounded-card mt-10 overflow-hidden border">
+          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3.5">
             <h2 className="text-fg text-[15px] font-bold">Top 100 by MRR</h2>
-            <div className="text-muted flex items-center gap-2 text-[12px]">
-              <span className="border-border bg-surface-2 rounded-md border px-2 py-1">MRR</span>
+            <div className="text-muted flex items-center gap-2.5 text-[12px]">
+              <span className="rounded-md bg-white/8 px-2 py-1 ring-1 ring-white/10 ring-inset">
+                MRR
+              </span>
               <Link href="/leaderboard" className="hover:text-fg">
                 Open full leaderboard →
               </Link>
@@ -101,7 +104,7 @@ export default async function HomePage() {
         <CategoryPills categories={categories.filter((category) => category.appCount > 0)} />
 
         {/* How verification works */}
-        <section className="border-border bg-surface mt-10 rounded-[10px] border p-5 sm:p-6">
+        <section className="glass border-border rounded-card mt-10 border p-5 sm:p-7">
           <h2 className="text-fg text-[15px] font-bold">What &ldquo;verified&rdquo; means here</h2>
           <div className="mt-4 grid gap-5 sm:grid-cols-3">
             <Explainer
@@ -122,12 +125,12 @@ export default async function HomePage() {
           </div>
           <Link
             href="/verification"
-            className="text-fg hover:text-blue mt-5 inline-block text-[12px] underline underline-offset-4"
+            className="text-blue hover:text-fg decoration-blue/30 mt-5 inline-block text-[12px] underline underline-offset-4 transition-colors"
           >
             Read the full method →
           </Link>
         </section>
-      </div>
+      </Container>
     </>
   )
 }

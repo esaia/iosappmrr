@@ -21,6 +21,7 @@ import { getVerdict } from '@/lib/data/vibecode'
 import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
 import { formatCount, formatMoney, formatMrr, timeAgo } from '@/lib/utils'
 import { site } from '@/lib/site'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -90,7 +91,7 @@ export default async function AppPage({ params }: Params) {
       <AdRail side="left" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
       <AdRail side="right" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
 
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <Container className="py-10 sm:py-14">
         {/* Search engines get the same facts the page shows. */}
         <script
           type="application/ld+json"
@@ -247,7 +248,7 @@ export default async function AppPage({ params }: Params) {
         </dl>
 
         {/* Revenue — the reason anyone is on this page. */}
-        <section className="border-border bg-surface mt-3 rounded-[10px] border p-5 sm:p-6">
+        <section className="border-border bg-surface rounded-card mt-3 border p-5 sm:p-6">
           <div>
             <RevenueChart data={history} />
           </div>
@@ -362,7 +363,7 @@ export default async function AppPage({ params }: Params) {
         )}
 
         <AddAppCta />
-      </div>
+      </Container>
     </>
   )
 }
@@ -403,7 +404,7 @@ function StatCard({
   children?: React.ReactNode
 }) {
   return (
-    <div className="border-border bg-surface rounded-[10px] border p-4 sm:p-5">
+    <div className="border-border bg-surface rounded-card border p-4 sm:p-5">
       <dt className="label">{label}</dt>
       <dd>
         <p className="tabular text-fg mt-2 text-2xl font-semibold tracking-tight">
@@ -418,7 +419,7 @@ function StatCard({
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-border bg-surface rounded-[10px] border p-5">
+    <section className="border-border bg-surface rounded-card border p-5">
       <h2 className="label">{title}</h2>
       <dl className="mt-3 space-y-2">{children}</dl>
     </section>

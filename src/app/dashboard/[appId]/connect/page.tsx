@@ -6,6 +6,7 @@ import { getOwnedApp, listConnections } from '@/lib/data/mutations'
 import { CONNECTABLE_PROVIDERS } from '@/lib/providers'
 import { PROVIDER_FIELDS } from '@/lib/provider-fields'
 import { ConnectPanel } from './connect-panel'
+import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
   title: 'Connect revenue',
@@ -21,36 +22,38 @@ export default async function ConnectPage({ params }: { params: Promise<{ appId:
   const connections = await listConnections(appId)
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-      <nav className="text-muted mb-6 text-xs">
-        <Link href="/dashboard" className="hover:text-fg">
-          Dashboard
-        </Link>
-        {' / '} {app.name}
-      </nav>
+    <Container className="py-10 sm:py-14">
+      <Measure className="max-w-2xl">
+        <nav className="text-muted mb-6 text-xs">
+          <Link href="/dashboard" className="hover:text-fg">
+            Dashboard
+          </Link>
+          {' / '} {app.name}
+        </nav>
 
-      <h1 className="display text-4xl font-semibold">Verify {app.name}</h1>
-      <p className="text-muted mt-3 leading-relaxed">
-        Connect the provider that bills your subscribers. We make one read-only call to confirm the
-        key works, then re-read it daily. Your app goes live the moment this succeeds.
-      </p>
+        <h1 className="display text-4xl font-semibold">Verify {app.name}</h1>
+        <p className="text-muted mt-3 leading-relaxed">
+          Connect the provider that bills your subscribers. We make one read-only call to confirm
+          the key works, then re-read it daily. Your app goes live the moment this succeeds.
+        </p>
 
-      <ConnectPanel
-        appId={appId}
-        appSlug={app.slug}
-        isLive={app.status === 'live'}
-        providers={CONNECTABLE_PROVIDERS.map((provider) => ({
-          id: provider.id,
-          name: provider.name,
-          instructions: provider.instructions,
-          docsUrl: provider.docsUrl,
-          fields: PROVIDER_FIELDS[provider.id],
-        }))}
-        connections={connections.map((connection) => ({
-          ...connection,
-          lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
-        }))}
-      />
-    </div>
+        <ConnectPanel
+          appId={appId}
+          appSlug={app.slug}
+          isLive={app.status === 'live'}
+          providers={CONNECTABLE_PROVIDERS.map((provider) => ({
+            id: provider.id,
+            name: provider.name,
+            instructions: provider.instructions,
+            docsUrl: provider.docsUrl,
+            fields: PROVIDER_FIELDS[provider.id],
+          }))}
+          connections={connections.map((connection) => ({
+            ...connection,
+            lastSyncedAt: connection.lastSyncedAt?.toISOString() ?? null,
+          }))}
+        />
+      </Measure>
+    </Container>
   )
 }

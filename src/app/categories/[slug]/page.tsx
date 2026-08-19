@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { AppRow, AppRowHeader } from '@/components/app-row'
 import { listApps, listCategories } from '@/lib/data/apps'
 import { formatMrr } from '@/lib/utils'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -33,7 +34,7 @@ export default async function CategoryPage({ params }: Params) {
   const apps = await listApps({ categorySlug: slug, sort: 'mrr', limit: 100 })
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <nav className="text-muted mb-6 text-xs">
         <Link href="/categories" className="hover:text-fg">
           Categories
@@ -47,7 +48,7 @@ export default async function CategoryPage({ params }: Params) {
       </p>
 
       {apps.length > 0 && (
-        <div className="border-border bg-surface mt-8 overflow-hidden rounded-[10px] border">
+        <div className="border-border bg-surface rounded-card mt-8 overflow-hidden border">
           <AppRowHeader />
           {apps.map((app, index) => (
             <AppRow key={app.id} app={app} rank={index + 1} />
@@ -56,10 +57,10 @@ export default async function CategoryPage({ params }: Params) {
       )}
 
       {apps.length === 0 && (
-        <p className="border-border-strong text-muted mt-10 rounded-[10px] border border-dashed p-10 text-center">
+        <p className="border-border-strong text-muted rounded-card mt-10 border border-dashed p-10 text-center">
           No verified {category.name} apps yet.
         </p>
       )}
-    </div>
+    </Container>
   )
 }

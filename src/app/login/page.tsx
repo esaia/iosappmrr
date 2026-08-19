@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { LoginForm } from './login-form'
+import { Container } from '@/components/ui/container'
 
 export const metadata: Metadata = {
   title: 'Sign in',
@@ -15,12 +16,14 @@ export default async function LoginPage({
   const { next } = await searchParams
 
   return (
-    <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4 py-14">
-      <h1 className="display text-3xl font-semibold">Sign in</h1>
-      <p className="text-muted mt-2">
-        Founders sign in to submit an app and connect its revenue. Browsing needs no account.
-      </p>
-      <LoginForm next={next ?? '/dashboard'} />
-    </div>
+    <Container className="py-14">
+      <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center">
+        <h1 className="display text-3xl font-semibold">Sign in</h1>
+        <p className="text-muted mt-2">
+          Founders sign in to submit an app and connect its revenue. Browsing needs no account.
+        </p>
+        <LoginForm next={next ?? '/dashboard'} />
+      </div>
+    </Container>
   )
 }

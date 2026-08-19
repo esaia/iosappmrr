@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AppRow, AppRowHeader } from '@/components/app-row'
 import { countApps, listApps, listCategories, listTechTags, type AppSort } from '@/lib/data/apps'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -62,7 +63,7 @@ export default async function AppsPage({
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <header>
         <h1 className="display text-4xl font-semibold sm:text-5xl">Apps</h1>
         <p className="text-muted mt-3">
@@ -82,7 +83,7 @@ export default async function AppsPage({
           type="search"
           defaultValue={params.q ?? ''}
           placeholder="Search by name or tagline"
-          className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
+          className="border-border bg-surface text-fg placeholder:text-muted focus:border-accent/60 focus:ring-accent/25 rounded-card w-full border px-4 py-2.5 text-sm focus:ring-4 focus:outline-none"
         />
       </form>
 
@@ -139,7 +140,7 @@ export default async function AppsPage({
       </div>
 
       {apps.length > 0 && (
-        <div className="border-border bg-surface mt-6 overflow-hidden rounded-[10px] border">
+        <div className="border-border bg-surface rounded-card mt-6 overflow-hidden border">
           <AppRowHeader withRank={false} />
           {apps.map((app) => (
             <AppRow key={app.id} app={app} />
@@ -148,7 +149,7 @@ export default async function AppsPage({
       )}
 
       {apps.length === 0 && (
-        <p className="border-border-strong text-muted mt-10 rounded-[10px] border border-dashed p-10 text-center">
+        <p className="border-border-strong text-muted rounded-card mt-10 border border-dashed p-10 text-center">
           Nothing matches those filters yet.
         </p>
       )}
@@ -166,7 +167,7 @@ export default async function AppsPage({
           </PageLink>
         </nav>
       )}
-    </div>
+    </Container>
   )
 }
 

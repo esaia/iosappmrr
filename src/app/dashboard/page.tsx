@@ -11,6 +11,7 @@ import { ButtonLink } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { requireUser } from '@/lib/auth'
 import { formatMoney, timeAgo } from '@/lib/utils'
+import { Container } from '@/components/ui/container'
 
 export const metadata: Metadata = { title: 'Dashboard', robots: { index: false } }
 
@@ -46,7 +47,7 @@ export default async function DashboardPage() {
 
   const failing = connections.filter((c) => c.status === 'error')
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <AccountTabs />
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
@@ -66,7 +67,7 @@ export default async function DashboardPage() {
       </div>
 
       {failing.length > 0 && (
-        <div className="border-red/40 bg-red-dim mt-6 rounded-[10px] border p-4">
+        <div className="border-red/40 bg-red-dim rounded-card mt-6 border p-4">
           <div className="text-red flex items-center gap-2">
             <AlertTriangle className="size-4" />
             <h2 className="text-sm font-medium">
@@ -86,7 +87,7 @@ export default async function DashboardPage() {
           return (
             <li
               key={row.id}
-              className="border-border bg-surface flex flex-wrap items-center gap-4 rounded-[10px] border p-4"
+              className="border-border bg-surface rounded-card flex flex-wrap items-center gap-4 border p-4"
             >
               <AppIcon src={row.iconUrl} name={row.name} size={44} />
 
@@ -141,7 +142,7 @@ export default async function DashboardPage() {
       </ul>
 
       {rows.length === 0 && (
-        <div className="border-border-strong mt-10 rounded-[10px] border border-dashed p-10 text-center">
+        <div className="border-border-strong rounded-card mt-10 border border-dashed p-10 text-center">
           <h2 className="text-fg font-medium">No apps yet</h2>
           <p className="text-muted mx-auto mt-2 max-w-sm text-sm">
             Paste your App Store link, connect a read-only key, and your verified revenue goes on
@@ -152,7 +153,7 @@ export default async function DashboardPage() {
           </ButtonLink>
         </div>
       )}
-    </div>
+    </Container>
   )
 }
 

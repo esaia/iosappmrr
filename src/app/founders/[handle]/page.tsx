@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react'
 import { AppRow, AppRowHeader } from '@/components/app-row'
 import { getFounderByHandle } from '@/lib/data/apps'
 import { formatCount, formatMoney, highResAvatar } from '@/lib/utils'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -29,7 +30,7 @@ export default async function FounderPage({ params }: Params) {
   const totalMrr = apps.reduce((sum, app) => sum + app.mrrCents, 0)
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <header className="flex items-start gap-5">
         {founder.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -96,7 +97,7 @@ export default async function FounderPage({ params }: Params) {
       </dl>
 
       {apps.length > 0 && (
-        <div className="border-border bg-surface mt-6 overflow-hidden rounded-[10px] border">
+        <div className="border-border bg-surface rounded-card mt-6 overflow-hidden border">
           <AppRowHeader withRank={false} />
           {apps.map((app) => (
             <AppRow key={app.id} app={app} />
@@ -105,11 +106,11 @@ export default async function FounderPage({ params }: Params) {
       )}
 
       {apps.length === 0 && (
-        <p className="border-border-strong text-muted mt-10 rounded-[10px] border border-dashed p-10 text-center">
+        <p className="border-border-strong text-muted rounded-card mt-10 border border-dashed p-10 text-center">
           No live apps yet.
         </p>
       )}
-    </div>
+    </Container>
   )
 }
 

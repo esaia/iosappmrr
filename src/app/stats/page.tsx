@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getEcosystemStats, listCategories, listTechTags } from '@/lib/data/apps'
 import { formatMoney, formatMrr } from '@/lib/utils'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -25,7 +26,7 @@ export default async function StatsPage() {
   const peak = Number(ranked[0]?.totalMrrCents ?? 1)
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <h1 className="display text-4xl font-semibold sm:text-5xl">Stats</h1>
       <p className="text-muted mt-3 max-w-xl">
         Everything below counts verified revenue only — apps with a live provider connection. It is
@@ -101,7 +102,7 @@ export default async function StatsPage() {
       <p className="text-muted mt-12 text-xs">
         Median app earns {formatMrr(stats.medianMrrCents)}/mo. Figures refresh daily.
       </p>
-    </div>
+    </Container>
   )
 }
 

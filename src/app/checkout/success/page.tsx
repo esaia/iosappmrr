@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { Container } from '@/components/ui/container'
 
 export const metadata: Metadata = {
   title: 'Payment received',
@@ -20,29 +21,31 @@ export const metadata: Metadata = {
  */
 export default function CheckoutSuccessPage() {
   return (
-    <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-20 text-center sm:px-6">
-      <SuccessMark />
+    <Container className="py-20">
+      <div className="mx-auto flex max-w-lg flex-col items-center text-center">
+        <SuccessMark />
 
-      <h1 className="display rise mt-8 text-3xl font-semibold" style={{ animationDelay: '0.5s' }}>
-        Payment received
-      </h1>
+        <h1 className="display rise mt-8 text-3xl font-semibold" style={{ animationDelay: '0.5s' }}>
+          Payment received
+        </h1>
 
-      <p
-        className="text-muted rise mt-4 text-[13px] leading-relaxed"
-        style={{ animationDelay: '0.62s' }}
-      >
-        Thank you. Your purchase is being applied now — it usually takes a few seconds. Reload your
-        dashboard if you do not see it straight away.
-      </p>
+        <p
+          className="text-muted rise mt-4 text-[13px] leading-relaxed"
+          style={{ animationDelay: '0.62s' }}
+        >
+          Thank you. Your purchase is being applied now — it usually takes a few seconds. Reload
+          your dashboard if you do not see it straight away.
+        </p>
 
-      <Link
-        href="/dashboard"
-        className="bg-fg text-bg rise mt-7 inline-flex items-center justify-center rounded-[10px] px-4 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-90"
-        style={{ animationDelay: '0.74s' }}
-      >
-        Back to dashboard
-      </Link>
-    </div>
+        <Link
+          href="/dashboard"
+          className="bg-fg text-bg rise rounded-card mt-7 inline-flex items-center justify-center px-4 py-2.5 text-[13px] font-medium transition-opacity hover:opacity-90"
+          style={{ animationDelay: '0.74s' }}
+        >
+          Back to dashboard
+        </Link>
+      </div>
+    </Container>
   )
 }
 

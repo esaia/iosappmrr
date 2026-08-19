@@ -4,6 +4,7 @@ import { AppRow, AppRowHeader } from '@/components/app-row'
 import { getEcosystemStats, listApps, type AppSort } from '@/lib/data/apps'
 import { formatMoney, formatMrr } from '@/lib/utils'
 import { site } from '@/lib/site'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -29,7 +30,7 @@ export default async function LeaderboardPage({
   const active = SORTS.find((s) => s.value === sort)!
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <header>
         <p className="label">Updated daily</p>
         <h1 className="display mt-2 text-4xl font-semibold sm:text-5xl">Top 100</h1>
@@ -58,7 +59,7 @@ export default async function LeaderboardPage({
       </nav>
 
       {apps.length > 0 && (
-        <div className="border-border bg-surface mt-6 overflow-hidden rounded-[10px] border">
+        <div className="border-border bg-surface rounded-card mt-6 overflow-hidden border">
           <AppRowHeader />
           {apps.map((app, index) => (
             <AppRow key={app.id} app={app} rank={index + 1} />
@@ -67,7 +68,7 @@ export default async function LeaderboardPage({
       )}
 
       {apps.length === 0 && (
-        <p className="border-border-strong text-muted mt-10 rounded-[10px] border border-dashed p-10 text-center">
+        <p className="border-border-strong text-muted rounded-card mt-10 border border-dashed p-10 text-center">
           No verified apps yet.{' '}
           <Link href="/submit" className="text-blue underline-offset-4 hover:underline">
             Be the first
@@ -79,6 +80,6 @@ export default async function LeaderboardPage({
       <p className="text-muted mt-8 text-xs">
         Median MRR across the index: {formatMrr(stats.medianMrrCents)}/mo · {site.name}
       </p>
-    </div>
+    </Container>
   )
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { listCategories } from '@/lib/data/apps'
 import { formatMrr } from '@/lib/utils'
+import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
@@ -14,7 +15,7 @@ export default async function CategoriesPage() {
   const categories = await listCategories()
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+    <Container className="py-10 sm:py-14">
       <h1 className="display text-4xl font-semibold sm:text-5xl">Categories</h1>
       <p className="text-muted mt-3 max-w-lg">
         Where the money actually is on the App Store, by category. Totals count verified revenue
@@ -26,7 +27,7 @@ export default async function CategoriesPage() {
           <Link
             key={category.slug}
             href={`/categories/${category.slug}`}
-            className="border-border bg-surface hover:border-border-strong rounded-[10px] border p-5 transition-colors"
+            className="border-border bg-surface hover:border-border-strong rounded-card border p-5 transition-colors"
           >
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-fg font-medium">{category.name}</h2>
@@ -42,6 +43,6 @@ export default async function CategoriesPage() {
           </Link>
         ))}
       </div>
-    </div>
+    </Container>
   )
 }

@@ -11,6 +11,7 @@ import { isPolarConfigured } from '@/lib/polar'
 import { purchases } from '@/db/schema'
 import { and } from 'drizzle-orm'
 import { EditForm } from './edit-form'
+import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
   title: 'Edit app',
@@ -63,43 +64,45 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
   const dofollowPurchase = livePurchases.find((row) => row.kind === 'dofollow') ?? null
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-      <nav className="text-muted mb-6 text-xs">
-        <Link href="/dashboard" className="hover:text-fg">
-          Dashboard
-        </Link>
-        {' / '} {app.name}
-      </nav>
+    <Container className="py-10 sm:py-14">
+      <Measure className="max-w-2xl">
+        <nav className="text-muted mb-6 text-xs">
+          <Link href="/dashboard" className="hover:text-fg">
+            Dashboard
+          </Link>
+          {' / '} {app.name}
+        </nav>
 
-      <h1 className="display mt-2 text-4xl font-semibold">Edit {app.name}</h1>
-      <p className="text-muted mt-3 leading-relaxed">
-        Everything here is yours to change. Revenue is not — it is read from your provider and
-        cannot be edited by hand, which is the point of the site.
-      </p>
+        <h1 className="display mt-2 text-4xl font-semibold">Edit {app.name}</h1>
+        <p className="text-muted mt-3 leading-relaxed">
+          Everything here is yours to change. Revenue is not — it is read from your provider and
+          cannot be edited by hand, which is the point of the site.
+        </p>
 
-      <EditForm
-        appId={app.id}
-        appName={app.name}
-        categories={categoryList}
-        tech={techList.map((t) => ({ slug: t.slug, name: t.name }))}
-        offers={{
-          dofollowAvailable: isPolarConfigured('dofollow'),
-          sponsorAvailable: isPolarConfigured('sponsor'),
-          sponsorActive: Boolean(sponsorPurchase),
-          sponsorPurchase,
-          dofollowPurchase,
-          spotsLeft: inventory.free,
-          totalSpots: inventory.slots,
-        }}
-        initial={{
-          name: app.name,
-          tagline: app.tagline ?? '',
-          description: app.description ?? '',
-          categorySlug: currentCategory[0]?.slug ?? '',
-          website: app.website ?? '',
-          tech: currentTech.map((t) => t.slug),
-        }}
-      />
-    </div>
+        <EditForm
+          appId={app.id}
+          appName={app.name}
+          categories={categoryList}
+          tech={techList.map((t) => ({ slug: t.slug, name: t.name }))}
+          offers={{
+            dofollowAvailable: isPolarConfigured('dofollow'),
+            sponsorAvailable: isPolarConfigured('sponsor'),
+            sponsorActive: Boolean(sponsorPurchase),
+            sponsorPurchase,
+            dofollowPurchase,
+            spotsLeft: inventory.free,
+            totalSpots: inventory.slots,
+          }}
+          initial={{
+            name: app.name,
+            tagline: app.tagline ?? '',
+            description: app.description ?? '',
+            categorySlug: currentCategory[0]?.slug ?? '',
+            website: app.website ?? '',
+            tech: currentTech.map((t) => t.slug),
+          }}
+        />
+      </Measure>
+    </Container>
   )
 }
