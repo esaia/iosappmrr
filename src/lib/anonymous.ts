@@ -23,4 +23,4 @@ export const ANONYMOUS_TAGLINE = 'A quiet listing from a founder building in ste
 export const ANONYMOUS_DESCRIPTION =
   'The founder has kept this listing private for now, so the name, the artwork and the copy that would identify the app are withheld. Everything else on this page is real: the revenue below is read straight from the payment provider and verified daily, exactly as it is for every other app on the site.'
 
-export const ANONYMOUS_NOTE = 'This startup has chosen to remain anonymous'
+export const ANONYMOUS_NOTE = 'This app has chosen to remain anonymous'

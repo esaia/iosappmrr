@@ -149,7 +149,7 @@ export const apps = pgTable(
      * link the site has not vouched for.
      */
     websiteDofollow: boolean('website_dofollow').notNull().default(false),
-    // Startup insights. Founder-written, unlike revenue, which is provider-read.
+    // App insights. Founder-written, unlike revenue, which is provider-read.
     // Every field is optional; the profile hides whichever are blank.
     valueProposition: text('value_proposition'),
     problemSolved: text('problem_solved'),

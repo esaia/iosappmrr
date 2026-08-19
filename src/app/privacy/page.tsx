@@ -36,7 +36,7 @@ export default function PrivacyPage() {
             it is published on your founder page, and all of it is optional except the handle.
           </Item>
           <Item term="Apps you submit">
-            The App Store link and the details Apple returns for it, plus any startup insights you
+            The App Store link and the details Apple returns for it, plus any app insights you
             choose to write. This is public by design — it is the point of the site.
           </Item>
           <Item term="Provider credentials">

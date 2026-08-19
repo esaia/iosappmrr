@@ -28,7 +28,7 @@ type Tech = { slug: string; name: string }
  * from the provider. Every card is optional — an app with nothing filled in
  * renders no section at all rather than a grid of empty boxes.
  */
-export function StartupInsights({ insights, tech }: { insights: Insights; tech: Tech[] }) {
+export function AppInsights({ insights, tech }: { insights: Insights; tech: Tech[] }) {
   const {
     valueProposition,
     problemSolved,
@@ -52,7 +52,7 @@ export function StartupInsights({ insights, tech }: { insights: Insights; tech: 
 
   return (
     <section className="border-border bg-surface rounded-card mt-3 border p-5 sm:p-6">
-      <h2 className="display text-xl font-semibold">Startup insights</h2>
+      <h2 className="display text-xl font-semibold">App insights</h2>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         {valueProposition && (

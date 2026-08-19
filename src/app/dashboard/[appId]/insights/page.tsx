@@ -7,7 +7,7 @@ import { InsightsForm } from './insights-form'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
-  title: 'Startup insights',
+  title: 'App insights',
   robots: { index: false },
 }
 
@@ -27,7 +27,7 @@ export default async function InsightsPage({ params }: { params: Promise<{ appId
           {' / '} {app.name}
         </nav>
 
-        <h1 className="display mt-2 text-4xl font-semibold">Startup insights</h1>
+        <h1 className="display mt-2 text-4xl font-semibold">App insights</h1>
         <p className="text-muted mt-3 leading-relaxed">
           Context for the people reading your numbers. Unlike revenue, this is what you write —
           leave anything blank and it simply will not appear on{' '}
