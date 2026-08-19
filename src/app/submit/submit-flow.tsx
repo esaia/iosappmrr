@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { ExternalLink, Loader2, LogIn, Search } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { Button, ButtonLink } from '@/components/ui/button'
@@ -336,6 +337,39 @@ export function SubmitFlow({
           </div>
         </label>
       )}
+
+      {/*
+        Shown, but off and unusable, because the marketplace has not opened. A
+        founder who wants to sell should learn here that the option is coming
+        rather than discover the marketplace page by accident — and the switch
+        carries no name, so nothing about it reaches the server.
+      */}
+      <div className="border-border rounded-[10px] border border-dashed p-4 opacity-70">
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="border-border bg-surface-2 mt-0.5 flex h-5 w-9 shrink-0 items-center rounded-full border px-0.5"
+          >
+            <span className="bg-muted size-3.5 rounded-full" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="text-fg text-[13px] font-medium">List for sale</span>
+              <span className="border-gold/40 bg-gold-dim text-gold rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.11em] uppercase">
+                Coming soon
+              </span>
+            </div>
+            <p className="text-muted mt-1.5 text-xs leading-relaxed">
+              The{' '}
+              <Link href="/marketplace" className="hover:text-fg underline">
+                marketplace
+              </Link>{' '}
+              is not open yet. Connect your app now and it will already have the revenue history a
+              listing needs when it is.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/*
         Shown from the start when signed out, rather than after a submit that
