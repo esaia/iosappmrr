@@ -468,7 +468,7 @@ function MetricTooltip({
   if (point.value == null) return null
 
   return (
-    <div className="border-border bg-surface rounded-lg border px-3 py-2">
+    <div className="border-border solid-raised rounded-lg border px-3 py-2">
       <p className="text-muted text-[11px]">
         {new Date(point.date).toLocaleDateString('en-US', {
           month: 'short',
