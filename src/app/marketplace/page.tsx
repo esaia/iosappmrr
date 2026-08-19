@@ -5,6 +5,7 @@ import { site } from '@/lib/site'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/marketplace' },
   title: 'Marketplace',
   description:
     'A marketplace for buying and selling App Store apps whose revenue is already verified. Not open yet.',

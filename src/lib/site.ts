@@ -1,5 +1,16 @@
 export const site = {
+  /**
+   * The site as a thing being named — in prose, in the footer, in the terms,
+   * and as the publisher in structured data. Carries the domain, because that
+   * is what the site is called.
+   */
   name: 'iosAppMRR.com',
+  /**
+   * The same name where it is a label rather than a subject: page titles, the
+   * title template, share cards. A browser tab is narrow and truncates from the
+   * right, so the `.com` there costs four characters of the tagline and adds
+   * nothing a reader looking at the tab does not already know.
+   */
   shortName: 'iosAppMRR',
   /*
    * The wordmark, split so the logo does not hardcode it: renaming the site

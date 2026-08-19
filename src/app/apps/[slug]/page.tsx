@@ -22,6 +22,8 @@ import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
 import { formatCount, formatMoney, formatMrr, timeAgo } from '@/lib/utils'
 import { site } from '@/lib/site'
 import { Container } from '@/components/ui/container'
+import { JsonLd } from '@/components/json-ld'
+import { breadcrumbs, graph, mobileApplication } from '@/lib/seo'
 
 export const revalidate = 600
 
@@ -92,28 +94,35 @@ export default async function AppPage({ params }: Params) {
       <AdRail side="right" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
 
       <Container className="py-10 sm:py-14">
-        {/* Search engines get the same facts the page shows. */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'SoftwareApplication',
+        {/* Search engines get the same facts the page shows, and no others. */}
+        <JsonLd
+          data={graph(
+            mobileApplication({
+              slug: app.slug,
               name: app.name,
-              description: app.tagline ?? app.description ?? undefined,
-              applicationCategory: category?.name,
-              operatingSystem: 'iOS',
-              url: `${site.url}/apps/${app.slug}`,
-              image: metadata?.iconUrl ?? undefined,
-              aggregateRating: metadata?.averageRating
-                ? {
-                    '@type': 'AggregateRating',
-                    ratingValue: metadata.averageRating,
-                    ratingCount: metadata.ratingCount ?? undefined,
-                  }
-                : undefined,
+              tagline: app.tagline,
+              description: app.description,
+              appStoreUrl: app.appStoreUrl,
+              iconUrl: metadata?.iconUrl ?? null,
+              screenshotUrls: metadata?.screenshotUrls ?? [],
+              priceCents: metadata?.priceCents ?? null,
+              currency: metadata?.currency ?? null,
+              // Passed through as-is: the header below renders the rating on
+              // exactly the same condition, so the markup can never claim one
+              // the page does not show.
+              averageRating: metadata?.averageRating ?? null,
+              ratingCount: metadata?.ratingCount ?? null,
+              primaryGenre: category?.name ?? metadata?.primaryGenre ?? null,
+              releasedAt: metadata?.releasedAt ?? null,
+              founder: founder ? { name: founder.name, handle: founder.handle } : null,
             }),
-          }}
+            // Mirrors the breadcrumb nav immediately below.
+            breadcrumbs([
+              { name: 'Apps', path: '/apps' },
+              ...(category ? [{ name: category.name, path: `/categories/${category.slug}` }] : []),
+              { name: app.name, path: `/apps/${app.slug}` },
+            ]),
+          )}
         />
 
         <nav className="text-muted mb-6 text-xs">

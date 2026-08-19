@@ -7,6 +7,7 @@ import { Container } from '@/components/ui/container'
 export const revalidate = 600
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/categories' },
   title: 'Categories',
   description: 'Verified iOS app revenue by App Store category.',
 }

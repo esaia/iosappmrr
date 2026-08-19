@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { AdRail } from '@/components/ad-rail'
 import { AppRail } from '@/components/app-card'
@@ -8,6 +9,10 @@ import { listApps, listCategories } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
 import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
 import { Container } from '@/components/ui/container'
+import { JsonLd } from '@/components/json-ld'
+import { graph, itemList, organization, website } from '@/lib/seo'
+
+export const metadata: Metadata = { alternates: { canonical: '/' } }
 
 export const revalidate = 600
 
@@ -40,6 +45,16 @@ export default async function HomePage() {
 
   return (
     <>
+      {/* The site-level graph lives on the home page only; inner pages describe
+          themselves and point back at it by @id. */}
+      <JsonLd
+        data={graph(
+          organization(),
+          website(),
+          // The same ranking the page renders below, in the same order.
+          itemList(top.slice(0, 20).map((app) => ({ slug: app.slug, name: app.name }))),
+        )}
+      />
       <AdRail side="left" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
       <AdRail side="right" sponsors={sponsors} spotsLeft={spotsLeft} totalSpots={totalSpots} />
 

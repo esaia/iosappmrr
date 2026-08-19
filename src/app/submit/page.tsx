@@ -14,6 +14,7 @@ import { SubmitFlow } from './submit-flow'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/submit' },
   title: 'Add your iOS app',
   description:
     'List your App Store app and connect its revenue in one step. Takes about two minutes and one read-only API key.',
@@ -40,7 +41,7 @@ export default async function SubmitPage({
 
   return (
     <Container className="py-10 sm:py-14">
-      <Measure className="max-w-2xl">
+      <Measure className="mx-auto">
         <h1 className="display text-4xl">Add your app</h1>
         <p className="text-muted mt-3 text-[13px] leading-relaxed">
           Paste your App Store link and we&apos;ll fill in the rest. Add your provider key in the

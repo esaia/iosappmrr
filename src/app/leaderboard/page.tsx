@@ -5,6 +5,8 @@ import { getEcosystemStats, listApps, type AppSort } from '@/lib/data/apps'
 import { formatMoney, formatMrr } from '@/lib/utils'
 import { site } from '@/lib/site'
 import { Container } from '@/components/ui/container'
+import { JsonLd } from '@/components/json-ld'
+import { breadcrumbs, graph, itemList } from '@/lib/seo'
 
 export const revalidate = 600
 
@@ -13,10 +15,28 @@ const SORTS: { value: AppSort; label: string; blurb: string }[] = [
   { value: 'growth', label: 'Growth', blurb: 'Biggest MRR increase over the last 30 days.' },
   { value: 'newest', label: 'Newest', blurb: 'Most recently verified apps.' },
 ]
-export const metadata: Metadata = {
-  title: 'Top 100 iOS apps by verified revenue',
-  description:
-    'The hundred highest-earning App Store apps whose revenue is read directly from their payment provider. Updated daily.',
+/**
+ * `?sort=` reorders the same hundred apps, so every variant canonicalises to the
+ * bare path: three URLs holding one set of rows is the textbook duplicate, and
+ * pointing them at one another's ranking signal is the whole reason to bother.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>
+}): Promise<Metadata> {
+  const params = await searchParams
+  const sort = SORTS.find((s) => s.value === params.sort)
+
+  return {
+    title:
+      sort && sort.value !== 'mrr'
+        ? `Top 100 iOS apps by ${sort.label.toLowerCase()}`
+        : 'Top 100 iOS apps by verified revenue',
+    description:
+      'The hundred highest-earning App Store apps whose revenue is read directly from their payment provider. Updated daily.',
+    alternates: { canonical: '/leaderboard' },
+  }
 }
 
 export default async function LeaderboardPage({
@@ -31,6 +51,13 @@ export default async function LeaderboardPage({
 
   return (
     <Container className="py-10 sm:py-14">
+      <JsonLd
+        data={graph(
+          itemList(apps.map((app) => ({ slug: app.slug, name: app.name }))),
+          breadcrumbs([{ name: 'Top 100', path: '/leaderboard' }]),
+        )}
+      />
+
       <header>
         <p className="label">Updated daily</p>
         <h1 className="display mt-2 text-4xl font-semibold sm:text-5xl">Top 100</h1>

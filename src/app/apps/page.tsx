@@ -6,10 +6,58 @@ import { Container } from '@/components/ui/container'
 
 export const revalidate = 600
 
-export const metadata: Metadata = {
-  title: 'Every verified iOS app',
-  description:
-    'Browse App Store apps with revenue read directly from RevenueCat or App Store Connect. Filter by category, tech stack, and revenue.',
+const DESCRIPTION =
+  'Browse App Store apps with revenue read directly from RevenueCat or App Store Connect. Filter by category, tech stack, and revenue.'
+
+/**
+ * This route is one list behind five query parameters, so most of its URLs are
+ * the same rows in a different order. What each kind of URL is worth to an index
+ * differs, and the metadata says so rather than letting a crawler guess:
+ *
+ * - `?q=` is a search result. Nobody should arrive on one from a search engine,
+ *   and Google asks explicitly that internal results stay out of an index.
+ * - `?category=` duplicates /categories/[slug], which has a real title and its
+ *   own copy. That page is the canonical version of the same list.
+ * - `?tech=` has no page of its own, and a slice this thin is not worth an entry
+ *   of its own either. Followable, so the app pages in it still get crawled.
+ * - `?page=` is a genuine continuation, so each page self-canonicalises and
+ *   carries its number in the title. Canonicalising page 2 to page 1 would say
+ *   the apps ranked 31–60 do not exist.
+ * - `?sort=` is a reordering, and collapses to the bare path.
+ */
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const params = await searchParams
+  const page = Math.max(1, Number(params.page) || 1)
+
+  if (params.q) {
+    return {
+      title: `Search: ${params.q}`,
+      description: DESCRIPTION,
+      robots: { index: false, follow: true },
+    }
+  }
+
+  if (params.category) {
+    return {
+      title: 'Every verified iOS app',
+      description: DESCRIPTION,
+      alternates: { canonical: `/categories/${params.category}` },
+    }
+  }
+
+  if (params.tech) {
+    return {
+      title: 'Every verified iOS app',
+      description: DESCRIPTION,
+      robots: { index: false, follow: true },
+    }
+  }
+
+  return {
+    title: page > 1 ? `Every verified iOS app — page ${page}` : 'Every verified iOS app',
+    description: DESCRIPTION,
+    alternates: { canonical: page > 1 ? `/apps?page=${page}` : '/apps' },
+  }
 }
 
 const PAGE_SIZE = 30
@@ -20,9 +68,7 @@ const SORTS: { value: AppSort; label: string }[] = [
   { value: 'newest', label: 'Newest' },
   { value: 'name', label: 'A–Z' },
 ]
-export default async function AppsPage({
-  searchParams,
-}: {
+type Props = {
   searchParams: Promise<{
     sort?: string
     category?: string
@@ -30,7 +76,9 @@ export default async function AppsPage({
     q?: string
     page?: string
   }>
-}) {
+}
+
+export default async function AppsPage({ searchParams }: Props) {
   const params = await searchParams
   const sort = (SORTS.find((s) => s.value === params.sort)?.value ?? 'mrr') as AppSort
   const page = Math.max(1, Number(params.page) || 1)

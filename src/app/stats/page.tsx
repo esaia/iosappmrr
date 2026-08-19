@@ -7,6 +7,7 @@ import { Container } from '@/components/ui/container'
 export const revalidate = 600
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/stats' },
   title: 'iOS ecosystem stats',
   description:
     'Aggregate verified revenue across indexed App Store apps: totals by category, median MRR, and which stacks the earning apps are built on.',

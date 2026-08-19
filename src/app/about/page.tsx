@@ -5,6 +5,7 @@ import { site } from '@/lib/site'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/about' },
   title: 'About',
   description: `Why ${site.name} exists, what it indexes, and what it deliberately leaves out.`,
 }

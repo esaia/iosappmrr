@@ -5,6 +5,8 @@ import { AppRow, AppRowHeader } from '@/components/app-row'
 import { getFounderByHandle } from '@/lib/data/apps'
 import { formatCount, formatMoney, highResAvatar } from '@/lib/utils'
 import { Container } from '@/components/ui/container'
+import { JsonLd } from '@/components/json-ld'
+import { breadcrumbs, graph, profilePage } from '@/lib/seo'
 
 export const revalidate = 600
 
@@ -31,6 +33,22 @@ export default async function FounderPage({ params }: Params) {
 
   return (
     <Container className="py-10 sm:py-14">
+      <JsonLd
+        data={graph(
+          profilePage({
+            handle: founder.handle,
+            name: founder.name,
+            bio: founder.bio,
+            avatarUrl: highResAvatar(founder.avatarUrl),
+            website: founder.website,
+            twitter: founder.twitter,
+          }),
+          breadcrumbs([
+            { name: founder.name ?? `@${founder.handle}`, path: `/founders/${founder.handle}` },
+          ]),
+        )}
+      />
+
       <header className="flex items-start gap-5">
         {founder.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

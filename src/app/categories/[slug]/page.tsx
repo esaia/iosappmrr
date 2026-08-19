@@ -5,6 +5,8 @@ import { AppRow, AppRowHeader } from '@/components/app-row'
 import { listApps, listCategories } from '@/lib/data/apps'
 import { formatMrr } from '@/lib/utils'
 import { Container } from '@/components/ui/container'
+import { JsonLd } from '@/components/json-ld'
+import { breadcrumbs, graph, itemList } from '@/lib/seo'
 
 export const revalidate = 600
 
@@ -35,6 +37,16 @@ export default async function CategoryPage({ params }: Params) {
 
   return (
     <Container className="py-10 sm:py-14">
+      <JsonLd
+        data={graph(
+          itemList(apps.map((app) => ({ slug: app.slug, name: app.name }))),
+          breadcrumbs([
+            { name: 'Categories', path: '/categories' },
+            { name: category.name, path: `/categories/${slug}` },
+          ]),
+        )}
+      />
+
       <nav className="text-muted mb-6 text-xs">
         <Link href="/categories" className="hover:text-fg">
           Categories

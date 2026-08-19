@@ -4,6 +4,7 @@ import { site } from '@/lib/site'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/privacy' },
   title: 'Privacy',
   description: `What ${site.name} stores, why, and how provider credentials are protected.`,
 }

@@ -6,9 +6,9 @@ import { site } from '@/lib/site'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/verification' },
   title: 'How verification works',
-  description:
-    `What a verified badge on ${site.name} actually means: which providers we read, what a connected key can and cannot do, and how often figures refresh.`,
+  description: `What a verified badge on ${site.name} actually means: which providers we read, what a connected key can and cannot do, and how often figures refresh.`,
 }
 
 export default function VerificationPage() {

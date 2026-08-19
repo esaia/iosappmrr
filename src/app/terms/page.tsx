@@ -4,6 +4,7 @@ import { site } from '@/lib/site'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
+  alternates: { canonical: '/terms' },
   title: 'Terms',
   description: `The rules for using ${site.name} and for listing an app on it.`,
 }
