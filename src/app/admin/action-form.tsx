@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import type { AdminState } from './actions'
@@ -52,6 +52,24 @@ export function ActionForm({
    * destructive button armed by accident.
    */
   const [armed, setArmed] = useState(!confirm && !needsInput)
+
+  /*
+   * Collapse back once the action reports success, so a confirmed destructive
+   * step does not sit there still armed with its reason box open, inviting a
+   * second run of something that already happened.
+   *
+   * Keyed on the identity of the result rather than on `state.ok` being truthy:
+   * `useActionState` hands back the same object until the next submission, so a
+   * plain truthiness check would slam the form shut the instant the admin
+   * re-armed it for a second, deliberate go.
+   */
+  const handled = useRef<AdminState | null>(null)
+  useEffect(() => {
+    if (state.ok && handled.current !== state) {
+      handled.current = state
+      setArmed(!confirm && !needsInput)
+    }
+  }, [state, confirm, needsInput])
 
   return (
     <form action={formAction} className={className}>
