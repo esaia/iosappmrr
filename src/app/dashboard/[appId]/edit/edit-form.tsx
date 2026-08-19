@@ -20,7 +20,7 @@ type Option = { slug: string; name: string }
 type LivePurchase = { id: string; kind: 'dofollow' | 'sponsor'; hidden: boolean }
 
 const field =
-  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-border-strong w-full rounded-[10px] border px-3 py-2 text-[13px] focus:outline-none'
+  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-accent/60 focus:ring-accent/25 focus:ring-4 w-full rounded-card border px-3 py-2 text-[13px] focus:outline-none'
 
 export function EditForm({
   appId,
@@ -277,7 +277,7 @@ function Offer({
   cta: string
 }) {
   return (
-    <div className="border-border rounded-[10px] border border-dashed p-4">
+    <div className="border-border rounded-card border border-dashed p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-fg text-[13px] font-medium">
           {title}
@@ -362,7 +362,7 @@ function DangerZone({ appId, appName }: { appId: string; appName: string }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <section className="border-red/30 mt-12 rounded-[10px] border p-5">
+    <section className="border-red/30 rounded-card mt-12 border p-5">
       <h2 className="text-red flex items-center gap-2 text-sm font-semibold">
         <AlertTriangle className="size-4" />
         Delete this app
@@ -403,7 +403,7 @@ function DangerZone({ appId, appName }: { appId: string; appName: string }) {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="border-red/40 text-red hover:bg-red-dim mt-4 rounded-[10px] border px-3 py-2 text-[13px] transition-colors"
+          className="border-red/40 text-red hover:bg-red-dim rounded-card mt-4 border px-3 py-2 text-[13px] transition-colors"
         >
           Delete app
         </button>
@@ -418,7 +418,7 @@ function DeleteButton() {
     <button
       type="submit"
       disabled={pending}
-      className="bg-red text-bg rounded-[10px] px-3 py-2 text-[13px] font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+      className="bg-red text-bg rounded-card px-3 py-2 text-[13px] font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
     >
       {pending ? 'Deleting…' : 'Delete permanently'}
     </button>

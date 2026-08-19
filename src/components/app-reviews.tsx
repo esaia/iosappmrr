@@ -58,7 +58,7 @@ export function AppReviews({
       <div className="@container mt-4">
         <ul className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
           {histogram && (
-            <li className="border-border bg-surface rounded-[10px] border p-5">
+            <li className="border-border bg-surface rounded-card border p-5">
               <p className="tabular flex items-baseline gap-1.5">
                 <span className="text-fg text-3xl font-semibold tracking-tight">
                   {average != null ? average.toFixed(1) : '—'}
@@ -74,10 +74,7 @@ export function AppReviews({
           )}
 
           {reviews.map((review) => (
-            <li
-              key={review.reviewId}
-              className="border-border bg-surface rounded-[10px] border p-5"
-            >
+            <li key={review.reviewId} className="border-border bg-surface rounded-card border p-5">
               <Stars rating={review.rating} />
               {review.title && (
                 <h3 className="text-fg mt-2 text-[15px] leading-snug font-semibold">

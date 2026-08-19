@@ -61,7 +61,7 @@ export function ConnectPanel({
   return (
     <div className="mt-8 space-y-8">
       {state.connected && (
-        <div className="border-green/40 bg-green-dim rounded-[10px] border p-5">
+        <div className="border-green/40 bg-green-dim rounded-card border p-5">
           <div className="text-green flex items-center gap-2">
             <CheckCircle2 className="size-5" />
             <h2 className="font-medium">Verified</h2>
@@ -87,7 +87,7 @@ export function ConnectPanel({
             {connections.map((connection) => (
               <li
                 key={connection.provider}
-                className="border-border bg-surface flex flex-wrap items-center gap-3 rounded-[10px] border px-4 py-3"
+                className="border-border bg-surface rounded-card flex flex-wrap items-center gap-3 border px-4 py-3"
               >
                 <span className="text-fg font-medium">{providerLabel(connection.provider)}</span>
                 {connection.status === 'active' ? (
@@ -149,7 +149,7 @@ export function ConnectPanel({
             <input type="hidden" name="appId" value={appId} />
             <input type="hidden" name="provider" value={provider.id} />
 
-            <div className="border-border bg-surface-2 rounded-[10px] border p-4">
+            <div className="border-border bg-surface-2 rounded-card border p-4">
               <p className="text-muted text-sm leading-relaxed">{provider.instructions}</p>
               <a
                 href={provider.docsUrl}
@@ -174,7 +174,7 @@ export function ConnectPanel({
                     rows={5}
                     required
                     placeholder={field.placeholder}
-                    className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong mt-2 w-full rounded-[10px] border px-4 py-2.5 text-xs focus:outline-none"
+                    className="border-border bg-surface text-fg placeholder:text-muted focus:border-accent/60 focus:ring-accent/25 rounded-card mt-2 w-full border px-4 py-2.5 text-xs focus:ring-4 focus:outline-none"
                   />
                 ) : (
                   <input
@@ -185,7 +185,7 @@ export function ConnectPanel({
                     autoComplete="off"
                     spellCheck={false}
                     placeholder={field.placeholder}
-                    className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong mt-2 w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
+                    className="border-border bg-surface text-fg placeholder:text-muted focus:border-accent/60 focus:ring-accent/25 rounded-card mt-2 w-full border px-4 py-2.5 text-sm focus:ring-4 focus:outline-none"
                   />
                 )}
                 {shown.fieldErrors?.[field.name] && (
@@ -197,7 +197,7 @@ export function ConnectPanel({
             {shown.error && (
               <p
                 role="alert"
-                className="border-red/40 bg-red-dim text-red rounded-[10px] border px-4 py-3 text-sm"
+                className="border-red/40 bg-red-dim text-red rounded-card border px-4 py-3 text-sm"
               >
                 {shown.error}
               </p>

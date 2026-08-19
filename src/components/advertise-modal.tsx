@@ -76,7 +76,7 @@ export function AdvertiseModal({
               role="dialog"
               aria-modal="true"
               aria-labelledby="advertise-title"
-              className="border-border bg-surface relative my-auto w-full max-w-xl rounded-[14px] border p-6 sm:p-8"
+              className="glass border-border relative my-auto w-full max-w-xl rounded-[14px] border p-6 sm:p-8"
             >
               <button
                 ref={closeRef}
@@ -123,7 +123,7 @@ export function AdvertiseModal({
                 — everyone gets an equal share of the margin, and no one is buried.
               </p>
 
-              <div className="border-border bg-surface-2 mt-5 rounded-[10px] border p-4">
+              <div className="border-border bg-surface-2 rounded-card mt-5 border p-4">
                 <p className="text-sm font-semibold">Pricing</p>
                 {price != null ? (
                   <>
@@ -151,7 +151,7 @@ export function AdvertiseModal({
                   <button
                     type="button"
                     disabled
-                    className="bg-fg text-bg mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-[13px] font-medium opacity-50"
+                    className="bg-fg text-bg rounded-card mt-5 flex w-full cursor-not-allowed items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium opacity-50"
                   >
                     Sold out
                   </button>
@@ -171,7 +171,7 @@ export function AdvertiseModal({
                 <>
                   <Link
                     href="/dashboard"
-                    className="bg-fg text-bg mt-5 flex w-full items-center justify-center gap-2 rounded-[10px] px-4 py-3 text-[13px] font-medium transition-opacity hover:opacity-90"
+                    className="bg-fg text-bg rounded-card mt-5 flex w-full items-center justify-center gap-2 px-4 py-3 text-[13px] font-medium transition-opacity hover:opacity-90"
                   >
                     {price != null ? `Get started (${formatMoney(price)}/mo)` : 'Get started'}
                     <ExternalLink className="size-3.5" />
@@ -218,8 +218,8 @@ function StatCard({
     <div
       className={
         highlight
-          ? 'bg-gold-dim border-gold/40 rounded-[10px] border p-4 text-center'
-          : 'border-border bg-surface-2 rounded-[10px] border p-4 text-center'
+          ? 'bg-gold-dim border-gold/40 rounded-card border p-4 text-center'
+          : 'border-border bg-surface-2 rounded-card border p-4 text-center'
       }
     >
       <div

@@ -134,7 +134,7 @@ export function HomeSearch() {
             onFocus={() => setOpen(true)}
             onKeyDown={onKeyDown}
             placeholder='"habit tracker over $10K/mo"'
-            className="border-border bg-surface text-fg placeholder:text-dim focus:border-border-strong h-11 w-full rounded-[10px] border pr-9 pl-9 text-[13px] focus:outline-none"
+            className="glass border-border text-fg placeholder:text-dim focus:border-accent/60 focus:ring-accent/25 rounded-card h-11 w-full border pr-9 pl-9 text-[13px] transition-colors focus:ring-4 focus:outline-none"
           />
           {loading && (
             <Loader2 className="text-dim absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin" />
@@ -150,7 +150,7 @@ export function HomeSearch() {
         <div
           id={listId}
           role="listbox"
-          className="border-border bg-surface absolute top-full right-0 left-0 z-30 mt-2 max-h-[380px] overflow-y-auto rounded-[10px] border py-1 text-left"
+          className="glass-raised border-border rounded-card absolute top-full right-0 left-0 z-30 mt-2 max-h-[380px] overflow-y-auto border py-1 text-left"
         >
           {results.length === 0 && !loading && (
             <p className="text-muted px-3 py-6 text-center text-[13px]">

@@ -8,7 +8,7 @@ import { ButtonLink } from '@/components/ui/button'
  */
 export function AddAppCta() {
   return (
-    <section className="border-border bg-surface mt-8 rounded-[10px] border p-6 text-center sm:p-10">
+    <section className="border-border bg-surface rounded-card mt-8 border p-6 text-center sm:p-10">
       <h2 className="display text-2xl font-semibold sm:text-3xl">Add your own app</h2>
       <p className="text-muted mx-auto mt-2 max-w-md text-sm leading-relaxed">
         Connect RevenueCat or App Store Connect once. Your revenue is read straight from the

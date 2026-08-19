@@ -51,7 +51,7 @@ export function StartupInsights({ insights, tech }: { insights: Insights; tech: 
   if (!hasAnything) return null
 
   return (
-    <section className="border-border bg-surface mt-3 rounded-[10px] border p-5 sm:p-6">
+    <section className="border-border bg-surface rounded-card mt-3 border p-5 sm:p-6">
       <h2 className="display text-xl font-semibold">Startup insights</h2>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
@@ -136,7 +136,7 @@ function Card({
   children: React.ReactNode
 }) {
   return (
-    <div className="border-border bg-surface-2 rounded-[10px] border p-4 sm:p-5">
+    <div className="border-border bg-surface-2 rounded-card border p-4 sm:p-5">
       <div className="flex items-center gap-2.5">
         <span className="border-border bg-surface-3 text-muted flex size-7 shrink-0 items-center justify-center rounded-lg border">
           <Icon className="size-3.5" />

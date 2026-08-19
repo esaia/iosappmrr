@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { updateProfileAction, type ProfileState } from './actions'
 
 const field =
-  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-border-strong w-full rounded-[10px] border px-3 py-2 text-[13px] focus:outline-none'
+  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-accent/60 focus:ring-accent/25 focus:ring-4 w-full rounded-card border px-3 py-2 text-[13px] focus:outline-none'
 
 export function AccountForm({
   email,
@@ -99,7 +99,7 @@ export function AccountForm({
       {state.error && (
         <p
           role="alert"
-          className="border-red/40 bg-red-dim text-red rounded-[10px] border px-4 py-3 text-sm"
+          className="border-red/40 bg-red-dim text-red rounded-card border px-4 py-3 text-sm"
         >
           {state.error}
         </p>

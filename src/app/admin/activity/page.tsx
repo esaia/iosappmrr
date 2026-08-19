@@ -15,13 +15,13 @@ export default async function AdminActivityPage() {
       </p>
 
       {rows.length === 0 ? (
-        <p className="text-muted border-border-strong mt-6 rounded-[10px] border border-dashed p-10 text-center text-[13px]">
+        <p className="text-muted border-border-strong rounded-card mt-6 border border-dashed p-10 text-center text-[13px]">
           Nothing recorded yet.
         </p>
       ) : (
         <ul className="mt-4 space-y-2">
           {rows.map((row) => (
-            <li key={row.id} className="border-border bg-surface rounded-[10px] border p-3">
+            <li key={row.id} className="border-border bg-surface rounded-card border p-3">
               <p className="text-fg text-[13px]">{row.summary}</p>
               <p className="text-dim mt-1 text-[11px]">
                 @{row.actorHandle} · {row.action}

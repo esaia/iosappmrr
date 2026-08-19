@@ -20,7 +20,7 @@ export function SlotsForm({ current, min, max }: { current: number; min: number;
             max={max}
             step={1}
             defaultValue={current}
-            className="border-border bg-surface-2 text-fg focus:border-border-strong mt-1.5 block w-28 rounded-[10px] border px-3 py-2 text-[13px] focus:outline-none"
+            className="border-border bg-surface-2 text-fg focus:border-accent/60 focus:ring-accent/25 rounded-card mt-1.5 block w-28 border px-3 py-2 text-[13px] focus:ring-4 focus:outline-none"
           />
         </span>
         <Save />

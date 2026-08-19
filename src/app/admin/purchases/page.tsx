@@ -39,7 +39,7 @@ export default async function AdminPurchasesPage({
       <AdminFilters basePath="/admin/purchases" filters={STATUS_FILTERS} filterKey="status" />
 
       {pending > 0 && (
-        <div className="border-border bg-surface-2 mt-4 rounded-[10px] border p-3">
+        <div className="border-border bg-surface-2 rounded-card mt-4 border p-3">
           <p className="text-fg text-[13px]">
             <span className="font-medium">Before settling anything by hand</span>, run{' '}
             <code className="bg-surface-3 rounded px-1 py-0.5 text-[12px]">
@@ -59,7 +59,7 @@ export default async function AdminPurchasesPage({
       </ul>
 
       {rows.length === 0 && (
-        <p className="text-muted border-border-strong mt-6 rounded-[10px] border border-dashed p-10 text-center text-[13px]">
+        <p className="text-muted border-border-strong rounded-card mt-6 border border-dashed p-10 text-center text-[13px]">
           Nothing here.
         </p>
       )}
@@ -71,7 +71,7 @@ function PurchaseRow({ row }: { row: AdminPurchaseRow }) {
   const expired = row.currentPeriodEnd != null && row.currentPeriodEnd.getTime() < Date.now()
 
   return (
-    <li className="border-border bg-surface rounded-[10px] border p-3">
+    <li className="border-border bg-surface rounded-card border p-3">
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

@@ -42,7 +42,7 @@ export default async function AdminSettingsPage() {
           be kept in step by hand.
         </p>
 
-        <dl className="border-border bg-surface mt-3 divide-y divide-[var(--color-border)] rounded-[10px] border text-[13px]">
+        <dl className="border-border bg-surface rounded-card mt-3 divide-y divide-[var(--color-border)] border text-[13px]">
           <Row
             term="Sponsor price"
             value={

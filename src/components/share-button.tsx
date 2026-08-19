@@ -91,7 +91,7 @@ export function ShareButton({ url, title, mrr }: { url: string; title: string; m
       </button>
 
       {open && (
-        <div className="border-border bg-surface absolute right-0 z-30 mt-1 w-[170px] overflow-hidden rounded-lg border py-1">
+        <div className="glass-raised border-border absolute right-0 z-30 mt-1 w-[170px] overflow-hidden rounded-[14px] border py-1">
           <a
             href={xUrl}
             target="_blank"

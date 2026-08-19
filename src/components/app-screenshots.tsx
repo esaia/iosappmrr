@@ -14,7 +14,7 @@ export function AppScreenshots({ urls, appName }: { urls: string[]; appName: str
   if (urls.length === 0) return null
 
   return (
-    <section className="border-border bg-surface mt-12 rounded-[10px] border p-5 sm:p-6">
+    <section className="border-border bg-surface rounded-card mt-12 border p-5 sm:p-6">
       <div className="flex items-baseline gap-3">
         <h2 className="display text-xl font-semibold">Screenshots</h2>
         <span className="text-muted text-[11px]">From the App Store listing</span>
@@ -26,7 +26,7 @@ export function AppScreenshots({ urls, appName }: { urls: string[]; appName: str
             key={url}
             type="button"
             onClick={() => setZoomed(url)}
-            className="border-border hover:border-border-strong shrink-0 overflow-hidden rounded-[10px] border transition-colors"
+            className="border-border hover:border-border-strong rounded-card shrink-0 overflow-hidden border transition-colors"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

@@ -33,7 +33,7 @@ export function SyncTape({ events }: { events: SyncEvent[] }) {
   if (events.length === 0) return null
 
   return (
-    <div className="border-border bg-surface overflow-hidden rounded-[10px] border">
+    <div className="border-border bg-surface rounded-card overflow-hidden border">
       <div className="border-border flex items-center gap-2 border-b px-4 py-3">
         <span className="relative flex size-1.5">
           <span className="bg-green absolute inline-flex size-full animate-ping rounded-full opacity-60" />

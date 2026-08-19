@@ -19,7 +19,7 @@ type Field = {
 type Provider = { id: string; name: string; instructions: string; docsUrl: string; fields: Field[] }
 
 const input =
-  'border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none'
+  'border-border bg-surface text-fg placeholder:text-muted focus:border-accent/60 focus:ring-accent/25 focus:ring-4 w-full rounded-card border px-4 py-2.5 text-sm focus:outline-none'
 
 export function SubmitFlow({
   categories,
@@ -115,7 +115,7 @@ export function SubmitFlow({
     <form action={runSubmit} className="mt-8 space-y-6">
       <input type="hidden" name="appStoreId" value={app.appStoreId} />
 
-      <div className="border-border bg-surface flex items-center gap-4 rounded-[10px] border p-4">
+      <div className="border-border bg-surface rounded-card flex items-center gap-4 border p-4">
         <AppIcon src={app.iconUrl} name={app.name} size={56} />
         <div className="min-w-0">
           <p className="text-fg truncate font-medium">{app.name}</p>
@@ -244,7 +244,7 @@ export function SubmitFlow({
 
         {selectedProvider && (
           <div key={selectedProvider.id} className="mt-4 space-y-4">
-            <div className="border-border bg-surface-2 rounded-[10px] border p-4">
+            <div className="border-border bg-surface-2 rounded-card border p-4">
               <p className="text-muted text-sm leading-relaxed">{selectedProvider.instructions}</p>
               <a
                 href={selectedProvider.docsUrl}
@@ -307,8 +307,8 @@ export function SubmitFlow({
         <label
           className={
             dofollow
-              ? 'border-border-strong bg-surface block cursor-pointer rounded-[10px] border p-4'
-              : 'border-border hover:border-border-strong block cursor-pointer rounded-[10px] border border-dashed p-4'
+              ? 'border-border-strong bg-surface rounded-card block cursor-pointer border p-4'
+              : 'border-border hover:border-border-strong rounded-card block cursor-pointer border border-dashed p-4'
           }
         >
           <div className="flex items-start gap-3">
@@ -344,7 +344,7 @@ export function SubmitFlow({
         rather than discover the marketplace page by accident — and the switch
         carries no name, so nothing about it reaches the server.
       */}
-      <div className="border-border rounded-[10px] border border-dashed p-4 opacity-70">
+      <div className="border-border rounded-card border border-dashed p-4 opacity-70">
         <div className="flex items-start gap-3">
           <span
             aria-hidden="true"
@@ -377,7 +377,7 @@ export function SubmitFlow({
         on the round trip — only the App Store ID survives it.
       */}
       {!isSignedIn && (
-        <div className="border-border bg-surface rounded-[10px] border p-4">
+        <div className="border-border bg-surface rounded-card border p-4">
           <h2 className="text-fg flex items-center gap-2 text-[13px] font-bold">
             <LogIn className="size-4" />
             Sign in to save this listing
@@ -398,7 +398,7 @@ export function SubmitFlow({
       {submit.error && (
         <p
           role="alert"
-          className="border-red/40 bg-red-dim text-red rounded-[10px] border px-4 py-3 text-sm"
+          className="border-red/40 bg-red-dim text-red rounded-card border px-4 py-3 text-sm"
         >
           {submit.error}
         </p>

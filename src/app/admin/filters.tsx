@@ -39,11 +39,11 @@ export function AdminFilters({
             defaultValue={q}
             placeholder={placeholder}
             autoComplete="off"
-            className="border-border bg-surface-2 text-fg placeholder:text-dim focus:border-border-strong w-72 rounded-[10px] border px-3 py-1.5 text-[13px] focus:outline-none"
+            className="border-border bg-surface-2 text-fg placeholder:text-dim focus:border-accent/60 focus:ring-accent/25 rounded-card w-72 border px-3 py-1.5 text-[13px] focus:ring-4 focus:outline-none"
           />
           <button
             type="submit"
-            className="border-border bg-surface text-fg hover:border-border-strong rounded-[10px] border px-3 py-1.5 text-[13px]"
+            className="border-border bg-surface text-fg hover:border-border-strong rounded-card border px-3 py-1.5 text-[13px]"
           >
             Search
           </button>

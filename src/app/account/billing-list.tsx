@@ -56,7 +56,7 @@ export function BillingList({ rows }: { rows: Row[] }) {
   return (
     <div className="mt-4 space-y-3">
       {rows.length === 0 ? (
-        <p className="border-border text-muted rounded-[10px] border border-dashed px-4 py-6 text-center text-[13px]">
+        <p className="border-border text-muted rounded-card border border-dashed px-4 py-6 text-center text-[13px]">
           Nothing purchased yet. Upgrades are offered on each app&apos;s{' '}
           <Link href="/dashboard" className="text-blue hover:underline">
             edit screen
@@ -108,7 +108,7 @@ function BillingRow({ row }: { row: Row }) {
   const switchable = row.status === 'active' && row.kind === 'sponsor'
 
   return (
-    <li className="border-border bg-surface rounded-[10px] border p-4">
+    <li className="border-border bg-surface rounded-card border p-4">
       <div className="flex flex-wrap items-center gap-3">
         <AppIcon src={row.app.iconUrl} name={row.app.name} size={32} />
         <div className="min-w-0 flex-1">
@@ -188,7 +188,7 @@ function PortalButton() {
   return (
     <button
       type="submit"
-      className="border-border text-fg hover:border-border-strong inline-flex items-center gap-1.5 rounded-[10px] border px-3 py-2 text-[13px] transition-colors"
+      className="border-border text-fg hover:border-border-strong rounded-card inline-flex items-center gap-1.5 border px-3 py-2 text-[13px] transition-colors"
     >
       Manage billing
       <ExternalLink className="size-3.5" />

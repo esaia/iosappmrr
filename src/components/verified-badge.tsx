@@ -32,7 +32,7 @@ export function VerifiedBadge({
     <span
       title={`Revenue synced from ${names.join(' and ')}`}
       className={cn(
-        'bg-blue-dim text-blue inline-flex items-center gap-1 rounded-md font-medium tracking-wider uppercase',
+        'bg-blue-dim text-blue ring-blue/25 inline-flex items-center gap-1 rounded-md font-medium tracking-wider uppercase ring-1 ring-inset',
         size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]',
         className,
       )}

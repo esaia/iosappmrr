@@ -77,7 +77,7 @@ export default async function AdminAppsPage({
       />
 
       {rows.length === 0 ? (
-        <p className="text-muted border-border-strong mt-6 rounded-[10px] border border-dashed p-10 text-center text-[13px]">
+        <p className="text-muted border-border-strong rounded-card mt-6 border border-dashed p-10 text-center text-[13px]">
           No apps match that.
         </p>
       ) : (
@@ -104,7 +104,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
   const dofollowIsPaid = row.dofollowSource === 'polar'
 
   return (
-    <li className="border-border bg-surface rounded-[10px] border p-4">
+    <li className="border-border bg-surface rounded-card border p-4">
       <div className="flex flex-wrap items-start gap-3">
         <AppIcon src={row.iconUrl} name={row.name} size={40} />
 

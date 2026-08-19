@@ -51,7 +51,7 @@ export function VibecodeVerdict({
         <span className="text-dim text-[11px]">Rebuild difficulty</span>
       </div>
 
-      <div className="border-border bg-surface mt-3 rounded-[10px] border p-5 sm:p-6">
+      <div className="border-border bg-surface rounded-card mt-3 border p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-3">
           <span
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[13px] font-semibold ${style.chip}`}

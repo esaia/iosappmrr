@@ -22,7 +22,7 @@ export default async function AdminOverviewPage() {
         list someone has to think to open.
       */}
       {(overview.stuckCheckouts > 0 || overview.failingConnections > 0) && (
-        <div className="border-gold/40 bg-gold-dim rounded-[10px] border p-4">
+        <div className="border-gold/40 bg-gold-dim rounded-card border p-4">
           <div className="text-gold flex items-center gap-2">
             <AlertTriangle className="size-4" />
             <h2 className="text-sm font-medium">Needs a look</h2>
@@ -145,7 +145,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="border-border bg-surface hover:border-border-strong block rounded-[10px] border p-4 transition-colors"
+      className="border-border bg-surface hover:border-border-strong rounded-card block border p-4 transition-colors"
     >
       <div className="text-fg flex items-center gap-2 text-sm font-medium">
         {icon}

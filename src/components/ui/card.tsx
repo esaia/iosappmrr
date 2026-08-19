@@ -1,19 +1,25 @@
 import { cn } from '@/lib/utils'
 
+/**
+ * Every panel on the site is a piece of glass. The material itself lives in
+ * globals.css; what this adds is the border and the radius.
+ *
+ * The material is deliberately flat-lit — no diagonal highlight sweep. Across a
+ * wide panel a sweep stops reading as light on glass and starts reading as a
+ * gradient painted on the panel, which is a different and worse thing.
+ */
 export function Card({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div className={cn('border-border bg-surface rounded-[10px] border', className)} {...props} />
-  )
+  return <div className={cn('glass border-border rounded-card border', className)} {...props} />
 }
 
 export function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div className={cn('flex items-start justify-between gap-4 p-4 pb-0', className)} {...props} />
+    <div className={cn('flex items-start justify-between gap-4 p-5 pb-0', className)} {...props} />
   )
 }
 
 export function CardBody({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('p-4', className)} {...props} />
+  return <div className={cn('p-5', className)} {...props} />
 }
 
 /**

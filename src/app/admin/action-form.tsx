@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import type { AdminState } from './actions'
 
 const field =
-  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-border-strong w-full rounded-[10px] border px-2.5 py-1.5 text-[12px] focus:outline-none'
+  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-accent/60 focus:ring-accent/25 focus:ring-4 w-full rounded-card border px-2.5 py-1.5 text-[12px] focus:outline-none'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 

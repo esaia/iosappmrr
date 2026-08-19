@@ -16,7 +16,7 @@ type Values = {
 }
 
 const field =
-  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-border-strong w-full rounded-[10px] border px-3 py-2 text-[13px] focus:outline-none'
+  'border-border bg-surface-2 text-fg placeholder:text-dim focus:border-accent/60 focus:ring-accent/25 focus:ring-4 w-full rounded-card border px-3 py-2 text-[13px] focus:outline-none'
 
 export function InsightsForm({ appId, initial }: { appId: string; initial: Values }) {
   const [state, action] = useActionState<InsightsState, FormData>(saveInsightsAction, {})

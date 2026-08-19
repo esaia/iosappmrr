@@ -16,19 +16,24 @@ export function AppCard({ app, className }: { app: AppListing; className?: strin
     <Link
       href={`/apps/${app.slug}`}
       className={cn(
-        'group border-border bg-surface hover:border-border-strong hover:bg-surface-2 relative flex w-[248px] shrink-0 flex-col justify-between rounded-[10px] border p-3.5 transition-colors',
+        'group glass border-border hover:border-border-strong rounded-card relative flex w-[248px] shrink-0 flex-col justify-between border p-4 transition-colors hover:bg-white/8',
         className,
       )}
     >
+      {/*
+        Floating clear of the corner rather than notched into it: a
+        corner-filling badge has to fake the panel's curve on two sides and gets
+        it slightly wrong at every zoom level.
+      */}
       {app.providers.length > 0 && (
-        <span className="bg-blue-dim text-blue absolute top-0 right-0 rounded-tr-[9px] rounded-bl-[10px] px-2 py-1 text-[9px] font-bold tracking-wider uppercase">
+        <span className="bg-blue-dim text-blue ring-blue/25 absolute top-2.5 right-2.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase ring-1 ring-inset">
           Verified
         </span>
       )}
 
       <div className="flex items-start gap-2.5">
         <AppIcon src={app.iconUrl} name={app.name} size={34} />
-        <div className="min-w-0 pr-12">
+        <div className="min-w-0 pr-14">
           <h3 className="text-fg truncate text-[13px] font-bold">{app.name}</h3>
           <p className="text-muted truncate text-[11px]">{app.categoryName ?? 'iOS app'}</p>
         </div>
@@ -38,7 +43,7 @@ export function AppCard({ app, className }: { app: AppListing; className?: strin
         {app.tagline}
       </p>
 
-      <div className="border-border mt-3 grid grid-cols-3 gap-2 border-t pt-2.5">
+      <div className="border-border mt-3.5 grid grid-cols-3 gap-2 border-t pt-3">
         <Stat label="MRR" value={formatMoney(app.mrrCents)} />
         <Stat
           label="MoM"

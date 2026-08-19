@@ -1,6 +1,12 @@
 export const site = {
   name: 'TrustMRR iOS',
   shortName: 'TrustMRR',
+  /*
+   * The wordmark, split so the logo does not hardcode it: renaming the site
+   * should be an edit to this file and nothing else. `suffix` is set in the
+   * dimmer grey after the main word — leave it empty for a one-word name.
+   */
+  wordmark: { main: 'TrustMRR', suffix: '·iOS' },
   tagline: 'Verified revenue for App Store apps',
   description:
     'Every number on this site is pulled straight from RevenueCat or App Store Connect — never typed in by hand. Browse verified iOS app revenue, or connect your own.',
