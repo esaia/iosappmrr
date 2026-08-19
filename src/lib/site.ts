@@ -17,5 +17,6 @@ export const nav = [
   { href: '/apps', label: 'Apps' },
   { href: '/categories', label: 'Categories' },
   { href: '/stats', label: 'Stats' },
+  { href: '/marketplace', label: 'Marketplace' },
   { href: '/verification', label: 'How we verify' },
 ] as const
