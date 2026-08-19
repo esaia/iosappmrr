@@ -71,8 +71,26 @@ const METRICS: Metric[] = [
   },
 ]
 
+/**
+ * The percentage beside a direction arrow. `formatGrowth` signs its output for
+ * use on its own, which put a "+" next to a red down-arrow on any decline; the
+ * arrow already carries the direction, so this prints the magnitude alone.
+ */
+function formatMagnitude(change: number) {
+  return formatGrowth(Math.abs(change))?.replace(/^\+/, '')
+}
+
+/*
+ * The shortest window is a week. There was a 24-hour option, but snapshots are
+ * captured once a day: it could only ever join yesterday's capture to today's,
+ * two points pretending to be a day of resolution. Hourly data would need the
+ * providers to report it — RevenueCat's overview endpoint returns current
+ * values with no series, so it cannot be backfilled — plus somewhere hourly to
+ * put it, since revenue_snapshots is unique per day.
+ */
+const DEFAULT_DAYS = 30
+
 const RANGES = [
-  { days: 1, label: 'Last 24 hours' },
   { days: 7, label: 'Last 7 days' },
   { days: 30, label: 'Last 30 days' },
   { days: 90, label: 'Last 3 months' },
@@ -133,7 +151,7 @@ function useDismiss(onDismiss: () => void) {
  */
 export function RevenueChart({ data }: { data: RevenuePoint[] }) {
   const [metricKey, setMetricKey] = useState<MetricKey>('mrr')
-  const [days, setDays] = useState<number>(30)
+  const [days, setDays] = useState<number>(DEFAULT_DAYS)
   const [compare, setCompare] = useState(true)
   const [trend, setTrend] = useState(false)
   const [metricOpen, setMetricOpen] = useState(false)
@@ -156,13 +174,8 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
     return seen
   }, [data])
 
-  /**
-   * All time means every day we hold; the rest are trailing windows.
-   *
-   * Snapshots are captured once a day, so "last 24 hours" is the move from
-   * yesterday's capture to today's — two points, the fewest a line can join.
-   */
-  const windowDays = days === 0 ? data.length : days === 1 ? 2 : days
+  /** All time means every day we hold; the rest are trailing windows. */
+  const windowDays = days === 0 ? data.length : days
   const rangeAvailable = (range: number) => (range === 0 ? data.length > 1 : data.length >= 2)
 
   const rows = useMemo<ChartRow[]>(() => {
@@ -191,7 +204,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
   const plotted = rows.filter((r) => r.value != null)
   if (plotted.length < 2) {
     return (
-      <div className="border-border text-muted flex h-56 items-center justify-center rounded-[10px] border border-dashed text-sm">
+      <div className="border-border text-muted rounded-card flex h-56 items-center justify-center border border-dashed text-sm">
         Not enough history to chart yet. The first sync landed today.
       </div>
     )
@@ -202,7 +215,8 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
   const priorEnd = [...rows].reverse().find((r) => r.prevValue != null)?.prevValue ?? null
   const change = priorEnd != null ? percentChange(priorEnd, latest) : null
   const hasComparison = rows.some((r) => r.prevValue != null)
-  const activeRange = RANGES.find((r) => r.days === days) ?? RANGES[2]
+  const activeRange =
+    RANGES.find((r) => r.days === days) ?? RANGES.find((r) => r.days === DEFAULT_DAYS)!
 
   return (
     <div>
@@ -220,7 +234,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
                     : 'text-[13px] font-medium text-[var(--red)]'
                 }
               >
-                {change >= 0 ? '↑' : '↓'} {formatGrowth(Math.abs(change))}
+                {change >= 0 ? '↑' : '↓'} {formatMagnitude(change)}
               </span>
             )}
             {change != null && <span className="text-muted text-[13px]">vs. prev period</span>}
@@ -242,7 +256,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
               <ChevronDown className="text-muted size-3.5" />
             </button>
             {metricOpen && (
-              <div className="border-border bg-surface absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-lg border py-1">
+              <div className="glass-raised border-border absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-[14px] border py-1">
                 {METRICS.map((option) => {
                   const enabled = metricHasData.get(option.key)
                   return (
@@ -287,7 +301,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
               <ChevronDown className="text-muted size-3.5" />
             </button>
             {rangeOpen && (
-              <div className="border-border bg-surface absolute right-0 z-20 mt-1 w-[175px] overflow-hidden rounded-lg border py-1">
+              <div className="glass-raised border-border absolute right-0 z-20 mt-1 w-[175px] overflow-hidden rounded-[14px] border py-1">
                 {RANGES.map((range) => {
                   const enabled = rangeAvailable(range.days)
                   return (
