@@ -56,23 +56,31 @@ export function AppRow({
         <AppIcon src={app.iconUrl} name={app.name} size={36} />
       </div>
 
+      {/*
+        The flex item still takes the whole gap so the columns to its right stay
+        put, but the type inside it is capped — an App Store description runs to
+        a few hundred characters, and left uncapped it would truncate somewhere
+        under the founder's name instead of well before it.
+      */}
       <div className="pointer-events-none relative min-w-0 flex-1">
-        <h3 className="text-fg truncate text-[13px] font-bold">
-          {app.isAnonymous ? (
-            <AnonymousName tooltip className="pointer-events-auto">
-              {app.name}
-            </AnonymousName>
-          ) : (
-            app.name
-          )}
-        </h3>
-        <p className="text-muted truncate text-[11px]">
-          {app.isAnonymous ? (
-            <AnonymousName>{app.tagline}</AnonymousName>
-          ) : (
-            (app.tagline ?? app.categoryName)
-          )}
-        </p>
+        <div className="max-w-md min-w-0">
+          <h3 className="text-fg truncate text-[13px] font-bold">
+            {app.isAnonymous ? (
+              <AnonymousName tooltip className="pointer-events-auto">
+                {app.name}
+              </AnonymousName>
+            ) : (
+              app.name
+            )}
+          </h3>
+          <p className="text-muted truncate text-[11px]">
+            {app.isAnonymous ? (
+              <AnonymousName>{app.tagline}</AnonymousName>
+            ) : (
+              (app.tagline ?? app.categoryName)
+            )}
+          </p>
+        </div>
       </div>
 
       <div className="relative hidden w-40 shrink-0 lg:block">
@@ -101,7 +109,7 @@ export function AppRow({
         )}
       </div>
 
-      <div className="tabular text-fg pointer-events-none relative w-24 shrink-0 text-right text-[13px] font-bold sm:w-28">
+      <div className="tabular text-fg pointer-events-none relative w-24 shrink-0 text-right text-[13px] font-extrabold sm:w-28">
         {formatMoney(app.mrrCents)}
       </div>
 

@@ -6,10 +6,16 @@ import { SiteFooter } from '@/components/site-footer'
 import { site } from '@/lib/site'
 import './globals.css'
 
-/** One typeface for the entire interface — headlines, body, and figures alike. */
+/**
+ * One typeface for the entire interface — headlines, body, and figures alike.
+ *
+ * 800 is here for one thing: the MRR column. A mono face keeps its weights
+ * close together by design, and at 13px the jump from 500 to 700 was not enough
+ * to make the figure read as the thing the row is about.
+ */
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  weight: ['400', '500', '700'],
+  weight: ['400', '500', '700', '800'],
   variable: '--font-jetbrains-mono',
   display: 'swap',
 })
