@@ -70,6 +70,8 @@ export default async function AppPage({ params }: Params) {
   ])
 
   const related = relatedAll.filter((item) => item.slug !== app.slug)
+  // Matches what AppReviews itself renders: no reviews and no histogram, no section.
+  const hasReviews = reviews.length > 0 || Boolean(metadata?.ratingHistogram)
   const providers = metrics?.providers ?? []
   const mrrCents = Number(metrics?.mrrCents ?? 0)
 
@@ -260,8 +262,18 @@ export default async function AppPage({ params }: Params) {
         {/* Apple's own screenshots straight after the revenue they belong to. */}
         <AppScreenshots urls={metadata?.screenshotUrls ?? []} appName={app.name} />
 
-        <div className="mt-12 grid gap-10 lg:grid-cols-[1.6fr_1fr]">
-          <div>
+        {/*
+          The facts panel and the ASO score run tall, so the reading column
+          carries About and the reviews rather than a short paragraph and a
+          column of dead space beside them.
+        */}
+        <div className="mt-12 grid items-start gap-10 lg:grid-cols-[1.6fr_1fr]">
+          {/*
+            A new app with no ratings leaves only the description here, far
+            shorter than the panels beside it, so it rides down with the scroll
+            instead of sitting at the top of an empty column.
+          */}
+          <div className={hasReviews ? undefined : 'lg:sticky lg:top-20'}>
             {app.description && (
               <section>
                 <h2 className="display text-xl font-semibold">About</h2>
@@ -270,9 +282,17 @@ export default async function AppPage({ params }: Params) {
                 </div>
               </section>
             )}
+
+            <AppReviews
+              reviews={reviews}
+              histogram={metadata?.ratingHistogram}
+              average={metadata?.averageRating}
+              total={metadata?.ratingCount}
+              appStoreUrl={app.appStoreUrl}
+            />
           </div>
 
-          <aside className="space-y-6">
+          <aside className="space-y-6 lg:sticky lg:top-20">
             <Panel title="App Store">
               <Row label="Category" value={category?.name ?? metadata?.primaryGenre ?? '—'} />{' '}
               <Row label="Version" value={metadata?.version ?? '—'} />{' '}
@@ -308,14 +328,6 @@ export default async function AppPage({ params }: Params) {
             )}
           </aside>
         </div>
-
-        <AppReviews
-          reviews={reviews}
-          histogram={metadata?.ratingHistogram}
-          average={metadata?.averageRating}
-          total={metadata?.ratingCount}
-          appStoreUrl={app.appStoreUrl}
-        />
 
         {verdict && (
           <VibecodeVerdict

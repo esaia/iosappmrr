@@ -49,24 +49,30 @@ export function AppReviews({
         )}
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,260px)_1fr]">
-        {histogram && (
-          <div className="border-border bg-surface rounded-[10px] border p-5">
-            <p className="tabular flex items-baseline gap-1.5">
-              <span className="text-fg text-3xl font-semibold tracking-tight">
-                {average != null ? average.toFixed(1) : '—'}
-              </span>
-              <span className="text-muted text-sm">out of 5</span>
-            </p>
-            {total != null && (
-              <p className="text-muted mt-1 text-[11px]">{formatCount(total)} ratings</p>
-            )}
+      {/*
+        Sized against the column rather than the viewport: this block sits in
+        the narrower reading column on a profile and at full width elsewhere,
+        and the rating summary is just the first card in the same run so
+        neither layout leaves a ragged gap beside it.
+      */}
+      <div className="@container mt-4">
+        <ul className="grid gap-3 @2xl:grid-cols-2 @5xl:grid-cols-3">
+          {histogram && (
+            <li className="border-border bg-surface rounded-[10px] border p-5">
+              <p className="tabular flex items-baseline gap-1.5">
+                <span className="text-fg text-3xl font-semibold tracking-tight">
+                  {average != null ? average.toFixed(1) : '—'}
+                </span>
+                <span className="text-muted text-sm">out of 5</span>
+              </p>
+              {total != null && (
+                <p className="text-muted mt-1 text-[11px]">{formatCount(total)} ratings</p>
+              )}
 
-            <Histogram counts={histogram} />
-          </div>
-        )}
+              <Histogram counts={histogram} />
+            </li>
+          )}
 
-        <ul className="grid gap-3 sm:grid-cols-2">
           {reviews.map((review) => (
             <li
               key={review.reviewId}
