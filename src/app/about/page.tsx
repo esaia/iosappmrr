@@ -6,7 +6,7 @@ import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
   title: 'About',
-  description: 'Why TrustMRR iOS exists, what it indexes, and what it deliberately leaves out.',
+  description: `Why ${site.name} exists, what it indexes, and what it deliberately leaves out.`,
 }
 
 export default function AboutPage() {

@@ -1,4 +1,4 @@
-# TrustMRR · iOS
+# iosAppMRR.com
 
 A directory of App Store apps whose revenue is read directly from their payment
 provider, never typed in by hand. Modelled on [trustmrr.com](https://trustmrr.com),

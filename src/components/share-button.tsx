@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Check, Link2, Share2 } from 'lucide-react'
+import { site } from '@/lib/site'
 
 /** lucide dropped brand marks, so the X logo lives here. */
 function XMark() {
@@ -47,7 +48,7 @@ export function ShareButton({ url, title, mrr }: { url: string; title: string; m
     }
   }, [open])
 
-  const text = mrr ? `${title} does ${mrr}/mo in verified revenue` : `${title} on TrustMRR iOS`
+  const text = mrr ? `${title} does ${mrr}/mo in verified revenue` : `${title} on ${site.name}`
   const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`
 
   async function copy() {

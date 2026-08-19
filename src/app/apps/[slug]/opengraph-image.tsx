@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og'
 import { getAppBySlug } from '@/lib/data/apps'
 import { formatMrr } from '@/lib/utils'
+import { site } from '@/lib/site'
 
 export const alt = 'Verified monthly revenue'
 export const size = { width: 1200, height: 630 }
@@ -88,7 +89,7 @@ export default async function OpengraphImage({ params }: { params: { slug: strin
             fontSize: 26,
           }}
         >
-          TrustMRR · iOS
+          {site.name}
         </div>
       </div>
     </div>,

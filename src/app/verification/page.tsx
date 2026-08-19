@@ -2,12 +2,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ButtonLink } from '@/components/ui/button'
 import { CONNECTABLE_PROVIDERS } from '@/lib/providers'
+import { site } from '@/lib/site'
 import { Container, Measure } from '@/components/ui/container'
 
 export const metadata: Metadata = {
   title: 'How verification works',
   description:
-    'What a verified badge on TrustMRR iOS actually means: which providers we read, what a connected key can and cannot do, and how often figures refresh.',
+    `What a verified badge on ${site.name} actually means: which providers we read, what a connected key can and cannot do, and how often figures refresh.`,
 }
 
 export default function VerificationPage() {

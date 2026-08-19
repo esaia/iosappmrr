@@ -39,7 +39,7 @@ async function main() {
   if (cleanup) return teardown(stripe)
 
   const product = await stripe.products.create({
-    name: 'TrustMRR iOS test subscription',
+    name: 'iosAppMRR.com test subscription',
     metadata: { [TAG]: '1' },
   })
   console.log(`Product ${product.id}`)
