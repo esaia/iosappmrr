@@ -2,9 +2,18 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, Copy, Download, Loader2, Share2, X } from 'lucide-react'
+import { Check, Copy, Download, Loader2, Share2, Sparkles, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { site } from '@/lib/site'
+import {
+  BADGE_SIZE,
+  BADGE_SNIPPETS,
+  badgeImageUrl,
+  badgePrompt,
+  badgeSnippets,
+  type BadgeSnippet,
+  type BadgeTheme,
+} from '@/lib/embed-badge'
 import {
   SHARE_COLORS,
   SHARE_DEFAULTS,
@@ -327,9 +336,114 @@ export function ShareImageDialog({
             </Button>
           </div>
         </div>
+
+        <EmbedSection slug={slug} name={name} theme={options.theme} />
       </div>
     </div>,
     document.body,
+  )
+}
+
+/** What each snippet is for, said plainly enough to choose between them. */
+const SNIPPET_NOTES: Record<BadgeSnippet, string> = {
+  html: 'A link and an image. Works anywhere HTML is allowed, and search engines follow it back to your listing.',
+  iframe:
+    'For site builders that strip image tags. Nothing inside an iframe counts as a link from your page.',
+}
+
+/**
+ * The badge a founder puts in their own footer.
+ *
+ * Downloading an image is a one-off — it says what the revenue was on the day
+ * it was saved. This is the other half of the dialog: an address rather than a
+ * file, pasted once and re-rendered from the live figure every time someone
+ * loads the page it sits in.
+ *
+ * The linked image leads because it is the one that is worth anything to
+ * either side. An iframe's contents belong to this origin, so the link inside
+ * it is ours; a crawler reading the founder's page sees an embedded document
+ * and no link at all. The iframe is offered second, and the note says so.
+ */
+function EmbedSection({ slug, name, theme }: { slug: string; name: string; theme: BadgeTheme }) {
+  const [snippet, setSnippet] = useState<BadgeSnippet>('html')
+  /** Which button was last pressed, so only that one says "Copied". */
+  const [copied, setCopied] = useState<'code' | 'prompt' | null>(null)
+  const code = badgeSnippets(slug, name, theme)[snippet]
+
+  async function copy(what: 'code' | 'prompt') {
+    try {
+      await navigator.clipboard.writeText(
+        what === 'code' ? code : badgePrompt(slug, name, theme, snippet),
+      )
+      setCopied(what)
+      setTimeout(() => setCopied(null), 2000)
+    } catch {
+      // Clipboard is blocked in some contexts; the field is selectable by hand.
+    }
+  }
+
+  return (
+    <div className="border-border mt-6 border-t pt-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="label">Embed on your site</h3>
+        <span className="text-dim text-[11px]">Follows the theme above.</span>
+      </div>
+      <p className="text-muted mt-2 text-[13px]">
+        Paste it once. The figure re-renders from the live number every time the page loads.
+      </p>
+
+      {/* The real badge at its real size, from the same URL the snippet carries
+          — a founder should be looking at the thing they are about to paste,
+          not a drawing of it. */}
+      <div className="border-border bg-surface-2 rounded-card mt-3 flex justify-center border p-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={badgeImageUrl(slug, theme)}
+          alt={`${name} — verified revenue on ${site.shortName}`}
+          width={BADGE_SIZE.width}
+          height={BADGE_SIZE.height}
+          style={{ width: BADGE_SIZE.width, height: BADGE_SIZE.height }}
+        />
+      </div>
+
+      <div className="mt-4">
+        <Choice label="Snippet" options={BADGE_SNIPPETS} value={snippet} onChange={setSnippet} />
+      </div>
+
+      <textarea
+        readOnly
+        rows={snippet === 'html' ? 5 : 3}
+        value={code}
+        aria-label="Embed code"
+        onFocus={(event) => event.currentTarget.select()}
+        className="border-border bg-surface-2 text-muted rounded-card mt-2 w-full resize-none border p-3 font-mono text-[12px] leading-relaxed"
+      />
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-dim max-w-xs text-[11px]">{SNIPPET_NOTES[snippet]}</p>
+        <div className="flex items-center gap-2">
+          {/* Hardly anyone edits a footer template by hand any more. This is the
+              same badge wrapped in instructions for whatever is building the
+              site — paste it into Cursor or Claude and the placement is done. */}
+          <Button type="button" variant="ghost" onClick={() => copy('prompt')}>
+            {copied === 'prompt' ? (
+              <Check className="size-3.5 text-[var(--green)]" />
+            ) : (
+              <Sparkles className="size-3.5" />
+            )}
+            {copied === 'prompt' ? 'Copied' : 'Copy prompt'}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => copy('code')}>
+            {copied === 'code' ? (
+              <Check className="size-3.5 text-[var(--green)]" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+            {copied === 'code' ? 'Copied' : 'Copy code'}
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 

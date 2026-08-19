@@ -185,9 +185,9 @@ function Artwork({ url, size }: { url: string; size: number }) {
  * choice about their own chart; the mark is whose word the figure is on, and a
  * logo that arrives in a different colour on every post stops being one.
  */
-const BRAND = '#0a84ff'
+export const BRAND = '#0a84ff'
 
-function Mark({ size }: { size: number }) {
+export function Mark({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block' }}>
       <rect width="24" height="24" rx="6.6" fill={BRAND} />
