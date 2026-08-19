@@ -5,11 +5,13 @@ import {
   adminActions,
   appMetrics,
   appStoreMetadata,
+  appStoreReviews,
   apps,
   profiles,
   purchases,
   revenueConnections,
   siteSettings,
+  vibecodeVerdicts,
 } from '@/db/schema'
 import { clampSlots } from '@/lib/settings'
 import { escapeLike } from '@/lib/utils'
@@ -131,11 +133,20 @@ export async function listAdminApps({
         select count(*)::int from ${revenueConnections} c
         where c.app_id = ${apps}.id and c.status = 'error'
       )`,
+      appStoreId: apps.appStoreId,
+      reviewsFetchedAt: appStoreMetadata.reviewsFetchedAt,
+      reviewCount: sql<number>`(
+        select count(*)::int from ${appStoreReviews} r where r.app_id = ${apps}.id
+      )`,
+      verdict: vibecodeVerdicts.verdict,
+      verdictEdited: vibecodeVerdicts.editedByHuman,
+      verdictUpdatedAt: vibecodeVerdicts.updatedAt,
     })
     .from(apps)
     .innerJoin(profiles, eq(profiles.id, apps.founderId))
     .leftJoin(appMetrics, eq(appMetrics.appId, apps.id))
     .leftJoin(appStoreMetadata, eq(appStoreMetadata.appId, apps.id))
+    .leftJoin(vibecodeVerdicts, eq(vibecodeVerdicts.appId, apps.id))
     .where(filters.length ? and(...filters) : undefined)
     .orderBy(desc(apps.createdAt))
     .limit(limit)
@@ -151,6 +162,7 @@ export async function getAdminApp(appId: string) {
       status: apps.status,
       isVerified: apps.isVerified,
       websiteDofollow: apps.websiteDofollow,
+      appStoreId: apps.appStoreId,
       founderId: apps.founderId,
       founderHandle: profiles.handle,
     })

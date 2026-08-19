@@ -207,6 +207,21 @@ export const appStoreMetadata = pgTable('app_store_metadata', {
   minimumOsVersion: text('minimum_os_version'),
 
   /**
+   * Ratings per star, 5★ first. Written by the review sync rather than the
+   * lookup — Apple's catalogue API returns the average and the total, but only
+   * the store page carries the breakdown behind them.
+   */
+  ratingHistogram: jsonb('rating_histogram').$type<number[]>(),
+
+  /**
+   * When the store page was last read for reviews. Set on every successful
+   * read, including one that found no reviews — it records the attempt, not the
+   * result, which is what lets the nightly sync skip an app it has already
+   * scraped. A refetch is an explicit admin action.
+   */
+  reviewsFetchedAt: timestamp('reviews_fetched_at', { withTimezone: true }),
+
+  /**
    * Listing-quality score, 0–100, recomputed from the same lookup that fills in
    * the rest of this row. Derived, so it is never hand-edited — see
    * `src/lib/appstore/aso.ts` for what the six signals measure.
@@ -216,6 +231,31 @@ export const appStoreMetadata = pgTable('app_store_metadata', {
 
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
 })
+
+/**
+ * The handful of customer reviews the App Store shows on a listing, refreshed
+ * alongside the metadata above. Derived and replaced wholesale on every sync —
+ * a review Apple stops showing should disappear here too.
+ */
+export const appStoreReviews = pgTable(
+  'app_store_reviews',
+  {
+    appId: uuid('app_id')
+      .notNull()
+      .references(() => apps.id, { onDelete: 'cascade' }),
+    /** Apple's own review id, which is what makes the sync idempotent. */
+    reviewId: text('review_id').notNull(),
+    rating: integer('rating').notNull(),
+    title: text('title'),
+    body: text('body'),
+    author: text('author'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // The primary key already leads with app_id, which is the only way this
+  // table is ever read — a dozen rows per app, sorted in memory.
+  (t) => [primaryKey({ columns: [t.appId, t.reviewId] })],
+)
 
 /* -------------------------------------------------------------------------- */
 /*                         Revenue verification & data                         */

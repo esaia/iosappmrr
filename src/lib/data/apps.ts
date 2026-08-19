@@ -5,6 +5,7 @@ import { db } from '@/db'
 import {
   appMetrics,
   appStoreMetadata,
+  appStoreReviews,
   apps,
   appTechStack,
   categories,
@@ -169,6 +170,26 @@ export async function getAppBySlug(slug: string) {
     .orderBy(asc(techStackTags.name))
 
   return { ...row, tech }
+}
+
+/**
+ * The reviews the App Store currently shows for an app, newest first. Undated
+ * reviews sort last rather than jumping the queue.
+ */
+export async function getAppReviews(appId: string, limit = 6) {
+  return db
+    .select({
+      reviewId: appStoreReviews.reviewId,
+      rating: appStoreReviews.rating,
+      title: appStoreReviews.title,
+      body: appStoreReviews.body,
+      author: appStoreReviews.author,
+      reviewedAt: appStoreReviews.reviewedAt,
+    })
+    .from(appStoreReviews)
+    .where(eq(appStoreReviews.appId, appId))
+    .orderBy(sql`${appStoreReviews.reviewedAt} desc nulls last`)
+    .limit(limit)
 }
 
 /** Daily totals for the app profile chart, oldest first. One row per day, summed

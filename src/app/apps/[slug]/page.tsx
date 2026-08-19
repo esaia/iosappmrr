@@ -7,6 +7,7 @@ import { AppIcon } from '@/components/app-icon'
 import { GrowthPill } from '@/components/growth-pill'
 import { RevenueChart } from '@/components/revenue-chart'
 import { AppScreenshots } from '@/components/app-screenshots'
+import { AppReviews } from '@/components/app-reviews'
 import { AsoScore } from '@/components/aso-score'
 import { AddAppCta } from '@/components/add-app-cta'
 import { AppCard } from '@/components/app-card'
@@ -14,7 +15,7 @@ import { VerifiedBadge, providerLabel } from '@/components/verified-badge'
 import { ShareButton } from '@/components/share-button'
 import { ExpandableText } from '@/components/expandable-text'
 import { VibecodeVerdict } from '@/components/vibecode-verdict'
-import { getAppBySlug, getRevenueHistory, listApps } from '@/lib/data/apps'
+import { getAppBySlug, getAppReviews, getRevenueHistory, listApps } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
 import { getVerdict } from '@/lib/data/vibecode'
 import { getSponsorSlots, SETTING_LIMITS } from '@/lib/settings'
@@ -56,8 +57,9 @@ export default async function AppPage({ params }: Params) {
    * anything else in the list. Run serially they cost four round trips to a
    * database in another country; run together they cost one.
    */
-  const [history, verdict, relatedAll, totalSpots, allSponsors] = await Promise.all([
+  const [history, reviews, verdict, relatedAll, totalSpots, allSponsors] = await Promise.all([
     getRevenueHistory(app.id, 365),
+    getAppReviews(app.id),
     // Read from cache only. An app with no verdict simply does not show the
     // section, rather than blocking the page on a model call.
     getVerdict(app.id),
@@ -304,9 +306,16 @@ export default async function AppPage({ params }: Params) {
                 fetchedAt={metadata.fetchedAt}
               />
             )}
-
           </aside>
         </div>
+
+        <AppReviews
+          reviews={reviews}
+          histogram={metadata?.ratingHistogram}
+          average={metadata?.averageRating}
+          total={metadata?.ratingCount}
+          appStoreUrl={app.appStoreUrl}
+        />
 
         {verdict && (
           <VibecodeVerdict

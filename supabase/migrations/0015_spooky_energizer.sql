@@ -1,0 +1,1 @@
+ALTER TABLE "app_store_metadata" ADD COLUMN "reviews_fetched_at" timestamp with time zone;

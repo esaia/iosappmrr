@@ -4,12 +4,14 @@ import { db } from '@/db'
 import { scoreListing } from '@/lib/appstore/aso'
 import {
   appStoreMetadata,
+  appStoreReviews,
   apps,
   appTechStack,
   revenueConnections,
   techStackTags,
 } from '@/db/schema'
 import type { AppStoreApp } from '@/lib/appstore/lookup'
+import type { AppStoreReviews } from '@/lib/appstore/reviews'
 import { slugify } from '@/lib/utils'
 
 /** Finds a free slug, appending a counter only when the natural one is taken. */
@@ -88,6 +90,47 @@ export async function saveAppStoreMetadata(appId: string, data: AppStoreApp) {
         fetchedAt: new Date(),
       },
     })
+}
+
+/**
+ * Replaces an app's stored reviews with what the store shows today, and records
+ * the star breakdown that came back with them.
+ *
+ * Delete-then-insert rather than upsert: these are the reviews Apple currently
+ * displays, not an archive, and a review that has been taken down should stop
+ * being quoted here too. The histogram is written with an update so it cannot
+ * create a metadata row on its own — the lookup owns that row.
+ */
+export async function saveAppStoreReviews(appId: string, data: AppStoreReviews) {
+  await db.transaction(async (tx) => {
+    await tx.delete(appStoreReviews).where(eq(appStoreReviews.appId, appId))
+
+    if (data.reviews.length > 0) {
+      await tx.insert(appStoreReviews).values(
+        data.reviews.map((review) => ({
+          appId,
+          reviewId: review.reviewId,
+          rating: review.rating,
+          title: review.title,
+          body: review.body,
+          author: review.author,
+          reviewedAt: review.reviewedAt,
+          fetchedAt: new Date(),
+        })),
+      )
+    }
+
+    /*
+     * Stamped even when the page carried no histogram and no reviews: this
+     * records that the page was read, which is what stops the nightly sync
+     * scraping the same listing again. Written with an update so it cannot
+     * create a metadata row on its own — the lookup owns that row.
+     */
+    await tx
+      .update(appStoreMetadata)
+      .set({ ratingHistogram: data.histogram, reviewsFetchedAt: new Date() })
+      .where(eq(appStoreMetadata.appId, appId))
+  })
 }
 
 export async function setAppTechStack(appId: string, tagSlugs: string[]) {

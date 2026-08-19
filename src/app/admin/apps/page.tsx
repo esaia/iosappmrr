@@ -5,11 +5,14 @@ import { AppIcon } from '@/components/app-icon'
 import { Badge } from '@/components/ui/badge'
 import { listAdminApps, type AdminAppRow } from '@/lib/data/admin'
 import { getSlotInventory } from '@/lib/data/purchases'
-import { formatMoney } from '@/lib/utils'
+import { formatMoney, timeAgo } from '@/lib/utils'
+import { verdictLabel, type Verdict } from '@/lib/vibecode'
 import { ActionForm } from '../action-form'
 import {
+  draftVerdictAction,
   giftDofollowAction,
   giftSponsorAction,
+  refetchReviewsAction,
   revokeDofollowAction,
   revokeSponsorAction,
   setAppStatusAction,
@@ -278,6 +281,58 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
               />
             )}
           </div>
+        </Control>
+
+        {/* ------------------------------ Reviews ---------------------------- */}
+        {/*
+          The nightly sync reads a listing's reviews once and then leaves it
+          alone — each read is an 800KB scrape of a page meant for browsers.
+          This is the button for when a founder asks for a refresh.
+        */}
+        <Control
+          title="App Store reviews"
+          state={
+            !row.appStoreId
+              ? 'No App Store ID'
+              : row.reviewsFetchedAt
+                ? `${row.reviewCount} stored · read ${timeAgo(row.reviewsFetchedAt)}`
+                : 'Not read yet — the nightly sync will pick it up'
+          }
+        >
+          {row.appStoreId ? (
+            <ActionForm
+              action={refetchReviewsAction}
+              fields={{ appId: row.id }}
+              label={row.reviewsFetchedAt ? 'Refetch reviews' : 'Fetch reviews now'}
+            />
+          ) : (
+            <p className="text-dim text-[12px]">Nothing to read without an App Store ID.</p>
+          )}
+        </Control>
+
+        {/* ------------------------------ Verdict ---------------------------- */}
+        <Control
+          title="Can I vibecode it?"
+          state={
+            row.verdict
+              ? `${verdictLabel[row.verdict as Verdict]}${row.verdictEdited ? ' · edited by hand' : ''} · ${timeAgo(row.verdictUpdatedAt)}`
+              : 'No verdict drafted'
+          }
+        >
+          {row.verdictEdited ? (
+            <p className="text-dim text-[12px]">
+              Edited by hand. Clear that edit before redrafting, or the model would overwrite
+              someone&rsquo;s correction.
+            </p>
+          ) : (
+            <ActionForm
+              action={draftVerdictAction}
+              fields={{ appId: row.id }}
+              /* A model call and a paid token spend, so it asks first. */
+              confirm={Boolean(row.verdict)}
+              label={row.verdict ? 'Redraft verdict' : 'Draft verdict'}
+            />
+          )}
         </Control>
       </div>
     </li>

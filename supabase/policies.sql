@@ -160,6 +160,7 @@ alter table public.tech_stack_tags     enable row level security;
 alter table public.apps                enable row level security;
 alter table public.app_tech_stack      enable row level security;
 alter table public.app_store_metadata  enable row level security;
+alter table public.app_store_reviews   enable row level security;
 alter table public.revenue_connections enable row level security;
 alter table public.revenue_snapshots   enable row level security;
 alter table public.app_metrics         enable row level security;
@@ -219,6 +220,9 @@ create policy app_tech_stack_write on public.app_tech_stack for all
   using (public.owns_app(app_id)) with check (public.owns_app(app_id));
 
 create policy app_store_metadata_read on public.app_store_metadata for select
+  using (public.can_read_app(app_id));
+
+create policy app_store_reviews_read on public.app_store_reviews for select
   using (public.can_read_app(app_id));
 
 create policy revenue_snapshots_read on public.revenue_snapshots for select

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { apps } from '@/db/schema'
+import { fetchAppStoreReviews } from '@/lib/appstore/reviews'
 import { requireAdmin } from '@/lib/auth'
 import { getAdminApp, logAdminAction, type AdminActor } from '@/lib/data/admin'
 import {
@@ -14,7 +15,10 @@ import {
   revokeActivePurchasesForApp,
   revokePurchaseById,
 } from '@/lib/data/purchases'
+import { saveAppStoreReviews } from '@/lib/data/mutations'
+import { getVerdict, getVerdictInput, saveVerdict } from '@/lib/data/vibecode'
 import { setSetting, SETTING_LIMITS } from '@/lib/settings'
+import { DEFAULT_MODEL, draftVerdict, isConfigured, verdictLabel } from '@/lib/vibecode'
 
 export type AdminState = { error?: string; ok?: string }
 
@@ -397,4 +401,115 @@ export async function setSponsorSlotsAction(
         ? `Saved. ${taken} slots are already booked, so nothing new sells until that falls to ${saved}.`
         : `Saved. ${saved - taken} of ${saved} slots are available.`,
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          App Store reviews & verdict                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Re-reads an app's App Store reviews on demand.
+ *
+ * The nightly sync reads a listing's reviews once and then leaves it alone,
+ * because each read is an 800KB scrape of a page Apple serves for browsers.
+ * This is the escape hatch for when a founder asks: one app, one click, one
+ * request — rather than putting every listing back on a nightly schedule.
+ */
+export async function refetchReviewsAction(
+  _previous: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const admin = await actor()
+  const appId = String(formData.get('appId') ?? '')
+
+  const app = await getAdminApp(appId)
+  if (!app) return { error: 'App not found.' }
+  if (!app.appStoreId) return { error: 'This app has no App Store ID to read.' }
+
+  const found = await fetchAppStoreReviews(app.appStoreId).catch(() => null)
+  if (!found) {
+    // Deliberately not stamped as read: leaving it unset lets the nightly sync
+    // pick the app up again, and lets this button be pressed again now.
+    return {
+      error: 'The App Store page could not be read. It may have moved, or Apple changed the page.',
+    }
+  }
+
+  await saveAppStoreReviews(app.id, found)
+
+  await logAdminAction(admin, {
+    action: 'refetch_reviews',
+    summary: `Refetched App Store reviews for ${app.name} (${found.reviews.length} found)`,
+    targetType: 'app',
+    targetId: appId,
+    detail: { count: found.reviews.length, histogram: found.histogram },
+  })
+
+  revalidatePublic(app.slug)
+  revalidateAdmin()
+
+  return {
+    ok: found.reviews.length
+      ? `Stored ${found.reviews.length} review${found.reviews.length === 1 ? '' : 's'}.`
+      : 'Read the page — Apple is showing no reviews for this app.',
+  }
+}
+
+/**
+ * Drafts the "Can I vibecode it?" verdict for one app.
+ *
+ * Verdicts are never generated on the render path, so until now they only came
+ * into being through `npm run vibecode`. This runs the same draft for a single
+ * app from the screen where an admin is already looking at it.
+ *
+ * A verdict a human has edited is not overwritten. The model's opinion does not
+ * outrank a correction someone made to a claim about their own app — clear the
+ * edit first if you really want it redrafted.
+ */
+export async function draftVerdictAction(
+  _previous: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const admin = await actor()
+  const appId = String(formData.get('appId') ?? '')
+
+  if (!isConfigured()) return { error: 'OPENAI_API_KEY is not set on this deployment.' }
+
+  const app = await getAdminApp(appId)
+  if (!app) return { error: 'App not found.' }
+
+  const existing = await getVerdict(appId)
+  if (existing?.editedByHuman) {
+    return { error: 'This verdict was edited by hand. Clear that edit before redrafting.' }
+  }
+
+  const input = await getVerdictInput(appId)
+  if (!input) return { error: 'App not found.' }
+  if (!input.description && !input.tagline) {
+    // The model would be guessing from a name alone, and it would sound just as
+    // confident doing it.
+    return { error: 'This app has no tagline or description for the model to read.' }
+  }
+
+  let draft
+  try {
+    draft = await draftVerdict(input, { signal: AbortSignal.timeout(60_000) })
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'The model call failed.' }
+  }
+
+  await saveVerdict({ appId, draft, model: DEFAULT_MODEL })
+
+  await logAdminAction(admin, {
+    action: 'draft_verdict',
+    summary: `${existing ? 'Redrafted' : 'Drafted'} vibecode verdict for ${app.name}: ${verdictLabel[draft.verdict]}`,
+    targetType: 'app',
+    targetId: appId,
+    detail: { verdict: draft.verdict, headline: draft.headline, model: DEFAULT_MODEL },
+  })
+
+  revalidatePublic(app.slug)
+  revalidateAdmin()
+
+  return { ok: `${verdictLabel[draft.verdict]} — “${draft.headline}”` }
 }

@@ -6,7 +6,8 @@ import { appStoreMetadata, apps, revenueConnections } from '@/db/schema'
 import { lookupApp } from '@/lib/appstore/lookup'
 import { decryptCredentials } from '@/lib/crypto/credentials'
 import { writeSnapshot } from '@/lib/data/connections'
-import { saveAppStoreMetadata } from '@/lib/data/mutations'
+import { fetchAppStoreReviews } from '@/lib/appstore/reviews'
+import { saveAppStoreMetadata, saveAppStoreReviews } from '@/lib/data/mutations'
 import { recomputeAppMetrics } from '@/lib/metrics'
 import { getAdapter, ProviderError, type ProviderId } from '@/lib/providers'
 
@@ -137,7 +138,15 @@ export async function syncAllRevenue(options: { limit?: number } = {}): Promise<
   return report
 }
 
-export type MetadataReport = { attempted: number; updated: number; missing: number }
+export type MetadataReport = {
+  attempted: number
+  updated: number
+  missing: number
+  /** Listings whose reviews were read for the first time. */
+  reviewed: number
+  /** Listings left alone because their reviews had already been read. */
+  reviewsSkipped: number
+}
 
 /**
  * Refreshes App Store facts — icon, rating, version, screenshots. Runs daily;
@@ -147,14 +156,24 @@ export async function syncAppStoreMetadata(
   options: { limit?: number } = {},
 ): Promise<MetadataReport> {
   const stale = await db
-    .select({ id: apps.id, appStoreId: apps.appStoreId })
+    .select({
+      id: apps.id,
+      appStoreId: apps.appStoreId,
+      reviewsFetchedAt: appStoreMetadata.reviewsFetchedAt,
+    })
     .from(apps)
     .leftJoin(appStoreMetadata, eq(appStoreMetadata.appId, apps.id))
     .where(and(eq(apps.status, 'live'), isNotNull(apps.appStoreId)))
     .orderBy(sql`${appStoreMetadata.fetchedAt} asc nulls first`)
     .limit(options.limit ?? 200)
 
-  const report: MetadataReport = { attempted: stale.length, updated: 0, missing: 0 }
+  const report: MetadataReport = {
+    attempted: stale.length,
+    updated: 0,
+    missing: 0,
+    reviewed: 0,
+    reviewsSkipped: 0,
+  }
 
   // Apple's lookup API is generous but unpublished; stay well inside any limit.
   const limit = pLimit(3)
@@ -169,6 +188,28 @@ export async function syncAppStoreMetadata(
         }
         await saveAppStoreMetadata(app.id, found)
         report.updated++
+
+        /*
+         * Reviews are scraped from the store page rather than read from the
+         * catalogue API — an 800KB request against a shape Apple can change
+         * without notice. So it happens once per app, not nightly: a listing
+         * already read is skipped, and refreshing one is an explicit admin
+         * action. Reviews also move far more slowly than the metadata above.
+         *
+         * A failed read leaves the stamp unset, so the next run retries it.
+         * Nothing here can fail the app: a profile without quoted reviews is
+         * fine, one without an icon is not.
+         */
+        if (app.reviewsFetchedAt) {
+          report.reviewsSkipped++
+          return
+        }
+
+        const reviews = await fetchAppStoreReviews(app.appStoreId).catch(() => null)
+        if (reviews) {
+          await saveAppStoreReviews(app.id, reviews)
+          report.reviewed++
+        }
       }),
     ),
   )
