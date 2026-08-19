@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
+import Link from 'next/link'
 import { useFormStatus } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
 import { dofollow } from '@/lib/dofollow'
@@ -175,6 +176,7 @@ function DofollowOffer({
       blurb={dofollow.blurb}
       active={active}
       activeLabel="Active — your website link is dofollow."
+      manageLabel="View in billing"
       available={available}
       appId={appId}
       action={action}
@@ -214,6 +216,7 @@ function SponsorOffer({
       blurb="Your icon, name, and tagline rotate through the sponsor rails beside the index. Cancel anytime."
       active={active}
       activeLabel="Active — this app is sponsoring the rails."
+      manageLabel="Manage subscription"
       available={available && spotsLeft > 0}
       appId={appId}
       action={action}
@@ -231,6 +234,7 @@ function Offer({
   blurb,
   active,
   activeLabel,
+  manageLabel,
   available,
   appId,
   action,
@@ -243,6 +247,8 @@ function Offer({
   blurb: string
   active: boolean
   activeLabel: string
+  /** What the link into the billing tab offers while this is live. */
+  manageLabel: string
   available: boolean
   appId: string
   action: (formData: FormData) => void
@@ -262,7 +268,17 @@ function Offer({
       <p className="text-muted mt-1.5 text-[12px] leading-relaxed">{blurb}</p>
 
       {active ? (
-        <p className="text-green mt-3 text-[12px]">{activeLabel}</p>
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p className="text-green text-[12px]">{activeLabel}</p>
+          {/*
+            Cancelling, resuming, and the receipt all live on the billing tab,
+            which a founder looking at this card has no reason to know about.
+            The card that sold it is where they will come back to change it.
+          */}
+          <Link href="/account" className="text-blue text-[12px] hover:underline">
+            {manageLabel} →
+          </Link>
+        </div>
       ) : available ? (
         <form action={action} className="mt-3">
           <input type="hidden" name="appId" value={appId} />
