@@ -8,7 +8,12 @@ import { db } from '@/db'
 import { apps, categories } from '@/db/schema'
 import { AppStoreLookupError, lookupApp, parseAppStoreId } from '@/lib/appstore/lookup'
 import { getCurrentUser } from '@/lib/auth'
+import { createCheckout } from '@/lib/checkout'
+import { connectProvider } from '@/lib/data/connections'
 import { saveAppStoreMetadata, setAppTechStack, uniqueSlug } from '@/lib/data/mutations'
+import { isPolarConfigured } from '@/lib/polar'
+import { isConnectable } from '@/lib/providers'
+import { PROVIDER_FIELDS } from '@/lib/provider-fields'
 
 export type LookupState = {
   error?: string
@@ -27,7 +32,7 @@ export type LookupState = {
   }
 }
 
-/** Step one: turn a pasted App Store link into a pre-filled listing. */
+/** Turns a pasted App Store link into a pre-filled listing. */
 export async function lookupAppAction(
   _previous: LookupState,
   formData: FormData,
@@ -100,6 +105,8 @@ const submitSchema = z.object({
     .union([z.string().trim().url('Website must be a full URL.'), z.literal('')])
     .optional(),
   tech: z.array(z.string()).default([]),
+  provider: z.string().refine(isConnectable, 'Choose a provider to verify revenue with.'),
+  dofollow: z.boolean().default(false),
 })
 
 export type SubmitState = {
@@ -109,8 +116,21 @@ export type SubmitState = {
   needsAuth?: { appStoreId: string }
 }
 
-/** Step two: create the listing as a draft. It goes live once revenue verifies. */
-export async function createAppAction(
+/**
+ * Lists an app and verifies its revenue in one submission.
+ *
+ * These used to be two screens, and the second one was where founders dropped
+ * out: a draft nobody could see, parked behind a step they had to come back
+ * for. Doing both here means an app is either live or was never created in a
+ * state worth keeping — the listing is written first only because a provider
+ * connection needs an app to hang off.
+ *
+ * A failed connection therefore leaves a draft behind on purpose. Re-submitting
+ * finds it below and reuses it, so retrying with a corrected key does not
+ * create a second listing, and the founder can also finish later from
+ * /dashboard/[appId]/connect.
+ */
+export async function submitAppAction(
   _previous: SubmitState,
   formData: FormData,
 ): Promise<SubmitState> {
@@ -124,6 +144,8 @@ export async function createAppAction(
     categorySlug: formData.get('categorySlug'),
     website: formData.get('website'),
     tech: formData.getAll('tech').map(String),
+    provider: formData.get('provider'),
+    dofollow: formData.get('dofollow') === 'on',
   })
 
   if (!parsed.success) {
@@ -144,59 +166,128 @@ export async function createAppAction(
    */
   if (!user) return { needsAuth: { appStoreId: data.appStoreId } }
 
-  const [duplicate] = await db
-    .select({ id: apps.id, slug: apps.slug, status: apps.status, founderId: apps.founderId })
-    .from(apps)
-    .where(eq(apps.appStoreId, data.appStoreId))
-    .limit(1)
-
-  if (duplicate) {
-    // Live listings are settled; nobody re-submits them.
-    if (duplicate.status === 'live') {
-      return { error: `That app is already listed at /apps/${duplicate.slug}.` }
-    }
-    // Your own unfinished draft: pick it up where you left off rather than
-    // reporting a duplicate you cannot see.
-    if (duplicate.founderId === user.id) {
-      redirect(`/dashboard/${duplicate.id}/connect`)
-    }
-    return {
-      error:
-        'Another founder has claimed this app and is verifying it. If it is yours, get in touch and we will sort it out.',
-    }
-  }
-
   const [category] = await db
     .select({ id: categories.id })
     .from(categories)
     .where(eq(categories.slug, data.categorySlug))
     .limit(1)
 
+  const [duplicate] = await db
+    .select({ id: apps.id, slug: apps.slug, status: apps.status, founderId: apps.founderId })
+    .from(apps)
+    .where(eq(apps.appStoreId, data.appStoreId))
+    .limit(1)
+
+  if (duplicate && duplicate.status === 'live') {
+    // Live listings are settled; nobody re-submits them.
+    return { error: `That app is already listed at /apps/${duplicate.slug}.` }
+  }
+
+  if (duplicate && duplicate.founderId !== user.id) {
+    return {
+      error:
+        'Another founder has claimed this app and is verifying it. If it is yours, get in touch and we will sort it out.',
+    }
+  }
+
   const store = await lookupApp(data.appStoreId).catch(() => null)
 
-  const [created] = await db
-    .insert(apps)
-    .values({
-      slug: await uniqueSlug(data.name),
-      name: data.name,
-      tagline: data.tagline || null,
-      description: data.description || null,
-      appStoreId: data.appStoreId,
-      bundleId: store?.bundleId ?? null,
-      appStoreUrl: store?.appStoreUrl ?? `https://apps.apple.com/app/id${data.appStoreId}`,
-      founderId: user.id,
-      categoryId: category?.id ?? null,
-      website: data.website || store?.website || null,
-      launchedAt: store?.releasedAt?.toISOString().slice(0, 10) ?? null,
-      // Draft until a provider connection verifies revenue. Nothing reaches the
-      // public index on the strength of a form submission alone.
-      status: 'draft',
-    })
-    .returning({ id: apps.id })
+  let app: { id: string; slug: string }
 
-  if (store) await saveAppStoreMetadata(created.id, store)
-  await setAppTechStack(created.id, data.tech)
+  if (duplicate) {
+    /*
+     * A draft of this founder's own, from an earlier attempt that failed to
+     * verify. Take the fields as they now stand — they may have fixed the very
+     * thing that was wrong — but keep the slug, because it is what any link
+     * they have already shared points at.
+     */
+    const [updated] = await db
+      .update(apps)
+      .set({
+        name: data.name,
+        tagline: data.tagline || null,
+        description: data.description || null,
+        categoryId: category?.id ?? null,
+        website: data.website || store?.website || null,
+      })
+      .where(eq(apps.id, duplicate.id))
+      .returning({ id: apps.id, slug: apps.slug })
+    app = updated
+  } else {
+    const [created] = await db
+      .insert(apps)
+      .values({
+        slug: await uniqueSlug(data.name),
+        name: data.name,
+        tagline: data.tagline || null,
+        description: data.description || null,
+        appStoreId: data.appStoreId,
+        bundleId: store?.bundleId ?? null,
+        appStoreUrl: store?.appStoreUrl ?? `https://apps.apple.com/app/id${data.appStoreId}`,
+        founderId: user.id,
+        categoryId: category?.id ?? null,
+        website: data.website || store?.website || null,
+        launchedAt: store?.releasedAt?.toISOString().slice(0, 10) ?? null,
+        // Draft until the connection below verifies revenue. Nothing reaches
+        // the public index on the strength of a form submission alone.
+        status: 'draft',
+      })
+      .returning({ id: apps.id, slug: apps.slug })
+    app = created
+  }
+
+  if (store) await saveAppStoreMetadata(app.id, store)
+  await setAppTechStack(app.id, data.tech)
+
+  /*
+   * Only the fields the chosen provider declares are passed on. Reading every
+   * remaining form entry would send the app's own name and description to the
+   * adapter as if they were credentials.
+   */
+  const credentials = Object.fromEntries(
+    (PROVIDER_FIELDS[data.provider] ?? []).map((field) => [
+      field.name,
+      String(formData.get(field.name) ?? ''),
+    ]),
+  )
+
+  const connected = await connectProvider({
+    appId: app.id,
+    founderId: user.id,
+    provider: data.provider,
+    credentials,
+  })
 
   revalidatePath('/dashboard')
-  redirect(`/dashboard/${created.id}/connect`)
+
+  if (!connected.ok) {
+    /*
+     * When the failure belongs to a field, the summary is deliberately generic.
+     * `connectProvider` reports the same sentence both ways, and printing it
+     * verbatim under the input and again in the banner reads as two separate
+     * problems with one key.
+     */
+    const fieldErrors = connected.fieldErrors
+    return {
+      error: fieldErrors ? 'Check the highlighted fields.' : connected.error,
+      fieldErrors,
+    }
+  }
+
+  revalidatePath(`/apps/${app.slug}`)
+
+  /*
+   * The upgrade is charged only once the app is real and verified. A founder
+   * whose key was wrong has not been billed for a link on a listing that never
+   * went live, and one who reaches Polar is buying something that already
+   * exists. If the checkout cannot be opened we still send them to the app they
+   * just published — the sale can be made again from the edit screen, but the
+   * listing is not something to hand back as an error.
+   */
+  if (data.dofollow && isPolarConfigured('dofollow')) {
+    const checkout = await createCheckout('dofollow', app, user)
+    if ('url' in checkout) redirect(checkout.url)
+  }
+
+  redirect(`/apps/${app.slug}`)
 }

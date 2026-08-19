@@ -41,7 +41,14 @@ export async function connectProviderAction(
     credentials,
   })
 
-  if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
+  // Generic when a field is already carrying the detail — see the note in
+  // `submitAppAction`. The same sentence in two places reads as two faults.
+  if (!result.ok) {
+    return {
+      error: result.fieldErrors ? 'Check the highlighted fields.' : result.error,
+      fieldErrors: result.fieldErrors,
+    }
+  }
 
   revalidatePath('/dashboard')
   revalidatePath(`/apps/${app.slug}`)

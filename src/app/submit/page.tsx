@@ -5,12 +5,17 @@ import { db } from '@/db'
 import { categories, techStackTags } from '@/db/schema'
 import { lookupApp } from '@/lib/appstore/lookup'
 import { getCurrentUser } from '@/lib/auth'
+import { dofollow } from '@/lib/dofollow'
+import { isPolarConfigured } from '@/lib/polar'
+import { CONNECTABLE_PROVIDERS } from '@/lib/providers'
+import { PROVIDER_FIELDS } from '@/lib/provider-fields'
+import { formatMoney } from '@/lib/utils'
 import { SubmitFlow } from './submit-flow'
 
 export const metadata: Metadata = {
   title: 'Add your iOS app',
   description:
-    'List your App Store app and connect its revenue. Takes about two minutes and one read-only API key.',
+    'List your App Store app and connect its revenue in one step. Takes about two minutes and one read-only API key.',
 }
 
 export default async function SubmitPage({
@@ -34,11 +39,10 @@ export default async function SubmitPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-      <p className="label">Step 1 of 2</p>
-      <h1 className="display mt-2 text-4xl">Add your app</h1>
+      <h1 className="display text-4xl">Add your app</h1>
       <p className="text-muted mt-3 text-[13px] leading-relaxed">
-        Paste your App Store link and we&apos;ll fill in the rest. You&apos;ll connect revenue next
-        — your app stays private until that succeeds.
+        Paste your App Store link and we&apos;ll fill in the rest. Add your provider key in the same
+        form — your app goes live the moment it verifies.
       </p>
 
       {!user && (
@@ -74,6 +78,23 @@ export default async function SubmitPage({
           genre: c.appStoreGenre,
         }))}
         tech={techList.map((t) => ({ slug: t.slug, name: t.name }))}
+        providers={CONNECTABLE_PROVIDERS.map((provider) => ({
+          id: provider.id,
+          name: provider.name,
+          instructions: provider.instructions,
+          docsUrl: provider.docsUrl,
+          fields: PROVIDER_FIELDS[provider.id],
+        }))}
+        /* Not for sale until Polar has a product for it, so it is not offered. */
+        dofollowOffer={
+          isPolarConfigured('dofollow')
+            ? {
+                price: formatMoney(dofollow.priceCents),
+                blurb: dofollow.blurb,
+                domainAuthority: dofollow.domainAuthority,
+              }
+            : null
+        }
       />
     </div>
   )

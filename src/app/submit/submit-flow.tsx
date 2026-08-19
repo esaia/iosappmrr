@@ -1,22 +1,38 @@
 'use client'
 
 import { useActionState, useEffect, useState } from 'react'
-import { Loader2, LogIn, Search } from 'lucide-react'
+import { ExternalLink, Loader2, LogIn, Search } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { Button, ButtonLink } from '@/components/ui/button'
-import { createAppAction, lookupAppAction, type LookupState, type SubmitState } from './actions'
+import { lookupAppAction, submitAppAction, type LookupState, type SubmitState } from './actions'
 
 type Category = { slug: string; name: string; genre: string | null }
 type Tech = { slug: string; name: string }
+type Field = {
+  name: string
+  label: string
+  type?: string
+  placeholder?: string
+  multiline?: boolean
+}
+type Provider = { id: string; name: string; instructions: string; docsUrl: string; fields: Field[] }
+
+const input =
+  'border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none'
 
 export function SubmitFlow({
   categories,
   tech,
+  providers,
+  dofollowOffer,
   isSignedIn,
   initialApp,
 }: {
   categories: Category[]
   tech: Tech[]
+  providers: Provider[]
+  /** Null when Polar has no dofollow product configured — then it is not for sale. */
+  dofollowOffer: { price: string; blurb: string; domainAuthority: number | null } | null
   isSignedIn: boolean
   initialApp?: LookupState['app'] | null
 }) {
@@ -24,17 +40,20 @@ export function SubmitFlow({
     lookupAppAction,
     initialApp ? { app: initialApp } : {},
   )
-  const [submit, runSubmit, submitting] = useActionState<SubmitState, FormData>(createAppAction, {})
+  const [submit, runSubmit, submitting] = useActionState<SubmitState, FormData>(submitAppAction, {})
 
   /*
    * Controlled, not defaultValue. React resets a form's uncontrolled fields
-   * once its action resolves, so an unsigned-in submit — which comes back
-   * asking for sign-in rather than navigating — would silently clear the
-   * category the founder had picked.
+   * once its action resolves, and this form resolves in place whenever a key
+   * fails to verify — uncontrolled state would empty the category and the
+   * upgrade the founder had already chosen, on the one submit that hands the
+   * form back.
    *
    * Declared above the lookup-step return so the hook order never changes.
    */
   const [categorySlug, setCategorySlug] = useState('')
+  const [provider, setProvider] = useState(providers[0]?.id ?? '')
+  const [dofollow, setDofollow] = useState(false)
 
   const suggestedSlug = lookup.app?.primaryGenre
     ? categories.find((category) => category.genre === lookup.app!.primaryGenre)?.slug
@@ -59,7 +78,7 @@ export function SubmitFlow({
             required
             autoFocus
             placeholder="https://apps.apple.com/us/app/your-app/id123456789"
-            className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong min-w-0 flex-1 rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
+            className={`${input} min-w-0 flex-1`}
           />
           <Button type="submit" size="lg" disabled={lookingUp}>
             {lookingUp ? (
@@ -89,6 +108,7 @@ export function SubmitFlow({
   // Only categories that map to a real App Store genre can be suggested, and
   // the genre must be present — otherwise every untagged category matches null.
   const suggested = categories.find((category) => category.slug === suggestedSlug)
+  const selectedProvider = providers.find((option) => option.id === provider)
 
   return (
     <form action={runSubmit} className="mt-8 space-y-6">
@@ -104,7 +124,7 @@ export function SubmitFlow({
         </div>
       </div>
 
-      <Field
+      <TextField
         label="Name"
         name="name"
         defaultValue={app.name}
@@ -112,7 +132,7 @@ export function SubmitFlow({
         required
       />
 
-      <Field
+      <TextField
         label="Tagline"
         name="tagline"
         defaultValue={app.tagline}
@@ -131,7 +151,7 @@ export function SubmitFlow({
           rows={5}
           defaultValue={app.description}
           maxLength={2000}
-          className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong mt-2 w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
+          className={`${input} mt-2`}
         />
       </div>
 
@@ -145,7 +165,7 @@ export function SubmitFlow({
           required
           value={categorySlug}
           onChange={(event) => setCategorySlug(event.target.value)}
-          className="border-border bg-surface text-fg focus:border-border-strong mt-2 w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
+          className={`${input} mt-2`}
         >
           <option value="" disabled>
             Choose a category
@@ -166,7 +186,7 @@ export function SubmitFlow({
         )}
       </div>
 
-      <Field
+      <TextField
         label="Website"
         name="website"
         type="url"
@@ -186,6 +206,136 @@ export function SubmitFlow({
           ))}
         </div>
       </fieldset>
+
+      {/*
+        Verification is part of this form, not a screen after it. The credential
+        fields belong to whichever provider is selected, and only that
+        provider's fields are read on the server — so switching tabs cannot
+        smuggle a half-filled second set through.
+      */}
+      <section className="border-border border-t pt-6">
+        <h2 className="text-fg text-sm font-medium">Connect revenue</h2>
+        <p className="text-muted mt-1 text-xs leading-relaxed">
+          One read-only key. We check it before saving anything, then re-read it daily. Your app
+          goes live the moment it works.
+        </p>
+
+        <input type="hidden" name="provider" value={provider} />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {providers.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setProvider(option.id)}
+              className={
+                option.id === provider
+                  ? 'bg-accent text-accent-fg rounded-lg px-3 py-1.5 text-sm font-medium'
+                  : 'border-border text-muted hover:border-border-strong hover:text-fg rounded-lg border px-3 py-1.5 text-sm'
+              }
+            >
+              {option.name}
+            </button>
+          ))}
+        </div>
+        {submit.fieldErrors?.provider && (
+          <p className="text-red mt-1.5 text-sm">{submit.fieldErrors.provider}</p>
+        )}
+
+        {selectedProvider && (
+          <div key={selectedProvider.id} className="mt-4 space-y-4">
+            <div className="border-border bg-surface-2 rounded-[10px] border p-4">
+              <p className="text-muted text-sm leading-relaxed">{selectedProvider.instructions}</p>
+              <a
+                href={selectedProvider.docsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue mt-2 inline-flex items-center gap-1 text-[11px] hover:underline"
+              >
+                {selectedProvider.name} docs
+                <ExternalLink className="size-3" />
+              </a>
+            </div>
+
+            {selectedProvider.fields.map((credential) => (
+              <div key={credential.name}>
+                <label htmlFor={credential.name} className="text-fg text-sm font-medium">
+                  {credential.label}
+                </label>
+                {credential.multiline ? (
+                  <textarea
+                    id={credential.name}
+                    name={credential.name}
+                    rows={5}
+                    required
+                    placeholder={credential.placeholder}
+                    className={`${input} mt-2 text-xs`}
+                  />
+                ) : (
+                  <input
+                    id={credential.name}
+                    name={credential.name}
+                    type={credential.type ?? 'text'}
+                    required
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={credential.placeholder}
+                    className={`${input} mt-2`}
+                  />
+                )}
+                {submit.fieldErrors?.[credential.name] && (
+                  <p className="text-red mt-1.5 text-sm">{submit.fieldErrors[credential.name]}</p>
+                )}
+              </div>
+            ))}
+
+            <p className="text-muted text-xs leading-relaxed">
+              Encrypted before it reaches the database and never shown again — not even to you. We
+              test it before saving, so a key that doesn&apos;t work is never stored.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/*
+        Offered here rather than only on the edit screen, where founders had to
+        already know it existed. The charge comes after the app verifies, so
+        ticking this is not a payment — it decides where the founder is sent
+        once their listing is live.
+      */}
+      {dofollowOffer && (
+        <label
+          className={
+            dofollow
+              ? 'border-border-strong bg-surface block cursor-pointer rounded-[10px] border p-4'
+              : 'border-border hover:border-border-strong block cursor-pointer rounded-[10px] border border-dashed p-4'
+          }
+        >
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              name="dofollow"
+              checked={dofollow}
+              onChange={(event) => setDofollow(event.target.checked)}
+              className="accent-accent mt-0.5 size-4 shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-fg text-[13px] font-medium">
+                  Dofollow link
+                  {dofollowOffer.domainAuthority != null && (
+                    <span className="text-muted font-normal">
+                      {' '}
+                      · Domain Authority {dofollowOffer.domainAuthority}
+                    </span>
+                  )}
+                </span>
+                <span className="text-fg text-[13px] font-medium">{dofollowOffer.price}</span>
+              </div>
+              <p className="text-muted mt-1.5 text-xs leading-relaxed">{dofollowOffer.blurb}</p>
+            </div>
+          </div>
+        </label>
+      )}
 
       {/*
         Shown from the start when signed out, rather than after a submit that
@@ -212,7 +362,10 @@ export function SubmitFlow({
       )}
 
       {submit.error && (
-        <p role="alert" className="text-red text-sm">
+        <p
+          role="alert"
+          className="border-red/40 bg-red-dim text-red rounded-[10px] border px-4 py-3 text-sm"
+        >
           {submit.error}
         </p>
       )}
@@ -223,19 +376,27 @@ export function SubmitFlow({
         instead of two competing ones.
       */}
       {isSignedIn && (
-        <div className="border-border flex items-center gap-3 border-t pt-6">
+        <div className="border-border flex flex-wrap items-center gap-3 border-t pt-6">
           <Button type="submit" size="lg" disabled={submitting}>
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            Continue to verification
+            {dofollow && dofollowOffer
+              ? `Add app + checkout (${dofollowOffer.price})`
+              : 'Add app and verify'}
           </Button>
-          <p className="text-muted text-xs">Saved as a private draft until revenue verifies.</p>
+          <p className="text-muted text-xs">
+            {submitting
+              ? 'Checking the key…'
+              : dofollow && dofollowOffer
+                ? 'Verified first, paid after — a key that fails is never charged for.'
+                : 'Private until the key verifies. Then it goes live.'}
+          </p>
         </div>
       )}
     </form>
   )
 }
 
-function Field({
+function TextField({
   label,
   name,
   hint,
@@ -252,12 +413,7 @@ function Field({
       <label htmlFor={name} className="text-fg text-sm font-medium">
         {label}
       </label>
-      <input
-        id={name}
-        name={name}
-        className="border-border bg-surface text-fg placeholder:text-muted focus:border-border-strong mt-2 w-full rounded-[10px] border px-4 py-2.5 text-sm focus:outline-none"
-        {...props}
-      />
+      <input id={name} name={name} className={`${input} mt-2`} {...props} />
       {hint && !error && <p className="text-muted mt-1.5 text-xs">{hint}</p>}
       {error && <p className="text-red mt-1.5 text-sm">{error}</p>}
     </div>
