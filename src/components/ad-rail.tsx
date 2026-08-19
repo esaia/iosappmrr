@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { AdvertiseModal } from '@/components/advertise-modal'
-import { forSide, ROTATE_MS } from '@/lib/ads'
+import { ADS_ENABLED, forSide, ROTATE_MS } from '@/lib/ads'
 import type { Sponsor } from '@/lib/data/purchases'
 import { site } from '@/lib/site'
 
@@ -44,6 +44,14 @@ export function AdRail({
   }, [slots.length])
 
   const sponsor = slots[index % slots.length]
+
+  /*
+   * Deliberately below the hooks rather than at the top of the function: an
+   * early return above them would make the hook calls conditional. ADS_ENABLED
+   * is a module constant, so this branch is stable for the life of the page and
+   * the rails simply never mount anything.
+   */
+  if (!ADS_ENABLED) return null
 
   return (
     <aside
@@ -128,14 +136,14 @@ function Slot({ sponsor }: { sponsor: Sponsor }) {
       // `sponsored` tells search engines this link is paid for. Omitting it on a
       // paid link is exactly what a manual penalty is for.
       rel={external ? 'sponsored noopener noreferrer' : 'sponsored'}
-      className={`group border-border bg-surface hover:border-border-strong hover:bg-surface-2 relative flex ${SLOT_MIN_HEIGHT} flex-col justify-between overflow-hidden rounded-[10px] border p-3.5 transition-colors`}
+      className={`group border-border bg-surface hover:border-border-strong hover:bg-surface-2 relative flex ${SLOT_MIN_HEIGHT} rounded-card flex-col justify-between overflow-hidden border p-3.5 transition-colors`}
     >
       {/*
         A corner ribbon rather than a line of body text: the disclosure is
         still the first thing read, but it costs no vertical space in a slot
         that had far too much of it.
       */}
-      <span className="bg-gold-dim text-gold absolute top-0 right-0 rounded-tr-[9px] rounded-bl-[10px] px-2 py-1 text-[9px] font-bold tracking-wider uppercase">
+      <span className="bg-gold-dim text-gold ring-gold/25 absolute top-2.5 right-2.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase ring-1 ring-inset">
         Sponsored
       </span>
 
@@ -146,7 +154,7 @@ function Slot({ sponsor }: { sponsor: Sponsor }) {
             alt=""
             width={120}
             height={120}
-            className="border-border size-10 rounded-[9px] border"
+            className="border-border size-10 rounded-[10px] border"
             unoptimized
           />
         )}
@@ -174,7 +182,7 @@ function EmptySlot({ spotsLeft, totalSpots }: { spotsLeft: number; totalSpots: n
       totalSpots={totalSpots}
     >
       <span
-        className={`border-border text-muted hover:border-border-strong hover:text-fg flex ${SLOT_MIN_HEIGHT} flex-col items-center justify-center rounded-[10px] border border-dashed p-4 text-center transition-colors`}
+        className={`border-border text-muted hover:border-border-strong hover:text-fg flex ${SLOT_MIN_HEIGHT} rounded-card flex-col items-center justify-center border border-dashed p-4 text-center transition-colors`}
       >
         <span className="text-[13px] font-medium">Advertise here</span>
         <span className="text-dim mt-1.5 text-[11px] leading-relaxed">

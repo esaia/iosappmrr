@@ -12,6 +12,20 @@
  */
 
 /**
+ * Master switch for the sponsor rails.
+ *
+ * Off for now. With nothing sold, every page carries two "advertise here"
+ * placeholders in its margins, which advertises that nobody is buying — worth
+ * less than the empty space it fills.
+ *
+ * Nothing behind this is removed or stubbed: the Polar products, the webhook
+ * that grants a slot on payment, the admin slot count, the rotation between
+ * rails and the advertise modal are all intact and untested by this flag.
+ * Setting it back to `true` is the whole of turning ads on.
+ */
+export const ADS_ENABLED = false
+
+/**
  * How many sponsors to sell at once, before an admin says otherwise.
  *
  * The live number lives in `site_settings` and is read through
