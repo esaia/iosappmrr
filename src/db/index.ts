@@ -20,4 +20,12 @@ const sql = globalForDb.sql ?? postgres(connectionString, { prepare: false, max:
 if (process.env.NODE_ENV !== 'production') globalForDb.sql = sql
 
 export const db = drizzle(sql, { schema, casing: 'snake_case' })
+
+/**
+ * The underlying postgres-js client, for the two things Drizzle cannot express:
+ * a cursor that walks a large result without materialising it, and a
+ * transaction whose isolation level is set by hand. The backup uses both.
+ * Everything else should go through `db`.
+ */
+export { sql as client }
 export { schema }

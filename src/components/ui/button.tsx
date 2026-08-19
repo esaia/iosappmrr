@@ -7,7 +7,12 @@ import { cn } from '@/lib/utils'
  * page. Each variant presses in on :active — a 1.5% scale, far too small to
  * notice as motion and the thing that makes a control feel physically clicked.
  */
-const button = cva(
+/**
+ * Exported so a plain `<a>` can wear the same clothes. Needed for links the
+ * client router must not touch — a file download, an external href — where a
+ * `ButtonLink` would prefetch or intercept the navigation.
+ */
+export const button = cva(
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-card font-medium transition-[transform,background-color,border-color,box-shadow] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.985] disabled:pointer-events-none disabled:opacity-40',
   {
     variants: {
