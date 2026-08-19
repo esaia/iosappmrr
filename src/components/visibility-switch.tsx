@@ -48,14 +48,19 @@ export function VisibilitySwitch({
       {/* Posts the opposite of where the row stands, so the click carries the
           intent rather than the current value. */}
       <input type="hidden" name="hidden" value={shown ? 'true' : 'false'} />
+      {/*
+        A plain button rather than a switch: the label names what the click
+        does — "Temporary hide", then "Show" once it is off — so the toggle
+        beside it is decoration and is hidden from assistive tech, which would
+        otherwise read the state and the action as if they were the same thing.
+      */}
       <button
         type="submit"
         disabled={pending}
-        role="switch"
-        aria-checked={shown}
         className="group inline-flex items-center gap-2.5 disabled:opacity-50"
       >
         <span
+          aria-hidden="true"
           className={
             shown
               ? 'bg-green/80 relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors'
@@ -71,7 +76,7 @@ export function VisibilitySwitch({
           />
         </span>
         <span className={shown ? 'text-muted text-xs' : 'text-dim text-xs'}>
-          {pending ? 'Saving…' : shown ? 'Showing in the rails' : 'Hidden from the rails'}
+          {pending ? 'Saving…' : shown ? 'Temporary hide' : 'Show'}
         </span>
       </button>
 
