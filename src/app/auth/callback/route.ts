@@ -2,13 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { syncXProfile } from '@/lib/x-profile'
 
-/** Exchanges the one-time code from a magic link or OAuth redirect for a session. */
+/** Exchanges the one-time code from an OAuth redirect for a session. */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
 
   // Only ever redirect within this site — an open redirect here would let a
-  // crafted sign-in link land users on someone else's page holding a session.
+  // crafted callback link land users on someone else's page holding a session.
   const requested = searchParams.get('next') ?? '/dashboard'
   const next = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/dashboard'
 

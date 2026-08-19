@@ -24,9 +24,9 @@ export default function PrivacyPage() {
 
       <Section title="What we store">
         <Item term="Account">
-          An email address, and a GitHub username if you sign in that way. Authentication runs on
-          Supabase Auth; we never see or store a password, because there isn&apos;t one — sign-in is
-          a one-time link or GitHub OAuth.
+          The email address and username your X or Google account hands over at sign-in.
+          Authentication runs on Supabase Auth; we never see or store a password, because there
+          isn&apos;t one — sign-in is X or Google OAuth.
         </Item>
         <Item term="Profile">
           A handle, and optionally a display name, avatar URL, bio, website, and X handle. All of it

@@ -12,7 +12,7 @@ category, and version from Apple's public catalogue alongside verified MRR.
 - **Next.js 15** (App Router, RSC) + TypeScript
 - **Tailwind CSS v4** with a token system in `src/app/globals.css`
 - **Prettier** (`npm run format`) with the Tailwind class-sorting plugin
-- **Supabase** — Postgres, Auth (magic link + GitHub), RLS
+- **Supabase** — Postgres, Auth (X + Google OAuth), RLS
 - **Drizzle ORM** for queries and migrations
 - **Vercel** for hosting and cron
 

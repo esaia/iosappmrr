@@ -31,8 +31,8 @@ export default function TermsPage() {
 
       <Section title="Accounts">
         <p className="text-muted leading-relaxed">
-          You need an account to list an app. Keep access to your email and GitHub secure, since
-          they are the only way into your account. One person or company per account; do not list an
+          You need an account to list an app. Keep your X and Google accounts secure, since they
+          are the only way into your account. One person or company per account; do not list an
           app you have no right to represent.
         </p>
       </Section>
