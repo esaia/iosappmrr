@@ -164,13 +164,24 @@ export default async function AppPage({ params }: Params) {
                   )}
                 </span>
               )}
-              {metadata?.averageRating && (
+              {/*
+                `!= null`, not a truthiness check: an app Apple has rated 0, or
+                one nobody has reviewed yet, is still an app with a rating we
+                know — and `0 &&` renders a bare 0 next to the byline rather
+                than nothing at all.
+              */}
+              {metadata?.averageRating != null && (
                 <span className="inline-flex items-center gap-1">
                   <Star className="fill-gold text-gold size-3.5" />
                   <span className="tabular">{metadata.averageRating.toFixed(1)}</span>
-                  {metadata.ratingCount && (
+                  {/*
+                    Hidden at zero. "(0)" beside a rating reads as a count that
+                    failed to load; no count reads as what it is — nobody has
+                    reviewed this yet.
+                  */}
+                  {metadata.ratingCount ? (
                     <span className="text-xs">({formatCount(metadata.ratingCount)})</span>
-                  )}
+                  ) : null}
                 </span>
               )}
               {app.website && (
