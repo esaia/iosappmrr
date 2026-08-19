@@ -31,7 +31,23 @@ export function Container({ className, ...props }: React.ComponentProps<'div'>) 
  * misalignment this whole arrangement exists to remove. A page with nothing
  * but the column on it — a form, say — has no list to line up with, so it can
  * opt into the middle by passing `mx-auto`.
+ *
+ * `size` exists so that a page needing the roomier measure can ask for it by
+ * name. The same rule as `Container` applies for the same reason: passing a
+ * `max-w-*` in `className` leaves the winner to stylesheet order rather than to
+ * the order you wrote, so widths are chosen here and nowhere else.
  */
-export function Measure({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('max-w-2xl', className)} {...props} />
+const MEASURE = {
+  /** Prose and forms. */
+  default: 'max-w-2xl',
+  /** For a column carrying cards or code, which need the extra room. */
+  wide: 'max-w-3xl',
+} as const
+
+export function Measure({
+  className,
+  size = 'default',
+  ...props
+}: React.ComponentProps<'div'> & { size?: keyof typeof MEASURE }) {
+  return <div className={cn(MEASURE[size], className)} {...props} />
 }

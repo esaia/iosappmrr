@@ -14,7 +14,7 @@ const UPDATED = '18 August 2026'
 export default function PrivacyPage() {
   return (
     <Container className="py-10 sm:py-16">
-      <Measure className="max-w-2xl">
+      <Measure className="mx-auto">
         <h1 className="display text-4xl font-semibold sm:text-5xl">Privacy</h1>
         <p className="text-dim mt-3 text-sm">Last updated {UPDATED}</p>
 

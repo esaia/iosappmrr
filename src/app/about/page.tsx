@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <Container className="py-10 sm:py-16">
-      <Measure className="max-w-2xl">
+      <Measure className="mx-auto">
         <h1 className="display text-4xl font-semibold sm:text-5xl">About</h1>
 
         <div className="text-muted mt-6 space-y-5 text-lg leading-relaxed">

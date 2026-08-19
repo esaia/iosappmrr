@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function MarketplacePage() {
   return (
     <Container className="py-10 sm:py-16">
-      <Measure className="max-w-2xl">
+      <Measure className="mx-auto">
         <span className="border-gold/40 bg-gold-dim text-gold inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold tracking-[0.11em] uppercase">
           <span className="bg-gold size-1.5 rounded-full" aria-hidden="true" />
           Coming soon

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 export default function VerificationPage() {
   return (
     <Container className="py-10 sm:py-16">
-      <Measure className="max-w-3xl">
+      <Measure size="wide" className="mx-auto">
         <p className="label">The method</p>
         <h1 className="display mt-2 text-4xl font-semibold sm:text-5xl">
           How a number gets on this site

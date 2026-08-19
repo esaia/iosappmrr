@@ -19,7 +19,7 @@ export default async function InsightsPage({ params }: { params: Promise<{ appId
 
   return (
     <Container className="py-10 sm:py-14">
-      <Measure className="max-w-2xl">
+      <Measure className="mx-auto">
         <nav className="text-muted mb-6 text-xs">
           <Link href="/dashboard" className="hover:text-fg">
             Dashboard
