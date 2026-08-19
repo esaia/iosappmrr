@@ -1,5 +1,5 @@
 import { validateEvent, WebhookVerificationError } from '@polar-sh/sdk/webhooks.js'
-import { activatePurchase, revokePurchase } from '@/lib/data/purchases'
+import { activatePurchase, revokePurchase, setCancelAtPeriodEnd } from '@/lib/data/purchases'
 import { parseMetadata, webhookSecret } from '@/lib/polar'
 
 /**
@@ -90,10 +90,20 @@ async function handle(event: ReturnType<typeof validateEvent>) {
     }
 
     /*
-     * `revoked` is the one that matters, not `canceled`. Polar sends
-     * `subscription.canceled` when a sponsor turns off auto-renew — they have
-     * paid through the end of the period and should keep the slot until then.
-     * `revoked` is when access actually ends.
+     * Auto-renew turned off. Deliberately not a revoke: the sponsor has paid
+     * through the end of the period and keeps the slot until then, so only the
+     * winding-down flag moves. Handled even though the founder can do this on
+     * the account screen, because they can also do it in Polar's own portal,
+     * and then this is the only way we hear about it.
+     */
+    case 'subscription.canceled': {
+      const subscription = event.data
+      await setCancelAtPeriodEnd(subscription.id, true, subscription.currentPeriodEnd)
+      return
+    }
+
+    /*
+     * `revoked` is the one that ends access, not `canceled` above.
      */
     case 'subscription.revoked': {
       await revokePurchase({ polarSubscriptionId: event.data.id })

@@ -5,9 +5,11 @@ import { redirect } from 'next/navigation'
 import { and, eq, ne } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
+import { apps } from '@/db/schema'
 import { profiles, purchases } from '@/db/schema'
+import { setCancelAtPeriodEnd, setPurchaseHidden } from '@/lib/data/purchases'
 import { requireUser } from '@/lib/auth'
-import { cancelSubscription, createBillingPortalSession } from '@/lib/checkout'
+import { createBillingPortalSession, setSubscriptionCancellation } from '@/lib/checkout'
 
 export type ProfileState = {
   error?: string
@@ -124,14 +126,19 @@ export async function openBillingPortalAction(): Promise<BillingActionState> {
 }
 
 /**
- * Cancels one sponsor subscription at the end of its paid period.
+ * Turns one sponsor subscription's auto-renew off, or back on.
  *
  * The row is looked up by id *and* owner, so the form supplies nothing that
- * decides whose subscription is ended. Nothing here writes to `purchases`:
+ * decides whose subscription is changed. Neither direction touches `status`:
  * Polar keeps billing until the period closes, and the `subscription.revoked`
  * webhook is what withdraws the slot when it does.
+ *
+ * The local flag is written here rather than left to `subscription.canceled`,
+ * because the founder has just clicked and the screen has to answer them. The
+ * webhook writes the same value, so an intent set in Polar's own portal still
+ * arrives, and the two agreeing is not a conflict.
  */
-export async function cancelSponsorAction(
+export async function setSponsorCancellationAction(
   _previous: BillingActionState,
   formData: FormData,
 ): Promise<BillingActionState> {
@@ -141,6 +148,8 @@ export async function cancelSponsorAction(
   // miss. Rejected here so a mangled form field reads as "not found".
   const purchaseId = String(formData.get('purchaseId') ?? '')
   if (!/^[0-9a-f-]{36}$/i.test(purchaseId)) return { error: 'That subscription is not active.' }
+
+  const cancel = formData.get('cancel') === 'true'
 
   const [row] = await db
     .select({ subscriptionId: purchases.polarSubscriptionId, status: purchases.status })
@@ -152,9 +161,61 @@ export async function cancelSponsorAction(
     return { error: 'That subscription is not active.' }
   }
 
-  const result = await cancelSubscription(row.subscriptionId)
+  const result = await setSubscriptionCancellation(row.subscriptionId, cancel)
   if (result.error) return { error: result.error }
 
+  await setCancelAtPeriodEnd(row.subscriptionId, cancel)
+
   revalidatePath('/account')
+  return {}
+}
+
+/**
+ * Shows or hides what an active purchase entitles, without ending it.
+ *
+ * Offered on gifted rows as well as paid ones: the reason to switch a sponsor
+ * slot off for a week, or to stop passing a link while a domain moves, is about
+ * the app rather than about who paid for it.
+ *
+ * Restricted to `active` rows because there is nothing to show or hide
+ * otherwise — a revoked or pending purchase entitles nothing, and offering the
+ * control there would imply it could be switched back on.
+ */
+export async function setPurchaseVisibilityAction(
+  _previous: BillingActionState,
+  formData: FormData,
+): Promise<BillingActionState> {
+  const user = await requireUser('/account')
+
+  const purchaseId = String(formData.get('purchaseId') ?? '')
+  if (!/^[0-9a-f-]{36}$/i.test(purchaseId)) return { error: 'That purchase is not active.' }
+
+  const hidden = formData.get('hidden') === 'true'
+
+  // Ownership and status are checked together, so neither the id nor the state
+  // it is in comes from the form.
+  const [row] = await db
+    .select({ status: purchases.status, appId: purchases.appId })
+    .from(purchases)
+    .where(and(eq(purchases.id, purchaseId), eq(purchases.profileId, user.id)))
+    .limit(1)
+
+  if (!row || row.status !== 'active') return { error: 'That purchase is not active.' }
+
+  const updated = await setPurchaseHidden(purchaseId, hidden)
+  if (!updated) return { error: 'That purchase is not active.' }
+
+  const [app] = await db
+    .select({ slug: apps.slug })
+    .from(apps)
+    .where(eq(apps.id, row.appId))
+    .limit(1)
+
+  revalidatePath('/account')
+  // The rails are on every page that renders them, and the app page carries
+  // the link whose rel attribute has just changed.
+  revalidatePath('/', 'layout')
+  if (app) revalidatePath(`/apps/${app.slug}`)
+
   return {}
 }

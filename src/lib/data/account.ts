@@ -11,6 +11,8 @@ export type BillingRow = {
   amountCents: number | null
   currency: string | null
   currentPeriodEnd: Date | null
+  cancelAtPeriodEnd: boolean
+  hidden: boolean
   createdAt: Date
   polarSubscriptionId: string | null
   app: { id: string; slug: string; name: string; iconUrl: string | null }
@@ -36,6 +38,8 @@ export async function listBillingForProfile(profileId: string): Promise<BillingR
       amountCents: purchases.amountCents,
       currency: purchases.currency,
       currentPeriodEnd: purchases.currentPeriodEnd,
+      cancelAtPeriodEnd: purchases.cancelAtPeriodEnd,
+      hidden: purchases.hidden,
       createdAt: purchases.createdAt,
       polarSubscriptionId: purchases.polarSubscriptionId,
       app: {

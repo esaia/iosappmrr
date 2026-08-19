@@ -1,0 +1,1 @@
+ALTER TABLE "purchases" ADD COLUMN "hidden" boolean DEFAULT false NOT NULL;

@@ -115,23 +115,30 @@ export async function createBillingPortalSession(user: { id: string }): Promise<
 }
 
 /**
- * Ends a sponsor subscription when its paid period runs out.
+ * Turns a sponsor's auto-renew off, or back on.
  *
- * Not an immediate revoke: the founder has paid through the end of the period
- * and the rails should keep showing them until then. Polar sends
+ * Cancelling is never an immediate revoke: the founder has paid through the end
+ * of the period and the rails should keep showing them until then. Polar sends
  * `subscription.revoked` when the period actually ends, and the webhook is what
- * withdraws the slot here — this function never writes to `purchases`, so the
- * ledger keeps its single source of truth.
+ * withdraws the slot — nothing here touches the entitlement.
+ *
+ * The same call resumes it, which is why this takes a flag rather than being
+ * two functions. Polar treats uncancelling as clearing the same field, and a
+ * period that has not ended yet was never interrupted, so resuming costs
+ * nothing and starts no new billing period.
  */
-export async function cancelSubscription(polarSubscriptionId: string): Promise<{ error?: string }> {
+export async function setSubscriptionCancellation(
+  polarSubscriptionId: string,
+  cancelAtPeriodEnd: boolean,
+): Promise<{ error?: string }> {
   try {
     await polarClient().subscriptions.update({
       id: polarSubscriptionId,
-      subscriptionUpdate: { cancelAtPeriodEnd: true },
+      subscriptionUpdate: { cancelAtPeriodEnd },
     })
     return {}
   } catch (error) {
-    console.error('[polar] subscription cancel failed', error)
+    console.error('[polar] subscription cancel toggle failed', error)
     return { error: 'Could not reach the payment provider. Try again in a moment.' }
   }
 }

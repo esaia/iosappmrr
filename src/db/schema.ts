@@ -401,6 +401,27 @@ export const purchases = pgTable(
      */
     currentPeriodEnd: timestamp('current_period_end', { withTimezone: true }),
 
+    /**
+     * Set when a sponsor has turned off auto-renew but the period they paid
+     * for has not run out. Display only — the entitlement is still live, and
+     * `status` stays `active` until Polar says the access has actually ended.
+     * Without it the account screen cannot tell a slot that renews from one
+     * that is winding down, and both read as "Renews".
+     */
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+
+    /**
+     * The founder has switched off what they hold, without giving it up.
+     *
+     * Not the same as revoked: they still own it, a sponsor slot is still
+     * theirs and still counted against the cap, and a paid one is still being
+     * billed. It simply stops being shown — the rails skip it and the website
+     * link goes back to nofollow — until they switch it on again. A gift can be
+     * hidden the same way, because the reason to hide is about the app, not
+     * about who paid.
+     */
+    hidden: boolean('hidden').notNull().default(false),
+
     /** The admin who granted this, for `source = 'admin'` rows. */
     grantedBy: uuid('granted_by').references(() => profiles.id, { onDelete: 'set null' }),
     /** Why it was granted or revoked by hand. Free text, admin-facing only. */

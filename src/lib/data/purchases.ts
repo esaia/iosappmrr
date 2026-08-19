@@ -53,6 +53,12 @@ export async function activatePurchase(input: {
       amountCents: input.amountCents ?? undefined,
       currency: input.currency ?? undefined,
       currentPeriodEnd: input.currentPeriodEnd ?? undefined,
+      /*
+       * A subscription that is active again is not winding down. This covers
+       * `subscription.uncanceled` without a second write, and is a no-op for
+       * the renewals and first payments that also land here.
+       */
+      cancelAtPeriodEnd: false,
       updatedAt: new Date(),
     })
     .where(eq(purchases.polarCheckoutId, input.polarCheckoutId))
@@ -68,6 +74,35 @@ export async function activatePurchase(input: {
   await applyGrant(row.kind, row.appId)
   if (row.source === 'polar') await supersedeGifts(row.kind, row.appId, row.id)
   return true
+}
+
+/**
+ * Records that a sponsor has turned auto-renew off, or back on.
+ *
+ * Not a status change: the founder has paid through the end of the period and
+ * keeps the slot until then, so `status` stays `active` and the rails go on
+ * showing them. This only lets the account screen say "Ends" rather than
+ * "Renews", and offer the way back.
+ *
+ * Written both by the founder's own action and by `subscription.canceled`, so
+ * a cancellation made in Polar's own portal shows up here too.
+ */
+export async function setCancelAtPeriodEnd(
+  polarSubscriptionId: string,
+  cancelAtPeriodEnd: boolean,
+  currentPeriodEnd?: Date | null,
+) {
+  const rows = await db
+    .update(purchases)
+    .set({
+      cancelAtPeriodEnd,
+      currentPeriodEnd: currentPeriodEnd ?? undefined,
+      updatedAt: new Date(),
+    })
+    .where(eq(purchases.polarSubscriptionId, polarSubscriptionId))
+    .returning({ id: purchases.id })
+
+  return rows.length > 0
 }
 
 /**
@@ -102,32 +137,21 @@ async function supersedeGifts(kind: PurchaseKind, appId: string, keepId: string)
 }
 
 /**
- * Turns on whatever a purchase entitles, given only its kind and app.
+ * Recomputes `apps.website_dofollow` from the purchase rows that decide it.
  *
- * Shared by the webhook and the admin screens so a gifted entitlement and a
- * bought one are indistinguishable to the rest of the site — there is no second
- * definition of "has a dofollow link" that could drift from this one.
+ * Derived rather than toggled, so there is one definition of "has a dofollow
+ * link" and no sequence of grant, refund, re-purchase, gift, or hide can leave
+ * the flag disagreeing with the ledger. It replaces a pair of writes that had
+ * to reason about each other: granting set it true, revoking set it false only
+ * after checking for a survivor, and a third caller would have had to
+ * rediscover that rule.
  *
- * A sponsor slot needs nothing here: the rails read `purchases` directly, so
- * the row being `active` is the entitlement.
+ * A row that is hidden does not count. The founder still holds it — and a paid
+ * one is still being billed — but they have asked for the link not to be
+ * passed, and the rendered page must agree with that.
  */
-async function applyGrant(kind: PurchaseKind, appId: string) {
-  if (kind === 'dofollow') {
-    await db.update(apps).set({ websiteDofollow: true }).where(eq(apps.id, appId))
-  }
-}
-
-/**
- * Turns off what a purchase entitled, unless another live purchase still covers
- * it. That check is why this cannot be a plain inverse of `applyGrant`: a
- * founder who bought, refunded, then bought again keeps the link the second
- * purchase paid for, and an admin revoking a gift must not take away a slot
- * someone is paying for.
- */
-async function applyRevoke(kind: PurchaseKind, appId: string) {
-  if (kind !== 'dofollow') return
-
-  const [survivor] = await db
+async function syncDofollowFlag(appId: string) {
+  const [live] = await db
     .select({ id: purchases.id })
     .from(purchases)
     .where(
@@ -135,13 +159,38 @@ async function applyRevoke(kind: PurchaseKind, appId: string) {
         eq(purchases.appId, appId),
         eq(purchases.kind, 'dofollow'),
         eq(purchases.status, 'active'),
+        eq(purchases.hidden, false),
       ),
     )
     .limit(1)
 
-  if (!survivor) {
-    await db.update(apps).set({ websiteDofollow: false }).where(eq(apps.id, appId))
-  }
+  await db
+    .update(apps)
+    .set({ websiteDofollow: Boolean(live) })
+    .where(eq(apps.id, appId))
+}
+
+/**
+ * Turns on whatever a purchase entitles, given only its kind and app.
+ *
+ * Shared by the webhook and the admin screens so a gifted entitlement and a
+ * bought one are indistinguishable to the rest of the site.
+ *
+ * A sponsor slot needs nothing here: the rails read `purchases` directly, so
+ * the row being active and unhidden is the entitlement.
+ */
+async function applyGrant(kind: PurchaseKind, appId: string) {
+  if (kind === 'dofollow') await syncDofollowFlag(appId)
+}
+
+/**
+ * Turns off what a purchase entitled, unless another live purchase still covers
+ * it — a founder who bought, refunded, then bought again keeps the link the
+ * second purchase paid for, and an admin revoking a gift must not take away
+ * what someone is paying for. Both cases fall out of recomputing.
+ */
+async function applyRevoke(kind: PurchaseKind, appId: string) {
+  if (kind === 'dofollow') await syncDofollowFlag(appId)
 }
 
 /**
@@ -356,6 +405,8 @@ export async function listActiveSponsors(limit: number): Promise<Sponsor[]> {
       and(
         eq(purchases.kind, 'sponsor'),
         eq(purchases.status, 'active'),
+        // Switched off by its owner. Still theirs, still billed, not shown.
+        eq(purchases.hidden, false),
         eq(apps.status, 'live'),
         or(isNull(purchases.currentPeriodEnd), gt(purchases.currentPeriodEnd, sql`now()`)),
       ),
@@ -379,6 +430,11 @@ export async function listActiveSponsors(limit: number): Promise<Sponsor[]> {
  * gift and the paid row that replaces it, and counting rows would report the
  * rails as fuller than they are — and could refuse a sale on inventory that is
  * actually free.
+ *
+ * Hidden slots are counted, unlike in the rails above. The founder still holds
+ * the slot and a paid one is still being billed; freeing it for sale the moment
+ * they switched it off would sell the same slot twice and leave them unable to
+ * switch it back on.
  */
 export async function countActiveSponsors() {
   const [row] = await db
@@ -393,6 +449,31 @@ export async function countActiveSponsors() {
     )
 
   return row?.count ?? 0
+}
+
+/**
+ * Switches an entitlement's visibility without giving it up.
+ *
+ * Deliberately does not touch `status`. Revoking is the end of something —
+ * refund, lapse, an admin taking a gift back — and it is not reversible by the
+ * founder. This is a light switch: a sponsor who wants out of the rails for a
+ * fortnight, or a founder who does not want the link passed while they move
+ * domains, and who expects to find it exactly as they left it.
+ *
+ * Returns the app so the caller can revalidate the pages that read it.
+ */
+export async function setPurchaseHidden(id: string, hidden: boolean) {
+  const [row] = await db
+    .update(purchases)
+    .set({ hidden, updatedAt: new Date() })
+    .where(eq(purchases.id, id))
+    .returning({ kind: purchases.kind, appId: purchases.appId })
+
+  if (!row) return null
+
+  // The rails read `purchases` directly, so a sponsor row needs nothing more.
+  if (row.kind === 'dofollow') await syncDofollowFlag(row.appId)
+  return row
 }
 
 /**
