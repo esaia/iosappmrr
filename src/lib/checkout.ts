@@ -201,6 +201,17 @@ function checkoutFailureMessage(error: unknown) {
     return 'Checkout is not set up yet: Paddle needs a default payment link before it will take a payment.'
   }
 
+  /*
+   * The live account exists and its key works, but Paddle has not finished
+   * onboarding it — website approval is part of that, and it is a review by a
+   * person rather than a setting. Worth naming because everything on our side
+   * looks correct while it is pending, which is the most confusing shape a
+   * failure can take.
+   */
+  if (code === 'transaction_checkout_not_enabled') {
+    return 'Checkout is not live yet: Paddle has not finished approving this account.'
+  }
+
   return 'Could not reach the payment provider. Try again in a moment.'
 }
 
