@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { JetBrains_Mono } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SquircleDefs } from '@/components/squircle-defs'
 import { SiteHeader } from '@/components/site-header'
@@ -8,16 +8,31 @@ import { site } from '@/lib/site'
 import './globals.css'
 
 /**
- * One typeface for the entire interface — headlines, body, and figures alike.
+ * Two faces from one family: words in the sans, figures in the mono.
  *
- * 800 is here for one thing: the MRR column. A mono face keeps its weights
- * close together by design, and at 13px the jump from 500 to 700 was not enough
- * to make the figure read as the thing the row is about.
+ * The site ran on a single monospace for everything, which gave it a terminal's
+ * identity and cost it a paragraph's readability — an app's description is
+ * prose, and prose set on a fixed pitch is slower to read at every length. The
+ * split keeps what the mono was actually earning: money, counts, versions and
+ * dates still land on a fixed pitch, so a column of figures is a column.
+ *
+ * Geist and Geist Mono are drawn on the same skeleton, so the two never read as
+ * two typefaces sharing a page — which is the usual failure of a pairing.
+ *
+ * Both are loaded as variable fonts: one file each, every weight available, and
+ * no more picking weights up front. The old face needed an 800 to make the MRR
+ * column stand out, because a mono keeps its weights close together by design;
+ * a grotesk separates 500 from 700 on its own.
  */
-const jetbrainsMono = JetBrains_Mono({
+const geistSans = Geist({
   subsets: ['latin'],
-  weight: ['400', '500', '700', '800'],
-  variable: '--font-jetbrains-mono',
+  variable: '--font-geist-sans',
+  display: 'swap',
+})
+
+const geistMono = Geist_Mono({
+  subsets: ['latin'],
+  variable: '--font-geist-mono',
   display: 'swap',
 })
 
@@ -88,7 +103,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={jetbrainsMono.variable} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
       <body suppressHydrationWarning>
         <SquircleDefs />
         <a

@@ -69,7 +69,17 @@ export default async function HomePage() {
             <AppleMark />
             App Store
           </p>
-          <h1 className="display mx-auto mt-3 max-w-4xl text-[clamp(1.9rem,5.2vw,3.5rem)] text-balance">
+          {/*
+            Bigger than the `.display` default, and looser.
+
+            The site-wide -0.022em is set for headings that sit inside a page;
+            this one is the page, at nearly twice their size, and tracking that
+            works at 20px closes a 68px line up into a single dark mass. Opened
+            back out past normal, the words separate and the line reads as a
+            claim rather than as a logo. The measure widens with it so the extra
+            size does not buy a third line.
+          */}
+          <h1 className="display mx-auto mt-4 max-w-5xl text-[clamp(2.15rem,5.9vw,4.25rem)] text-balance [--display-tracking:0.005em]">
             The database of verified{' '}
             {/* Sized in em so it grows with the headline and stays a word in the
                 sentence rather than a mark stamped on it. */}

@@ -27,33 +27,41 @@ const COLORS = {
 }
 
 /*
- * The interface typeface, so a card looks like the page it came from.
+ * The interface typefaces, so a card looks like the page it came from — both of
+ * them, because the page uses both: Geist for the words, Geist Mono for the
+ * figures. A card that set an app's name in the mono would no longer match the
+ * page it is advertising.
  *
  * Read off disk from `public/` rather than fetched: these routes run on Node,
  * where a relative fetch has no origin to resolve against, and `public/` is the
  * one directory guaranteed to ship whole — no output-tracing hints needed. The
- * files are .woff because Satori reads ttf, otf, and woff, but not woff2.
+ * files are .ttf because Satori reads ttf, otf, and woff, but not woff2.
  *
  * Read once per process. Card generation is cached per URL anyway, but a warm
- * function serving a second app should not re-read 100KB to do it.
+ * function serving a second app should not re-read 300KB to do it.
  */
 const FONT_DIR = join(process.cwd(), 'public', 'fonts')
 let fontCache: Promise<Awaited<ReturnType<typeof loadFonts>>> | null = null
 
 async function loadFonts() {
-  const [regular, bold] = await Promise.all([
-    readFile(join(FONT_DIR, 'JetBrainsMono-Regular.woff')),
-    readFile(join(FONT_DIR, 'JetBrainsMono-Bold.woff')),
+  const [sans, sansBold, mono, monoBold] = await Promise.all([
+    readFile(join(FONT_DIR, 'Geist-Regular.ttf')),
+    readFile(join(FONT_DIR, 'Geist-Bold.ttf')),
+    readFile(join(FONT_DIR, 'GeistMono-Regular.ttf')),
+    readFile(join(FONT_DIR, 'GeistMono-Bold.ttf')),
   ])
+  const normal = 'normal' as const
   return [
-    { name: 'JetBrains Mono', data: regular, weight: 400 as const, style: 'normal' as const },
-    { name: 'JetBrains Mono', data: bold, weight: 700 as const, style: 'normal' as const },
+    { name: 'Geist', data: sans, weight: 400 as const, style: normal },
+    { name: 'Geist', data: sansBold, weight: 700 as const, style: normal },
+    { name: 'Geist Mono', data: mono, weight: 400 as const, style: normal },
+    { name: 'Geist Mono', data: monoBold, weight: 700 as const, style: normal },
   ]
 }
 
 /**
- * Exported because the share card renders in the same typeface and would
- * otherwise read the same two files into a second cache.
+ * Exported because the share card and the badge render in the same typefaces
+ * and would otherwise read the same four files into caches of their own.
  */
 export function cardFonts() {
   fontCache ??= loadFonts()
@@ -159,7 +167,7 @@ export async function ogCard({ title, subtitle, figure, hero, iconUrl, eyebrow }
         justifyContent: 'space-between',
         background: COLORS.bg,
         color: COLORS.fg,
-        fontFamily: 'JetBrains Mono',
+        fontFamily: 'Geist',
         padding: 64,
         // A single wash of accent from the top-left keeps the card from
         // reading as a screenshot of a terminal.
@@ -240,6 +248,7 @@ export async function ogCard({ title, subtitle, figure, hero, iconUrl, eyebrow }
                 display: 'flex',
                 alignItems: 'baseline',
                 gap: 6,
+                fontFamily: 'Geist Mono',
                 fontSize: 128,
                 fontWeight: 700,
                 letterSpacing: '-0.05em',

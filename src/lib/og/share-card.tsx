@@ -329,13 +329,21 @@ function ChartCard({ name, iconUrl, mrrCents, points, periodLabel, options }: Sh
         justifyContent: 'space-between',
         background: palette.bg,
         color: palette.fg,
-        fontFamily: 'JetBrains Mono',
+        fontFamily: 'Geist',
         padding: 64,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: 86, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1 }}>
+          <span
+            style={{
+              fontFamily: 'Geist Mono',
+              fontSize: 86,
+              fontWeight: 700,
+              letterSpacing: '-0.04em',
+              lineHeight: 1,
+            }}
+          >
             {formatMrr(headline ?? mrrCents)}
           </span>
           <span style={{ fontSize: 26, color: palette.muted, marginTop: 14 }}>
@@ -419,7 +427,7 @@ function BadgeCard({ name, iconUrl, mrrCents, options }: ShareCardInput) {
         gap: 36,
         background: palette.bg,
         color: palette.fg,
-        fontFamily: 'JetBrains Mono',
+        fontFamily: 'Geist',
         padding: 56,
         border: `2px solid ${palette.border}`,
       }}
@@ -451,6 +459,7 @@ function BadgeCard({ name, iconUrl, mrrCents, options }: ShareCardInput) {
             display: 'flex',
             alignItems: 'baseline',
             gap: 4,
+            fontFamily: 'Geist Mono',
             fontSize: 96,
             fontWeight: 700,
             letterSpacing: '-0.04em',

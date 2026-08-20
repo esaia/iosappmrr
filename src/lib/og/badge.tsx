@@ -69,7 +69,7 @@ export async function badgeImage({
         padding: '0 20px',
         background: palette.bg,
         color: palette.fg,
-        fontFamily: 'JetBrains Mono',
+        fontFamily: 'Geist',
         border: `2px solid ${palette.border}`,
         borderRadius: 18,
       }}
@@ -99,6 +99,7 @@ export async function badgeImage({
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
         <span
           style={{
+            fontFamily: 'Geist Mono',
             fontSize: 15,
             lineHeight: 1,
             letterSpacing: '0.16em',
@@ -112,6 +113,7 @@ export async function badgeImage({
             display: 'flex',
             alignItems: 'baseline',
             marginTop: 9,
+            fontFamily: 'Geist Mono',
             fontSize: 40,
             fontWeight: 700,
             letterSpacing: '-0.035em',

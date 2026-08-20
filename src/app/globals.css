@@ -71,9 +71,14 @@
   --color-blue: var(--blue);
   --color-blue-dim: var(--blue-dim);
 
-  /* One family, everywhere. The whole interface reads as a terminal. */
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, 'SF Mono', Menlo, monospace;
-  --font-sans: var(--font-jetbrains-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  /*
+   * Words in the sans, figures in the mono — see the note in layout.tsx. The
+   * sans is the default for everything; the mono is opted into, and there are
+   * only three ways in: `.tabular`, `.label`, and Tailwind's `font-mono` for
+   * the two places that show literal code.
+   */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
 
   --radius-card: var(--radius);
 }
@@ -92,13 +97,23 @@
   body {
     background-color: var(--bg);
     color: var(--fg);
-    font-family: var(--font-mono), monospace;
+    font-family: var(--font-sans), sans-serif;
+    /* Geist Mono draws arrows and comparisons as ligatures, which belong in an
+       editor and not in a version string or a price. */
     font-variant-ligatures: none;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Figures are data: align them in columns. */
+  /*
+   * Figures are data: align them in columns.
+   *
+   * This is also the site's main door into the mono. Every money figure, count,
+   * version and date already carries it — that is what the class has always
+   * meant — so putting the family here routes the whole of the site's numeric
+   * content onto a fixed pitch without a single call site changing.
+   */
   .tabular {
+    font-family: var(--font-mono), monospace;
     font-variant-numeric: tabular-nums;
   }
 
@@ -225,17 +240,37 @@
   }
 
   /*
-   * Headlines. Monospace at display size needs tighter tracking than its
-   * default or the letters drift apart.
+   * Headlines.
+   *
+   * The tracking was -0.045em, which a monospace at display size needs because
+   * every letter is set on the same wide pitch and they drift apart without it.
+   * A grotesk already fits its own letters; pulled that far in, Geist's
+   * headlines collide.
    */
   .display {
     font-weight: 700;
-    letter-spacing: -0.045em;
+    /*
+     * A knob, and it has to be a custom property rather than something a
+     * `tracking-*` class could set: this block lives in `@layer utilities` and
+     * is emitted after Tailwind's own utilities, so `.display` wins every
+     * specificity tie and silently ate any tracking set on the element. A
+     * custom property is a different declaration, so there is no tie to lose.
+     * The home page's hero uses it — a heading at 68px wants nothing like the
+     * tracking a heading at 20px does.
+     */
+    letter-spacing: var(--display-tracking, -0.022em);
     line-height: 1.05;
   }
 
-  /* The tiny uppercase key above every figure on the site. */
+  /*
+   * The tiny uppercase key above every figure on the site.
+   *
+   * Mono, deliberately. At 10px with a tenth of an em of tracking it is a
+   * machine label rather than a word, and it sits directly above a figure that
+   * is set in the mono too — a grotesk here would break the pair apart.
+   */
   .label {
+    font-family: var(--font-mono), monospace;
     font-size: 10px;
     line-height: 1.4;
     letter-spacing: 0.11em;
