@@ -12,18 +12,36 @@ import { verdictBlurb, verdictLabel, type Verdict } from '@/lib/vibecode'
  * The model attribution is not fine print. A reader should be able to tell at a
  * glance that a language model wrote this and that nobody measured anything.
  */
-const tone: Record<Verdict, { chip: string; dot: string }> = {
+/**
+ * The three verdicts, as an answer to the question in the heading.
+ *
+ * "Can I vibecode it?" is addressed to the reader, so the colours answer them:
+ * green go ahead, amber partly, red don't bother. That ramp was previously gold
+ * for yes, blue for kinda and green for not-really — three distinct colours, but
+ * not a scale, and blue in the middle left the order meaningless.
+ *
+ * Answering the reader rather than grading the app also puts red where it does
+ * the least harm. Read as a grade, red would land on the app anyone can copy —
+ * a verdict on a founder who published verified revenue voluntarily, which is
+ * the thing this section is written to avoid. Read as an answer, red lands on
+ * the app with the strongest moat and says only that the reader should not
+ * bother trying.
+ */
+const tone: Record<Verdict, { chip: string; dot: string; tick: string }> = {
   yes: {
-    chip: 'border-gold/40 bg-gold/10 text-gold',
-    dot: 'bg-gold',
-  },
-  kinda: {
-    chip: 'border-blue/40 bg-blue/10 text-blue',
-    dot: 'bg-blue',
-  },
-  not_really: {
     chip: 'border-green/40 bg-green/10 text-green',
     dot: 'bg-green',
+    tick: 'text-green',
+  },
+  kinda: {
+    chip: 'border-gold/40 bg-gold/10 text-gold',
+    dot: 'bg-gold',
+    tick: 'text-gold',
+  },
+  not_really: {
+    chip: 'border-red/40 bg-red/10 text-red',
+    dot: 'bg-red',
+    tick: 'text-red',
   },
 }
 
@@ -66,15 +84,29 @@ export function VibecodeVerdict({
         <p className="text-muted mt-2 text-[13px] leading-relaxed">{reasoning}</p>
 
         <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          {/*
+            The ticks take the verdict's colour; the locks stay neutral.
+
+            Both icons used to be painted from fixed colours — every tick gold,
+            every lock green, on all three verdicts — so two cards with opposite
+            verdicts were the same card with a different chip on it, and the one
+            element carrying the answer was the smallest thing in the panel.
+
+            Only one of the two columns moves. Colouring both would put the
+            verdict's colour on the argument against it as well as the argument
+            for it, which says nothing; and the locks are the same claim on every
+            card — this is the part you cannot copy — so they read better as a
+            constant the eye can skip to.
+          */}
           <Column
             title="Straightforward to rebuild"
             items={rebuildable}
-            icon={<Check className="text-gold mt-0.5 size-3.5 shrink-0" />}
+            icon={<Check className={`mt-0.5 size-3.5 shrink-0 ${style.tick}`} />}
           />
           <Column
             title="Harder to copy"
             items={moat}
-            icon={<Lock className="text-green mt-0.5 size-3.5 shrink-0" />}
+            icon={<Lock className="text-dim mt-0.5 size-3.5 shrink-0" />}
           />
         </div>
 
