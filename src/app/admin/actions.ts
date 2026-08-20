@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { apps } from '@/db/schema'
+import { apps, profiles } from '@/db/schema'
 import { fetchAppStoreReviews } from '@/lib/appstore/reviews'
 import { requireAdmin } from '@/lib/auth'
-import { getAdminApp, logAdminAction, type AdminActor } from '@/lib/data/admin'
+import { countAdmins, getAdminApp, logAdminAction, type AdminActor } from '@/lib/data/admin'
 import {
   activatePurchaseById,
   getAppEntitlement,
@@ -512,4 +512,71 @@ export async function draftVerdictAction(
   revalidateAdmin()
 
   return { ok: `${verdictLabel[draft.verdict]} — “${draft.headline}”` }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Users                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Promotes a founder to admin, or demotes one back.
+ *
+ * Two things it refuses, both of which would lock somebody out of a door they
+ * are standing in front of:
+ *
+ * An admin cannot change their own role. Demoting yourself is a click away from
+ * losing the screen you did it on, and there is no way back through the UI —
+ * `npm run role` exists for exactly that, where a second person is not needed.
+ *
+ * The last admin cannot be demoted. It is the same failure as the first, one
+ * step removed: the site would be left with nobody who can reach these screens,
+ * and the only cure would be database access.
+ *
+ * Admin is not a paid tier or a badge — it is the right to change other
+ * people's listings and read the books — so every grant is logged with a
+ * required reason.
+ */
+export async function setUserRoleAction(
+  _previous: AdminState,
+  formData: FormData,
+): Promise<AdminState> {
+  const admin = await actor()
+
+  const profileId = String(formData.get('profileId') ?? '')
+  const role = String(formData.get('role') ?? '')
+  const note = String(formData.get('note') ?? '').trim()
+
+  if (role !== 'admin' && role !== 'founder') return { error: 'Unknown role.' }
+  if (!note) return { error: 'A reason is required.' }
+
+  if (profileId === admin.id) {
+    return { error: 'You cannot change your own role. Use npm run role for that.' }
+  }
+
+  const [target] = await db
+    .select({ handle: profiles.handle, role: profiles.role })
+    .from(profiles)
+    .where(eq(profiles.id, profileId))
+    .limit(1)
+
+  if (!target) return { error: 'User not found.' }
+  if (target.role === role) return { error: `@${target.handle} is already ${role}.` }
+
+  if (role === 'founder' && (await countAdmins()) <= 1) {
+    return { error: 'This is the only admin. Promote someone else before demoting them.' }
+  }
+
+  await db.update(profiles).set({ role }).where(eq(profiles.id, profileId))
+
+  await logAdminAction(admin, {
+    action: 'set_role',
+    summary: `${role === 'admin' ? 'Promoted' : 'Demoted'} @${target.handle} to ${role}`,
+    targetType: 'profile',
+    targetId: profileId,
+    detail: { from: target.role, to: role, note },
+  })
+
+  revalidateAdmin()
+
+  return { ok: `@${target.handle} is now ${role}.` }
 }

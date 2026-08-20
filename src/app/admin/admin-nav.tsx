@@ -8,6 +8,7 @@ const TABS = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/apps', label: 'Apps' },
   { href: '/admin/purchases', label: 'Purchases' },
+  { href: '/admin/users', label: 'Users' },
   { href: '/admin/settings', label: 'Settings' },
   { href: '/admin/activity', label: 'Activity' },
   { href: '/admin/backup', label: 'Backup' },

@@ -216,6 +216,86 @@ export async function listAdminPurchases({
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                    Users                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Everyone with an account, with what they have built and what they have paid.
+ *
+ * Deliberately not joined to `auth.users`. That table holds the email address
+ * and is Supabase's rather than ours — `profiles` mirrors it without copying
+ * the address, which is a decision the schema makes explicitly, and a screen is
+ * not a good enough reason to undo it. The handle identifies a person here the
+ * same way it does everywhere else on the site.
+ *
+ * The two counts are scalar subqueries rather than joins with a group-by: a
+ * founder with three apps and two purchases would otherwise multiply into six
+ * rows and have to be folded back up in JavaScript.
+ */
+export async function listAdminUsers({
+  search,
+  role,
+  limit = 200,
+}: {
+  search?: string
+  role?: 'founder' | 'admin'
+  limit?: number
+} = {}) {
+  const filters = []
+
+  const term = search?.trim()
+  if (term) {
+    const pattern = `%${escapeLike(term)}%`
+    filters.push(or(ilike(profiles.handle, pattern), ilike(profiles.name, pattern)))
+  }
+
+  if (role) filters.push(eq(profiles.role, role))
+
+  return db
+    .select({
+      id: profiles.id,
+      handle: profiles.handle,
+      name: profiles.name,
+      role: profiles.role,
+      avatarUrl: profiles.avatarUrl,
+      createdAt: profiles.createdAt,
+      /*
+       * Table-qualified by hand, and not through the schema objects.
+       * Interpolating a column renders its bare name — `"founder_id" = "id"` —
+       * and inside a correlated subquery that `"id"` binds to the subquery's
+       * own table rather than to the row outside it. The count comes back zero
+       * for everyone, which is a wrong answer rather than an error.
+       */
+      appCount: sql<number>`(select count(*) from apps where apps.founder_id = profiles.id)::int`,
+      liveAppCount: sql<number>`(
+        select count(*) from apps
+        where apps.founder_id = profiles.id and apps.status = 'live'
+      )::int`,
+      paidCents: sql<number>`(
+        select coalesce(sum(purchases.amount_cents), 0)
+        from purchases
+        where purchases.profile_id = profiles.id and purchases.status = 'active'
+      )::int`,
+    })
+    .from(profiles)
+    .where(filters.length ? and(...filters) : undefined)
+    .orderBy(desc(profiles.createdAt))
+    .limit(limit)
+}
+
+export type AdminUserRow = Awaited<ReturnType<typeof listAdminUsers>>[number]
+
+/** How many admins there are, so the last one cannot be demoted by accident. */
+export async function countAdmins() {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(profiles)
+    .where(eq(profiles.role, 'admin'))
+
+  return row?.count ?? 0
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                  Overview                                   */
 /* -------------------------------------------------------------------------- */
 
