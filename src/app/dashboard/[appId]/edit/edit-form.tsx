@@ -218,6 +218,7 @@ function DofollowOffer({
       action={action}
       error={state.error}
       cta="Buy"
+      comingSoon
     />
   )
 }
@@ -265,6 +266,7 @@ function SponsorOffer({
       action={action}
       error={state.error}
       cta="Sponsor"
+      comingSoon
     />
   )
 }
@@ -284,6 +286,7 @@ function Offer({
   action,
   error,
   cta,
+  comingSoon,
 }: {
   title: string
   meta: string | null
@@ -304,6 +307,12 @@ function Offer({
   action: (formData: FormData) => void
   error?: string
   cta: string
+  /**
+   * Not on sale yet: the card still describes the product, but its button is
+   * dead and its price is withheld. An app that already bought one keeps the
+   * active row below — this only closes the till.
+   */
+  comingSoon?: boolean
 }) {
   return (
     <div className="border-border rounded-card border border-dashed p-4">
@@ -312,7 +321,14 @@ function Offer({
           {title}
           {meta && <span className="text-muted font-normal"> · {meta}</span>}
         </span>
-        {price && <span className="text-fg text-[13px] font-medium">{price}</span>}
+        {comingSoon ? (
+          /* A price beside something nobody can buy reads as a promise. */
+          <span className="border-gold/40 bg-gold-dim text-gold rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.11em] uppercase">
+            Coming soon
+          </span>
+        ) : (
+          price && <span className="text-fg text-[13px] font-medium">{price}</span>
+        )}
       </div>
 
       <p className="text-muted mt-1.5 text-[12px] leading-relaxed">{blurb}</p>
@@ -346,6 +362,18 @@ function Offer({
             />
           )}
         </>
+      ) : comingSoon ? (
+        /*
+         * The button is shown and dead rather than hidden: the founder came to
+         * this card to buy, and an empty space would read as a bug. Nothing is
+         * submitted, so the checkout is never opened.
+         */
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button type="button" size="sm" disabled>
+            {cta}
+          </Button>
+          <span className="text-dim text-[11px]">Not on sale yet.</span>
+        </div>
       ) : available ? (
         <form action={action} className="mt-3">
           <input type="hidden" name="appId" value={appId} />

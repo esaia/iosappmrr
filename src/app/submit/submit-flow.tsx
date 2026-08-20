@@ -65,7 +65,6 @@ export function SubmitFlow({
    */
   const [categorySlug, setCategorySlug] = useState('')
   const [provider, setProvider] = useState(providers[0]?.id ?? '')
-  const [dofollow, setDofollow] = useState(false)
   const [anonymous, setAnonymous] = useState(false)
 
   /*
@@ -73,7 +72,6 @@ export function SubmitFlow({
    * resets it on the way through. Controlled state alone does not survive that
    * for a checkbox — see `useCheckedSync`.
    */
-  const dofollowBox = useCheckedSync(dofollow)
   const anonymousBox = useCheckedSync(anonymous)
 
   const suggestedSlug = lookup.app?.primaryGenre
@@ -346,27 +344,17 @@ export function SubmitFlow({
       </label>
 
       {/*
-        Offered here rather than only on the edit screen, where founders had to
-        already know it existed. The charge comes after the app verifies, so
-        ticking this is not a payment — it decides where the founder is sent
-        once their listing is live.
+        Shown, but off and unusable, while the link upgrade is being finished.
+        A founder should still learn here that it exists — it is the one paid
+        thing on the site — but nothing about it reaches the server: the box
+        carries no name, and the submit button below cannot become a checkout.
       */}
       {dofollowOffer && (
-        <label
-          className={
-            dofollow
-              ? 'border-border-strong bg-surface rounded-card block cursor-pointer border p-4'
-              : 'border-border hover:border-border-strong rounded-card block cursor-pointer border border-dashed p-4'
-          }
-        >
+        <div className="border-border rounded-card border border-dashed p-4 opacity-70">
           <div className="flex items-start gap-3">
-            <input
-              ref={dofollowBox}
-              type="checkbox"
-              name="dofollow"
-              checked={dofollow}
-              onChange={(event) => setDofollow(event.target.checked)}
-              className="accent-accent mt-0.5 size-4 shrink-0"
+            <span
+              aria-hidden="true"
+              className="border-border bg-surface-2 mt-0.5 size-4 shrink-0 rounded-[4px] border"
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -379,12 +367,16 @@ export function SubmitFlow({
                     </span>
                   )}
                 </span>
-                <span className="text-fg text-[13px] font-medium">{dofollowOffer.price}</span>
+                {/* The price is not shown while it cannot be paid: a figure
+                    beside a thing nobody can buy reads as a promise. */}
+                <span className="border-gold/40 bg-gold-dim text-gold rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-[0.11em] uppercase">
+                  Coming soon
+                </span>
               </div>
               <p className="text-muted mt-1.5 text-xs leading-relaxed">{dofollowOffer.blurb}</p>
             </div>
           </div>
-        </label>
+        </div>
       )}
 
       {/*
@@ -462,16 +454,10 @@ export function SubmitFlow({
         <div className="border-border flex flex-wrap items-center gap-3 border-t pt-6">
           <Button type="submit" size="lg" disabled={submitting}>
             {submitting && <Loader2 className="size-4 animate-spin" />}
-            {dofollow && dofollowOffer
-              ? `Add app + checkout (${dofollowOffer.price})`
-              : 'Add app and verify'}
+            Add app and verify
           </Button>
           <p className="text-muted text-xs">
-            {submitting
-              ? 'Checking the key…'
-              : dofollow && dofollowOffer
-                ? 'Verified first, paid after — a key that fails is never charged for.'
-                : 'Private until the key verifies. Then it goes live.'}
+            {submitting ? 'Checking the key…' : 'Private until the key verifies. Then it goes live.'}
           </p>
         </div>
       )}
