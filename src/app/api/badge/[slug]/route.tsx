@@ -22,6 +22,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   const record = await getAppBySlug(slug)
   if (!record) return new Response('Not found', { status: 404 })
 
+  /*
+   * Nothing unverified gets one of these.
+   *
+   * The image says VERIFIED in as many words, and it is meant to be hotlinked —
+   * it will be requested from pages we do not control, by readers who never see
+   * this site and have only the badge to go on. `getAppBySlug` returns any live
+   * listing, verified or not, so without this a founder who never connected a
+   * key could paste a verification of their own numbers onto their homepage.
+   *
+   * A 404 rather than an unverified variant: there is no such thing as a badge
+   * that usefully certifies nothing, and the app page is where the real state
+   * is shown.
+   */
+  if (!record.app.isVerified) return new Response('Not verified', { status: 404 })
+
   const image = await badgeImage({
     // Apple's CDN serves these up to 1024px; the badge never draws one above
     // 68, and fetching the smaller variant keeps rendering quick.

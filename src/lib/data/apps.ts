@@ -29,6 +29,12 @@ export type AppListing = {
   founderName: string | null
   founderAvatarUrl: string | null
   isAnonymous: boolean
+  /**
+   * `apps.is_verified`, alongside the sources. Both are needed to show the
+   * badge — see the note on `VerifiedBadge`. Carried on the listing so a card
+   * never has to decide from the sources alone.
+   */
+  isVerified: boolean
   mrrCents: number
   growth30d: number | null
   sparkline: number[]
@@ -102,6 +108,7 @@ export async function listApps(
       founderName: profiles.name,
       founderAvatarUrl: profiles.avatarUrl,
       isAnonymous: apps.isAnonymous,
+      isVerified: apps.isVerified,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
       sparkline: appMetrics.sparkline,
@@ -404,6 +411,7 @@ export async function getFounderByHandle(handle: string) {
       founderName: profiles.name,
       founderAvatarUrl: profiles.avatarUrl,
       isAnonymous: apps.isAnonymous,
+      isVerified: apps.isVerified,
       mrrCents: appMetrics.mrrCents,
       growth30d: appMetrics.growth30d,
       sparkline: appMetrics.sparkline,

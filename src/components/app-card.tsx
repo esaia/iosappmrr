@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { AnonymousName } from '@/components/anonymous-name'
 import { AppIcon } from '@/components/app-icon'
 import { Stat } from '@/components/ui/card'
+import { VerifiedBadge } from '@/components/verified-badge'
 import type { AppListing } from '@/lib/data/apps'
 import { cn, formatCount, formatMoney, formatGrowth } from '@/lib/utils'
 
@@ -25,16 +26,27 @@ export function AppCard({ app, className }: { app: AppListing; className?: strin
         Floating clear of the corner rather than notched into it: a
         corner-filling badge has to fake the panel's curve on two sides and gets
         it slightly wrong at every zoom level.
+
+        The shared component rather than a chip of this card's own. It was a
+        hand-rolled copy keyed on the sources alone, which is exactly the read
+        that put VERIFIED on a listing nobody had verified — the same bug in a
+        second place, because the claim was written out twice.
       */}
-      {app.providers.length > 0 && (
-        <span className="bg-blue-dim text-blue ring-blue/25 absolute top-2.5 right-2.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold tracking-wider uppercase ring-1 ring-inset">
-          Verified
-        </span>
-      )}
+      <VerifiedBadge
+        verified={app.isVerified}
+        providers={app.providers}
+        size="sm"
+        className="absolute top-2.5 right-2.5"
+      />
 
       <div className="flex items-start gap-2.5">
         <AppIcon src={app.iconUrl} name={app.name} size={34} />
-        <div className="min-w-0 pr-14">
+        {/*
+          Room for whichever chip is up there. "Not verified" is half again as
+          wide as "Verified", and a title running under it is worse than a title
+          truncated a little sooner.
+        */}
+        <div className={cn('min-w-0', app.isVerified ? 'pr-14' : 'pr-24')}>
           <h3 className="text-fg truncate text-[13px] font-bold">
             {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
           </h3>

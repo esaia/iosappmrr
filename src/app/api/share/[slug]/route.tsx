@@ -21,6 +21,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   const record = await getAppBySlug(slug)
   if (!record) return new Response('Not found', { status: 404 })
 
+  /*
+   * Same rule as the embed badge: this card carries "Verified by" and the
+   * site's name across the bottom, and it is made to be pasted into a post
+   * where nothing else vouches for it. An unverified listing has a page; it
+   * does not get a certificate.
+   */
+  if (!record.app.isVerified) return new Response('Not verified', { status: 404 })
+
   const { app, metadata, metrics } = record
   const mrrCents = Number(metrics?.mrrCents ?? 0)
 
