@@ -29,7 +29,8 @@
     "paddle:reset": "tsx --tsconfig tsconfig.scripts.json scripts/reset-purchases.ts",
     "vibecode": "tsx --tsconfig tsconfig.scripts.json scripts/vibecode-verdicts.ts",
     "aso": "tsx --tsconfig tsconfig.scripts.json scripts/aso-score.ts",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "db:add-app": "tsx --tsconfig tsconfig.scripts.json scripts/add-app.ts"
   },
   "dependencies": {
     "@paddle/paddle-js": "^1.6.4",

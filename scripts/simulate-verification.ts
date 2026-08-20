@@ -18,9 +18,25 @@ const DAYS = 365
 /**
  * A settled app, not a growth story: MRR hovers around this figure for the
  * whole year instead of climbing. At steady state a subscription business
- * collects about its MRR each month, so this doubles as the monthly takings.
+ * collects about its MRR each month, so this doubles as the monthly takings —
+ * which is what makes it the knob that decides how tall the daily bars are. At
+ * $1,000/mo the year only has $12,000 in it to distribute, so no day can be
+ * much more than a single charge and the chart draws one bar height. Override
+ * it per run:
+ *
+ *   npm run db:simulate -- <appId> --mrr 12000
  */
-const TARGET_MRR_CENTS = 100_000
+const DEFAULT_TARGET_MRR_CENTS = 450_000
+
+function targetMrrCents() {
+  const flag = process.argv.indexOf('--mrr')
+  if (flag === -1) return DEFAULT_TARGET_MRR_CENTS
+  const dollars = Number(process.argv[flag + 1])
+  if (!Number.isFinite(dollars) || dollars <= 0) {
+    throw new Error('--mrr takes a figure in dollars, e.g. --mrr 4500')
+  }
+  return Math.round(dollars * 100)
+}
 /**
  * Days simulated before the visible window, and discarded.
  *
@@ -45,11 +61,34 @@ const BURN_IN_DAYS = 365 * 5
  * cluster signed up together a year earlier, which is what puts $0 on most days
  * and several hundred dollars on a few. A catalogue of monthly plans alone
  * collects a little every day and draws almost a straight line.
+ *
+ * Six plans rather than two, and that is the part that matters for the chart.
+ * With a single $99.99 annual carrying nine subscribers in ten, every day that
+ * had a renewal on it collected $99.99 and every chart drew the same bar over
+ * and over. Real catalogues are not like that — there is an introductory tier,
+ * a standard one, a pro one, and people are spread across all of them — so a
+ * day's takings are a sum of several different prices and no two days land on
+ * the same figure.
  */
 const PLANS = [
-  { share: 0.9, priceCents: 9999, periodDays: 365, churnAtRenewal: 0.28 },
-  { share: 0.1, priceCents: 999, periodDays: 30, churnAtRenewal: 0.055 },
+  { share: 0.3, priceCents: 9999, periodDays: 365, churnAtRenewal: 0.28 },
+  { share: 0.16, priceCents: 5999, periodDays: 365, churnAtRenewal: 0.31 },
+  { share: 0.12, priceCents: 14999, periodDays: 365, churnAtRenewal: 0.24 },
+  { share: 0.22, priceCents: 999, periodDays: 30, churnAtRenewal: 0.055 },
+  { share: 0.12, priceCents: 499, periodDays: 30, churnAtRenewal: 0.08 },
+  { share: 0.08, priceCents: 1999, periodDays: 30, churnAtRenewal: 0.045 },
 ] as const
+
+/** Weighted pick over the catalogue. The shares are written to sum to 1; the
+ *  final plan catches any rounding left over at the top of the range. */
+function pickPlan(random: () => number) {
+  let roll = random()
+  for (const plan of PLANS) {
+    roll -= plan.share
+    if (roll <= 0) return plan
+  }
+  return PLANS[PLANS.length - 1]
+}
 
 const PROVIDER = 'revenuecat'
 const LABEL = 'Simulated — not a real connection'
@@ -168,7 +207,7 @@ function simulate(seedText: string, rateScale: number): Day[] {
     const newSubs = poisson((burst ? 7.5 : 0.09) * rateScale * regime, random)
 
     for (let n = 0; n < newSubs; n++) {
-      const plan = random() < PLANS[0].share ? PLANS[0] : PLANS[1]
+      const plan = pickPlan(random)
       live.push({
         start: i,
         priceCents: plan.priceCents,
@@ -236,7 +275,7 @@ function simulate(seedText: string, rateScale: number): Day[] {
  * on average but jumps around locally, and the fixed point oscillates instead
  * of settling. Bisection only needs the average behaviour.
  */
-function buildHistory(seedText: string) {
+function buildHistory(seedText: string, target: number) {
   const meanMrr = (list: Day[]) => list.reduce((sum, d) => sum + d.mrrCents, 0) / list.length
 
   let lo = 0.01
@@ -250,11 +289,11 @@ function buildHistory(seedText: string) {
 
     // Keep the closest run seen, so a search that never lands inside the
     // tolerance still returns its best attempt rather than its last one.
-    if (Math.abs(average - TARGET_MRR_CENTS) < Math.abs(meanMrr(best) - TARGET_MRR_CENTS)) {
+    if (Math.abs(average - target) < Math.abs(meanMrr(best) - target)) {
       best = days
     }
-    if (Math.abs(average - TARGET_MRR_CENTS) / TARGET_MRR_CENTS < 0.02) return days
-    if (average < TARGET_MRR_CENTS) lo = mid
+    if (Math.abs(average - target) / target < 0.02) return days
+    if (average < target) lo = mid
     else hi = mid
   }
 
@@ -286,7 +325,35 @@ async function main() {
       return
     }
 
-    const history = buildHistory(app.slug)
+    const history = buildHistory(app.slug, targetMrrCents())
+
+    /*
+     * `--dry` prints the last thirty days and stops. The whole point of this
+     * script is what the chart ends up looking like, and checking that by
+     * writing a year into the database and reloading a page is a slow way to
+     * find out that the takings need retuning.
+     */
+    if (process.argv.includes('--dry')) {
+      const window = history.slice(-30)
+      const money = (cents: number) => `$${(cents / 100).toFixed(2)}`
+      for (const day of window) {
+        const bar = '#'.repeat(Math.round(day.revenueCents / 1000))
+        console.log(
+          `${day.date.toISOString().slice(0, 10)}  ${money(day.revenueCents).padStart(9)}  ${bar}`,
+        )
+      }
+      const takings = window.map((day) => day.revenueCents)
+      const nonZero = takings.filter((cents) => cents > 0)
+      console.log(
+        `\n30-day total ${money(takings.reduce((sum, n) => sum + n, 0))} · ` +
+          `${nonZero.length} paying days · ` +
+          `high ${money(Math.max(...takings))} · ` +
+          `distinct figures ${new Set(nonZero).size}/${nonZero.length} · ` +
+          `closing MRR ${money(history[history.length - 1].mrrCents)}`,
+      )
+      return
+    }
+
     await sql`delete from revenue_snapshots where app_id = ${appId}`
 
     const rows = history.map((day) => ({
