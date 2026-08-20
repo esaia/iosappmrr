@@ -76,21 +76,28 @@ export default async function CheckoutPayPage({
   return (
     <Container className="py-16">
       <div className="mx-auto max-w-xl">
-        <div className="border-border bg-surface rounded-card overflow-hidden border">
-          <div className="border-border border-b px-6 py-5">
+        {/*
+          A light card on a dark site, deliberately. Paddle's frame renders
+          light — see the note in `paddle-checkout.tsx` — and a dark shell
+          around a white payment form is a seam rather than a design. The
+          colours are literal rather than tokens because the site has no light
+          palette to draw from: this is the one surface that inverts.
+        */}
+        <div className="overflow-hidden rounded-[10px] border border-black/10 bg-white">
+          <div className="border-b border-black/10 px-6 py-5">
             {summary ? (
               <>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h1 className="text-fg font-medium">{summary.title}</h1>
-                  <p className="tabular text-fg text-sm font-medium">
+                  <h1 className="font-medium text-[#0a0a0a]">{summary.title}</h1>
+                  <p className="tabular text-sm font-medium text-[#0a0a0a]">
                     {summary.price != null ? formatMoney(summary.price) : ''}
-                    <span className="text-muted text-[11px]">{summary.suffix}</span>
+                    <span className="text-[11px] text-[#57575e]">{summary.suffix}</span>
                   </p>
                 </div>
-                <p className="text-muted mt-1 text-[13px]">For {summary.appName}</p>
+                <p className="mt-1 text-[13px] text-[#57575e]">For {summary.appName}</p>
               </>
             ) : (
-              <h1 className="text-fg font-medium">Checkout</h1>
+              <h1 className="font-medium text-[#0a0a0a]">Checkout</h1>
             )}
           </div>
 
@@ -98,7 +105,7 @@ export default async function CheckoutPayPage({
             {token ? (
               <PaddleCheckout token={token} environment={environment} />
             ) : (
-              <p className="text-muted text-[13px] leading-relaxed">
+              <p className="text-[13px] leading-relaxed text-[#57575e]">
                 Checkout is not available yet.
               </p>
             )}

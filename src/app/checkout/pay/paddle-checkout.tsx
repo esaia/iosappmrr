@@ -41,7 +41,15 @@ export function PaddleCheckout({
       checkout: {
         settings: {
           displayMode: 'inline',
-          theme: 'dark',
+          /*
+           * Light, against a site that is otherwise dark. A payment form is the
+           * one place on here where looking like every other checkout beats
+           * looking like the rest of the site: people are handing over a card,
+           * and the dark treatment read as murky rather than as considered. The
+           * card around the frame goes light with it, so the two are one
+           * surface rather than a white panel bolted to a dark header.
+           */
+          theme: 'light',
           frameTarget: FRAME_ID,
           frameInitialHeight: 450,
           // Paddle sets width and border on the iframe itself; a transparent

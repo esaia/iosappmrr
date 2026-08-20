@@ -101,29 +101,45 @@ export async function createCheckout(
      */
     const customerId = user.email ? await findOrCreateCustomer(user.email) : undefined
 
-    const transaction = await paddle.transactions.create({
+    const fields = {
       items: [{ priceId: priceId(kind), quantity: 1 }],
       customerId,
       customData: { kind, appId: app.id, profileId: user.id },
-      /*
-       * Which page the checkout opens over. It does not replace the account's
-       * default payment link — Paddle refuses to create any transaction until
-       * that is set in the dashboard, whatever this says — but it is what lets
-       * a local run send the customer to localhost while production sends them
-       * to the deployed page.
-       */
-      checkout: { url: PAY_PAGE },
-    })
+    }
+
+    /*
+     * Paddle will only put a checkout on a domain it has approved, and approval
+     * is a review of a real website — localhost is never getting one. So the
+     * approved page is asked for first, and a rejection falls back to the
+     * account's default payment link, whose URL is then pointed back at
+     * whatever origin this deployment actually runs on.
+     *
+     * What travels between the two is `_ptxn`, and the transaction it names is
+     * identical either way. Only the page that opens over it changes, which is
+     * the whole difference between testing against production and testing
+     * against a laptop.
+     */
+    let transaction
+    try {
+      transaction = await paddle.transactions.create({ ...fields, checkout: { url: PAY_PAGE } })
+    } catch (error) {
+      if (
+        (error as { code?: string })?.code !== 'transaction_checkout_url_domain_is_not_approved'
+      ) {
+        throw error
+      }
+      transaction = await paddle.transactions.create(fields)
+    }
 
     if (!transaction.checkout?.url) {
       throw new Error('Paddle returned a transaction with no checkout URL.')
     }
 
     transactionId = transaction.id
-    url = transaction.checkout.url
+    url = onThisOrigin(transaction.checkout.url)
   } catch (error) {
     console.error('[paddle] checkout creation failed', error)
-    return { error: 'Could not reach the payment provider. Try again in a moment.' }
+    return { error: checkoutFailureMessage(error) }
   }
 
   /*
@@ -138,6 +154,54 @@ export async function createCheckout(
   })
 
   return { url }
+}
+
+/**
+ * Rewrites a Paddle checkout URL onto this deployment's own origin.
+ *
+ * A no-op in production, where Paddle already returns the approved page. It
+ * matters on a machine Paddle has never heard of: the URL comes back pointing
+ * at the default payment link's domain, and the only part worth keeping is the
+ * `_ptxn` query it carries.
+ */
+function onThisOrigin(checkoutUrl: string) {
+  try {
+    const { search } = new URL(checkoutUrl)
+    return `${PAY_PAGE}${search}`
+  } catch {
+    // Not a URL we can parse. Paddle's own is likelier to work than a guess.
+    return checkoutUrl
+  }
+}
+
+/**
+ * Turns a Paddle failure into a sentence that names the thing to go and fix.
+ *
+ * Two of these are configuration rather than weather, and both otherwise
+ * surface as "could not reach the payment provider" — which is untrue, and
+ * sends whoever reads it looking at the network instead of at the dashboard
+ * setting that is actually missing. They are worth naming because both are
+ * settings only a person with the Paddle login can change, and neither can be
+ * detected from here until someone tries to buy something.
+ *
+ * Everything else keeps the vague sentence on purpose: a founder mid-purchase
+ * cannot act on a Paddle error code, and the log has the detail.
+ */
+function checkoutFailureMessage(error: unknown) {
+  const code = (error as { code?: string })?.code
+
+  if (code === 'transaction_checkout_url_domain_is_not_approved') {
+    return (
+      `Checkout is not set up for ${PAY_PAGE}. That domain has to be approved in Paddle ` +
+      'before a payment can open on it.'
+    )
+  }
+
+  if (code === 'transaction_default_checkout_url_not_set') {
+    return 'Checkout is not set up yet: Paddle needs a default payment link before it will take a payment.'
+  }
+
+  return 'Could not reach the payment provider. Try again in a moment.'
 }
 
 /**
