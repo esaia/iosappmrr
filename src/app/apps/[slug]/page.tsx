@@ -181,7 +181,7 @@ export default async function AppPage({ params }: Params) {
                 <h1 className="display text-2xl font-semibold sm:text-3xl">
                   {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
                 </h1>
-                <VerifiedBadge providers={providers} />
+                <VerifiedBadge verified={app.isVerified} providers={providers} />
                 <span className="ml-auto">
                   <ShareButton
                     slug={app.slug}

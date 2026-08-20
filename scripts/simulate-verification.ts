@@ -8,9 +8,13 @@ import { encryptCredentials } from '../src/lib/crypto/credentials'
  *
  * This writes invented revenue and bypasses the provider adapters entirely — it
  * proves the pages render, not that verification works. The connection is
- * labelled so it is obvious in the dashboard, and `--undo` removes everything.
+ * labelled so it is obvious in the dashboard, the listing is left unverified so
+ * it never claims otherwise, and `--undo` removes everything.
  *
  *   npm run db:simulate -- <appId>
+ *   npm run db:simulate -- <appId> --dry        preview the takings, write nothing
+ *   npm run db:simulate -- <appId> --mrr 12000  target a monthly figure
+ *   npm run db:simulate -- <appId> --verified   claim the VERIFIED badge (local only)
  *   npm run db:simulate -- <appId> --undo
  */
 
@@ -422,7 +426,23 @@ async function main() {
         installs_only = true, last_synced_at = now()
     `
 
-    await sql`update apps set status = 'live', is_verified = true, verified_at = now()
+    /*
+     * Live, but not verified — and that asymmetry is the point.
+     *
+     * `is_verified` is what puts the VERIFIED badge on a page, and it is owned
+     * by the provider-connection flow: set when a real key reads a real ledger.
+     * This script writes invented numbers, so claiming it is the one thing it
+     * must not do. A listing seeded here is reachable and charts like any other,
+     * and says nothing about having been checked by anybody.
+     *
+     * `--verified` opts back in, for looking at the badge on a local machine.
+     * Do not use it on anything the public can reach: it is a false claim on a
+     * site whose whole value is that the claim is true.
+     */
+    const claimVerified = process.argv.includes('--verified')
+    await sql`update apps set status = 'live',
+                is_verified = ${claimVerified},
+                verified_at = ${claimVerified ? sql`now()` : null}
               where id = ${appId}`
 
     const { recomputeAppMetrics } = await import('../src/lib/metrics')
