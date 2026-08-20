@@ -33,7 +33,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     // 154, and fetching the smaller variant keeps rendering quick.
     iconUrl: metadata?.iconUrl?.replace(/\/\d+x\d+bb\./, '/256x256bb.') ?? metadata?.iconUrl,
     mrrCents,
-    points: history.map((point) => ({ date: point.date, mrrCents: point.mrrCents })),
+    points: history.map((point) => ({
+      date: point.date,
+      mrrCents: point.mrrCents,
+      revenueCents: point.revenueCents,
+    })),
     periodLabel: `last ${SHARE_PERIODS.find((period) => period.id === options.period)!.label}`,
     options,
   })

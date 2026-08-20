@@ -53,7 +53,12 @@ const PALETTES: Record<ShareOptions['theme'], Palette> = {
   },
 }
 
-export type SharePoint = { date: string; mrrCents: number }
+export type SharePoint = {
+  date: string
+  mrrCents: number
+  /** Money taken that day. Null wherever the provider cannot report one. */
+  revenueCents: number | null
+}
 
 export type ShareCardInput = {
   name: string
@@ -63,6 +68,35 @@ export type ShareCardInput = {
   points: SharePoint[]
   periodLabel: string
   options: ShareOptions
+}
+
+/**
+ * What the chart draws: a day's takings where the provider reports them, and
+ * the MRR level where it does not.
+ *
+ * Daily revenue is the better picture — it moves, it spikes on a launch, and it
+ * is what a founder means by "how the app is doing". MRR over a month is close
+ * to a flat line, which is why the card looked like a filled rectangle.
+ *
+ * But most apps will never have it. RevenueCat's overview reports a 28-day
+ * aggregate and nothing per day, so for those the honest card is still the MRR
+ * one — an empty chart or a floor of zeroes would be worse than the flat line
+ * it replaces. Every day in the window has to carry a figure before the daily
+ * series is used: a partial one would draw a cliff where the data starts
+ * rather than where the revenue changed.
+ */
+function series(points: SharePoint[]) {
+  const daily = points.every((point) => point.revenueCents != null)
+
+  return daily
+    ? {
+        values: points.map((point) => point.revenueCents as number),
+        // The period's takings, which is what the line adds up to. MRR is a
+        // rate and could not be summed like this.
+        headline: points.reduce((total, point) => total + (point.revenueCents as number), 0),
+        label: 'Revenue',
+      }
+    : { values: points.map((point) => point.mrrCents), headline: null, label: 'MRR' }
 }
 
 /* ---------------------------------------------------------------- the plot */
@@ -253,7 +287,7 @@ function Title({
 function ChartCard({ name, iconUrl, mrrCents, points, periodLabel, options }: ShareCardInput) {
   const palette = PALETTES[options.theme]
   const hex = colorHex(options.color)
-  const values = points.map((point) => point.mrrCents)
+  const { values, headline, label } = series(points)
   const max = Math.max(...values, 1) * 1.08
 
   return (
@@ -273,10 +307,10 @@ function ChartCard({ name, iconUrl, mrrCents, points, periodLabel, options }: Sh
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span style={{ fontSize: 86, fontWeight: 700, letterSpacing: '-0.04em', lineHeight: 1 }}>
-            {formatMrr(mrrCents)}
+            {formatMrr(headline ?? mrrCents)}
           </span>
           <span style={{ fontSize: 26, color: palette.muted, marginTop: 14 }}>
-            MRR, {periodLabel}
+            {label}, {periodLabel}
           </span>
         </div>
         <Title name={name} iconUrl={iconUrl} palette={palette} size={30} />
