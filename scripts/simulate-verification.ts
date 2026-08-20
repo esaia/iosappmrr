@@ -24,13 +24,19 @@ const TARGET_MRR_CENTS = 100_000
 /**
  * Days simulated before the visible window, and discarded.
  *
- * The point is the annual plans. A year of history generated from an empty
- * database has nobody old enough to renew, so every annual charge in the window
- * would be somebody's first — and the renewals that make the daily line lumpy
- * would all be missing. Running past a full annual cycle first means the window
- * opens on a population with birthdays already spread across it.
+ * Two reasons, and the second is why this is measured in years rather than
+ * months. The first: a history generated from an empty database has nobody old
+ * enough to renew, so every annual charge would be somebody's first and the
+ * renewals that make the daily line lumpy would all be missing.
+ *
+ * The second: an annual plan churning at 28% a renewal lasts about three and a
+ * half years, so a subscriber population takes that long to stop growing. Burn
+ * in for one year and the visible window still catches the tail of the fill-up
+ * — MRR drifts upward across it and the chart reads as a growth curve, which is
+ * exactly what this is meant not to be. Five years in, arrivals and departures
+ * balance and the line goes sideways.
  */
-const BURN_IN_DAYS = 420
+const BURN_IN_DAYS = 365 * 5
 
 /**
  * The plan mix, which is what shapes the daily revenue line.
@@ -183,26 +189,41 @@ function simulate(seedText: string, rateScale: number): Day[] {
 }
 
 /**
- * Rescales acquisition until the year *averages* the target.
+ * Searches for the acquisition rate whose year *averages* the target.
  *
  * Deliberately the mean rather than the closing value: pinning the last day
  * would let the run drift and then be dragged back at the end, which is the
  * growth curve this is meant to avoid.
+ *
+ * Bisection rather than the obvious `scale *= target / actual` fixed point.
+ * `poisson` draws a variable number of random numbers depending on its mean, so
+ * changing the rate reshuffles every draw after it — the objective is monotone
+ * on average but jumps around locally, and the fixed point oscillates instead
+ * of settling. Bisection only needs the average behaviour.
  */
 function buildHistory(seedText: string) {
-  let scale = 1
-  let days = simulate(seedText, scale)
+  const meanMrr = (list: Day[]) => list.reduce((sum, d) => sum + d.mrrCents, 0) / list.length
 
-  const mean = (list: Day[]) => list.reduce((sum, d) => sum + d.mrrCents, 0) / list.length
+  let lo = 0.01
+  let hi = 100
+  let best = simulate(seedText, 1)
 
-  for (let attempt = 0; attempt < 25; attempt++) {
-    const average = mean(days)
-    if (average > 0 && Math.abs(average - TARGET_MRR_CENTS) / TARGET_MRR_CENTS < 0.03) break
-    scale *= average > 0 ? TARGET_MRR_CENTS / average : 2
-    days = simulate(seedText, scale)
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const mid = (lo + hi) / 2
+    const days = simulate(seedText, mid)
+    const average = meanMrr(days)
+
+    // Keep the closest run seen, so a search that never lands inside the
+    // tolerance still returns its best attempt rather than its last one.
+    if (Math.abs(average - TARGET_MRR_CENTS) < Math.abs(meanMrr(best) - TARGET_MRR_CENTS)) {
+      best = days
+    }
+    if (Math.abs(average - TARGET_MRR_CENTS) / TARGET_MRR_CENTS < 0.02) return days
+    if (average < TARGET_MRR_CENTS) lo = mid
+    else hi = mid
   }
 
-  return days
+  return best
 }
 
 async function main() {
