@@ -14,13 +14,20 @@ import {
   slugForAnonymity,
   updateAppDetails,
 } from '@/lib/data/mutations'
+import { LISTING_LIMITS, tooLong } from '@/lib/listing'
 
 export type EditState = { error?: string; fieldErrors?: Record<string, string>; saved?: boolean }
 
 const schema = z.object({
-  name: z.string().trim().min(1, 'Name is required.').max(80),
-  tagline: z.string().trim().max(110),
-  description: z.string().trim().max(2000),
+  name: z.string().trim().min(1, 'Name is required.').max(80, 'Names are capped at 80 characters.'),
+  tagline: z
+    .string()
+    .trim()
+    .max(LISTING_LIMITS.tagline, tooLong('Taglines', LISTING_LIMITS.tagline)),
+  description: z
+    .string()
+    .trim()
+    .max(LISTING_LIMITS.description, tooLong('Descriptions', LISTING_LIMITS.description)),
   categorySlug: z.string().trim().min(1, 'Pick a category.'),
   website: z.union([z.string().trim().url('Website must be a full URL.'), z.literal('')]),
 })

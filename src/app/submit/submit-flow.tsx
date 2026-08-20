@@ -10,6 +10,7 @@ import { Button, ButtonLink } from '@/components/ui/button'
 import { useCheckedSync } from '@/components/ui/checked-sync'
 import type { ProviderStep } from '@/lib/providers/types'
 import { lookupAppAction, submitAppAction, type LookupState, type SubmitState } from './actions'
+import { LISTING_LIMITS } from '@/lib/listing'
 
 type Category = { slug: string; name: string; genre: string | null }
 type Tech = { slug: string; name: string }
@@ -68,6 +69,21 @@ export function SubmitFlow({
   const [anonymous, setAnonymous] = useState(false)
 
   /*
+   * The written fields, held here for the same reason.
+   *
+   * Empty to begin with rather than seeded from the listing: this runs before
+   * the lookup step has returned anything, and a lazy initialiser only fires on
+   * the first render — it would take the empty value and never pick Apple's
+   * copy up. The effect below fills them when the lookup lands.
+   */
+  const [written, setWritten] = useState({ name: '', tagline: '', description: '', website: '' })
+  const bind = (key: keyof typeof written) => ({
+    value: written[key],
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setWritten((current) => ({ ...current, [key]: event.target.value })),
+  })
+
+  /*
    * This form hands itself back whenever a key fails to verify, and React
    * resets it on the way through. Controlled state alone does not survive that
    * for a checkbox — see `useCheckedSync`.
@@ -83,6 +99,23 @@ export function SubmitFlow({
   useEffect(() => {
     if (suggestedSlug) setCategorySlug((current) => current || suggestedSlug)
   }, [suggestedSlug])
+
+  /*
+   * Apple's own copy, on the same terms: filled in when the lookup lands, and
+   * only into fields still sitting empty. That last part is what makes it safe
+   * to run again after a failed submit — the founder's edits are already in
+   * state by then, so every field is non-empty and nothing is overwritten.
+   */
+  const found = lookup.app
+  useEffect(() => {
+    if (!found) return
+    setWritten((current) => ({
+      name: current.name || found.name || '',
+      tagline: current.tagline || found.tagline || '',
+      description: current.description || found.description || '',
+      website: current.website || found.website || '',
+    }))
+  }, [found])
 
   if (!lookup.app) {
     return (
@@ -146,7 +179,7 @@ export function SubmitFlow({
       <TextField
         label="Name"
         name="name"
-        defaultValue={app.name}
+        {...bind('name')}
         error={submit.fieldErrors?.name}
         required
       />
@@ -154,8 +187,8 @@ export function SubmitFlow({
       <TextField
         label="Tagline"
         name="tagline"
-        defaultValue={app.tagline}
-        maxLength={110}
+        {...bind('tagline')}
+        maxLength={LISTING_LIMITS.tagline}
         hint="One line, shown on every list. Say what the app does, not why it's great."
         error={submit.fieldErrors?.tagline}
       />
@@ -168,8 +201,8 @@ export function SubmitFlow({
           id="description"
           name="description"
           rows={5}
-          defaultValue={app.description}
-          maxLength={2000}
+          {...bind('description')}
+          maxLength={LISTING_LIMITS.description}
           className={`${input} mt-2`}
         />
       </div>
@@ -209,7 +242,7 @@ export function SubmitFlow({
         label="Website"
         name="website"
         type="url"
-        defaultValue={app.website ?? ''}
+        {...bind('website')}
         hint="Optional."
         error={submit.fieldErrors?.website}
       />
@@ -457,7 +490,9 @@ export function SubmitFlow({
             Add app and verify
           </Button>
           <p className="text-muted text-xs">
-            {submitting ? 'Checking the key…' : 'Private until the key verifies. Then it goes live.'}
+            {submitting
+              ? 'Checking the key…'
+              : 'Private until the key verifies. Then it goes live.'}
           </p>
         </div>
       )}

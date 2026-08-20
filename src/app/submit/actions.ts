@@ -20,6 +20,7 @@ import {
 import { isPaddleConfigured } from '@/lib/paddle'
 import { isConnectable } from '@/lib/providers'
 import { PROVIDER_FIELDS } from '@/lib/provider-fields'
+import { LISTING_LIMITS, tooLong } from '@/lib/listing'
 
 export type LookupState = {
   error?: string
@@ -103,9 +104,17 @@ export async function lookupAppAction(
 
 const submitSchema = z.object({
   appStoreId: z.string().regex(/^\d{6,12}$/),
-  name: z.string().trim().min(1, 'Name is required.').max(80),
-  tagline: z.string().trim().max(110).optional(),
-  description: z.string().trim().max(2000).optional(),
+  name: z.string().trim().min(1, 'Name is required.').max(80, 'Names are capped at 80 characters.'),
+  tagline: z
+    .string()
+    .trim()
+    .max(LISTING_LIMITS.tagline, tooLong('Taglines', LISTING_LIMITS.tagline))
+    .optional(),
+  description: z
+    .string()
+    .trim()
+    .max(LISTING_LIMITS.description, tooLong('Descriptions', LISTING_LIMITS.description))
+    .optional(),
   categorySlug: z.string().trim().min(1, 'Pick a category.'),
   website: z
     .union([z.string().trim().url('Website must be a full URL.'), z.literal('')])

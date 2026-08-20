@@ -17,6 +17,7 @@ import {
   type CheckoutState,
 } from '@/app/checkout/actions'
 import { deleteAppAction, updateAppAction, type DeleteState, type EditState } from './actions'
+import { LISTING_LIMITS } from '@/lib/listing'
 
 type Option = { slug: string; name: string }
 type LivePurchase = { id: string; kind: 'dofollow' | 'sponsor'; hidden: boolean }
@@ -58,7 +59,33 @@ export function EditForm({
   }
 }) {
   const [state, action] = useActionState<EditState, FormData>(updateAppAction, {})
-  // Controlled, because React resets uncontrolled fields once an action resolves.
+
+  /*
+   * Every field is controlled, and it has to be all of them.
+   *
+   * React resets an uncontrolled field once a form action resolves, which is
+   * the behaviour you want on a form that submits and clears — and exactly what
+   * you do not want on one that can come back with an error. A rejected save
+   * put every `defaultValue` field back to the text already in the database and
+   * threw away whatever had just been typed, so a founder who ran one field
+   * over its limit lost their edits to all the others as well.
+   *
+   * The select and the checkbox were already held here for this reason. The
+   * text fields were not, which meant the form was half-protected and the half
+   * that lost work was the half carrying the writing.
+   */
+  const [values, setValues] = useState({
+    name: initial.name,
+    tagline: initial.tagline,
+    description: initial.description,
+    website: initial.website,
+  })
+  const bind = (key: keyof typeof values) => ({
+    value: values[key],
+    onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setValues((current) => ({ ...current, [key]: event.target.value })),
+  })
+
   const [categorySlug, setCategorySlug] = useState(initial.categorySlug)
   const [anonymous, setAnonymous] = useState(initial.anonymous)
   const anonymousBox = useCheckedSync(anonymous)
@@ -69,25 +96,24 @@ export function EditForm({
         <input type="hidden" name="appId" value={appId} />
 
         <Field label="Name" error={state.fieldErrors?.name}>
-          <input
-            name="name"
-            defaultValue={initial.name}
-            maxLength={80}
-            required
-            className={field}
-          />
+          <input name="name" {...bind('name')} maxLength={80} required className={field} />
         </Field>
 
         <Field label="Tagline" hint="One line, shown on cards." error={state.fieldErrors?.tagline}>
-          <input name="tagline" defaultValue={initial.tagline} maxLength={110} className={field} />
+          <input
+            name="tagline"
+            {...bind('tagline')}
+            maxLength={LISTING_LIMITS.tagline}
+            className={field}
+          />
         </Field>
 
         <Field label="Description" error={state.fieldErrors?.description}>
           <textarea
             name="description"
-            defaultValue={initial.description}
+            {...bind('description')}
             rows={5}
-            maxLength={2000}
+            maxLength={LISTING_LIMITS.description}
             className={field}
           />
         </Field>
@@ -109,7 +135,7 @@ export function EditForm({
         </Field>
 
         <Field label="Website" hint="Optional." error={state.fieldErrors?.website}>
-          <input name="website" type="url" defaultValue={initial.website} className={field} />
+          <input name="website" type="url" {...bind('website')} className={field} />
         </Field>
 
         {/*
