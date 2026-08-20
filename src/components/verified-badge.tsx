@@ -67,10 +67,27 @@ export function VerifiedBadge({
     return (
       <span
         title="No payment provider has verified the revenue on this listing."
-        className={cn(shape, 'text-dim border-border border border-dashed')}
+        className={cn(shape, 'text-muted bg-surface-2 ring-border ring-1 ring-inset')}
       >
-        <BadgeAlert className={icon} strokeWidth={2.5} />
-        Not verified
+        {/*
+          Filled and ringed like its verified twin rather than dashed and dim.
+          Dashed-and-dim is the site's language for a placeholder — a thing that
+          is missing — and at 10px on a glass card it stopped being legible at
+          all. This is not an absence: it is a fact about the listing, and it
+          has to be as readable as the claim it replaces.
+
+          Grey, though, not red. An app whose founder has not connected a key
+          yet is in the ordinary state, and an alarm on it reads as an
+          accusation.
+        */}
+        {size === 'md' && <BadgeAlert className={icon} strokeWidth={2.5} />}
+        {/*
+          One word on a card, two on a page. "Not verified" is nearly half the
+          width of a rail card, which leaves the app's own name with about seven
+          characters — and a card that cannot say which app it is has lost more
+          than it gained.
+        */}
+        {size === 'md' ? 'Not verified' : 'Unverified'}
       </span>
     )
   }

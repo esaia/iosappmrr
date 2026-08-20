@@ -23,35 +23,38 @@ export function AppCard({ app, className }: { app: AppListing; className?: strin
       )}
     >
       {/*
-        Floating clear of the corner rather than notched into it: a
-        corner-filling badge has to fake the panel's curve on two sides and gets
-        it slightly wrong at every zoom level.
+        The badge sits in the header row rather than floating over the corner.
 
-        The shared component rather than a chip of this card's own. It was a
-        hand-rolled copy keyed on the sources alone, which is exactly the read
-        that put VERIFIED on a listing nobody had verified — the same bug in a
-        second place, because the claim was written out twice.
+        It used to be absolutely positioned, with the title given a right
+        padding wide enough to clear it. That works only while the chip is one
+        known width, and it stopped working the moment an unverified listing put
+        a longer word up there: the title ran underneath it. No padding could
+        have fixed it either, since the clearance needed depends on text this
+        component does not choose.
+
+        As a flex sibling it reserves its own width, the title truncates into
+        whatever is left, and neither has to know the other's size.
       */}
-      <VerifiedBadge
-        verified={app.isVerified}
-        providers={app.providers}
-        size="sm"
-        className="absolute top-2.5 right-2.5"
-      />
-
       <div className="flex items-start gap-2.5">
         <AppIcon src={app.iconUrl} name={app.name} size={34} />
-        {/*
-          Room for whichever chip is up there. "Not verified" is half again as
-          wide as "Verified", and a title running under it is worse than a title
-          truncated a little sooner.
-        */}
-        <div className={cn('min-w-0', app.isVerified ? 'pr-14' : 'pr-24')}>
+        <div className="min-w-0 flex-1">
           <h3 className="text-fg truncate text-[13px] font-bold">
             {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
           </h3>
           <p className="text-muted truncate text-[11px]">{app.categoryName ?? 'iOS app'}</p>
         </div>
+        {/*
+          The shared component rather than a chip of this card's own. It was a
+          hand-rolled copy keyed on the sources alone, which is exactly the read
+          that put VERIFIED on a listing nobody had verified — the same bug in a
+          second place, because the claim was written out twice.
+        */}
+        <VerifiedBadge
+          verified={app.isVerified}
+          providers={app.providers}
+          size="sm"
+          className="shrink-0"
+        />
       </div>
 
       <p className="text-muted mt-2.5 line-clamp-2 min-h-[30px] text-[11px] leading-relaxed">

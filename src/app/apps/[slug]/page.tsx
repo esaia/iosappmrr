@@ -182,17 +182,29 @@ export default async function AppPage({ params }: Params) {
                   {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
                 </h1>
                 <VerifiedBadge verified={app.isVerified} providers={providers} />
-                <span className="ml-auto">
-                  <ShareButton
-                    slug={app.slug}
-                    url={`${site.url}/apps/${app.slug}`}
-                    name={app.name}
-                    mrr={mrrCents > 0 ? formatMoney(mrrCents) : undefined}
-                    // A line needs two points; below that the dialog offers the
-                    // badge alone rather than a chart with nothing in it.
-                    hasHistory={history.length >= 2}
-                  />
-                </span>
+                {/*
+                  Nothing to share until the figures are verified.
+
+                  Everything behind this button — the share card, the embed
+                  badge, the snippet — is a certificate, and those routes now
+                  refuse to render one for a listing nobody has checked. Left in
+                  place the dialog opened onto a broken preview, an error
+                  offering to try again, and a snippet the founder could paste
+                  into their site to get a 404 in it. Better not to offer it.
+                */}
+                {app.isVerified && (
+                  <span className="ml-auto">
+                    <ShareButton
+                      slug={app.slug}
+                      url={`${site.url}/apps/${app.slug}`}
+                      name={app.name}
+                      mrr={mrrCents > 0 ? formatMoney(mrrCents) : undefined}
+                      // A line needs two points; below that the dialog offers the
+                      // badge alone rather than a chart with nothing in it.
+                      hasHistory={history.length >= 2}
+                    />
+                  </span>
+                )}
               </div>
               {app.tagline && (
                 <p className="text-muted mt-2 text-base">
