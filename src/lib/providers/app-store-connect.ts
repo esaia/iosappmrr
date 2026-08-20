@@ -76,7 +76,7 @@ async function fetchLatestSubscriptionReport(
     day.setUTCDate(day.getUTCDate() - daysAgo)
     const reportDate = day.toISOString().slice(0, 10)
 
-    const params = new URLSearchParams({
+    const tsv = await fetchReport(token, {
       'filter[frequency]': 'DAILY',
       'filter[reportType]': 'SUBSCRIPTION',
       'filter[reportSubType]': 'SUMMARY',
@@ -85,59 +85,15 @@ async function fetchLatestSubscriptionReport(
       'filter[version]': '1_4',
     })
 
-    let response: Response
-    try {
-      response = await fetch(`${API_BASE}/salesReports?${params}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/a-gzip' },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(30_000),
-      })
-    } catch (cause) {
-      throw new ProviderError('Could not reach App Store Connect.', { retryable: true, cause })
-    }
-
     // No report for that day. Not an error — try the day before.
-    if (response.status === 404) continue
-
-    if (response.status === 401) {
-      throw new ProviderError(
-        'App Store Connect rejected this key. Check the issuer ID, key ID, and that the ' +
-          'key still exists and has at least Sales and Reports access.',
-      )
-    }
-
-    if (response.status === 403) {
-      throw new ProviderError(
-        'This key does not have permission to read sales reports. In App Store Connect, ' +
-          'give it the Sales and Reports role.',
-      )
-    }
-
-    if (response.status === 429) {
-      throw new ProviderError('App Store Connect is rate limiting this key.', { retryable: true })
-    }
-
-    if (!response.ok) {
-      throw new ProviderError(`App Store Connect returned ${response.status}.`, { retryable: true })
-    }
-
-    const gzipped = Buffer.from(await response.arrayBuffer())
-    let tsv: string
-    try {
-      tsv = gunzipSync(gzipped).toString('utf8')
-    } catch (cause) {
-      throw new ProviderError('App Store Connect returned an unreadable report.', {
-        retryable: true,
-        cause,
-      })
-    }
+    if (tsv === null) continue
 
     const parsed = parseSubscriptionReport(tsv, appStoreId)
 
     // A report full of other apps is not this app's report.
     if (requireMatch && parsed.rows === 0) continue
 
-    return { parsed, reportDate }
+    return { parsed, reportDate, token }
   }
 
   if (requireMatch) {
@@ -154,6 +110,164 @@ async function fetchLatestSubscriptionReport(
       'subscribers yet, Apple publishes nothing — connect RevenueCat instead, or try again ' +
       'once you have sales.',
   )
+}
+
+/**
+ * One report, unzipped to text. Returns null for a day Apple published nothing
+ * on, which is an ordinary answer rather than a failure: there is no report for
+ * a day with no activity, and the callers decide what that means.
+ */
+async function fetchReport(token: string, params: Record<string, string>) {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/salesReports?${new URLSearchParams(params)}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/a-gzip' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    })
+  } catch (cause) {
+    throw new ProviderError('Could not reach App Store Connect.', { retryable: true, cause })
+  }
+
+  if (response.status === 404) return null
+
+  if (response.status === 401) {
+    throw new ProviderError(
+      'App Store Connect rejected this key. Check the issuer ID, key ID, and that the ' +
+        'key still exists and has at least Sales and Reports access.',
+    )
+  }
+
+  if (response.status === 403) {
+    throw new ProviderError(
+      'This key does not have permission to read sales reports. In App Store Connect, ' +
+        'give it the Sales and Reports role.',
+    )
+  }
+
+  if (response.status === 429) {
+    throw new ProviderError('App Store Connect is rate limiting this key.', { retryable: true })
+  }
+
+  if (!response.ok) {
+    throw new ProviderError(`App Store Connect returned ${response.status}.`, { retryable: true })
+  }
+
+  const gzipped = Buffer.from(await response.arrayBuffer())
+  try {
+    return gunzipSync(gzipped).toString('utf8')
+  } catch (cause) {
+    throw new ProviderError('App Store Connect returned an unreadable report.', {
+      retryable: true,
+      cause,
+    })
+  }
+}
+
+/**
+ * Downloads on one day, from the SALES report that runs beside the subscription
+ * one. Read for the day the subscription figures came from, so a snapshot never
+ * mixes two dates.
+ *
+ * Null, not zero, when Apple published no sales report for that day: an app can
+ * hold subscribers through a day nobody installed it, but it can equally be a
+ * day Apple simply has nothing for, and the chart draws a gap rather than a
+ * floor for the second case.
+ */
+async function fetchInstalls(
+  token: string,
+  credentials: AppStoreConnectCredentials,
+  appStoreId: string,
+  reportDate: string,
+) {
+  const tsv = await fetchReport(token, {
+    'filter[frequency]': 'DAILY',
+    'filter[reportType]': 'SALES',
+    'filter[reportSubType]': 'SUMMARY',
+    'filter[vendorNumber]': credentials.vendorNumber,
+    'filter[reportDate]': reportDate,
+    'filter[version]': '1_1',
+  })
+
+  if (tsv === null) return undefined
+
+  return parseInstalls(tsv, appStoreId).installs
+}
+
+/**
+ * Units from Apple's SALES report that are a person getting the app for the
+ * first time.
+ *
+ * The file is one row per SKU, territory and transaction kind, and most of it
+ * is not an install: updates, in-app purchases and subscription renewals all
+ * carry units too. `Product Type Identifier` is what separates them — the app
+ * itself is the "1" family (1, 1F, 1T for iPhone, universal and iPad, 1E/1EP/1EU
+ * for custom apps) plus F1 for Mac — so this counts those and nothing else,
+ * rather than summing units and calling a version bump an install.
+ *
+ * Redownloads are dropped where Apple marks them, which is what makes this
+ * "people who installed" rather than "devices that fetched a copy" — the same
+ * distinction App Store Connect draws between App Units and Total Downloads.
+ * Rows from older report versions have no Order Type at all and are counted.
+ *
+ * `rows` counts every line naming this app, whatever the product type, which is
+ * a different question from how many installs there were: a day of nothing but
+ * updates proves the vendor account ships the app while adding no installs. An
+ * installs-only connection is validated on that, so an app can prove ownership
+ * on a quiet day.
+ */
+export function parseInstalls(tsv: string, appStoreId: string): { installs: number; rows: number } {
+  const empty = { installs: 0, rows: 0 }
+  const lines = tsv.split(/\r?\n/).filter((line) => line.trim().length > 0)
+  if (lines.length < 2) return empty
+
+  const header = lines[0].split('\t').map((h) => h.trim())
+  const index = (...candidates: string[]) => {
+    for (const candidate of candidates) {
+      const found = header.findIndex((h) => h.toLowerCase() === candidate.toLowerCase())
+      if (found !== -1) return found
+    }
+    return -1
+  }
+
+  const appIdx = index('Apple Identifier', 'App Apple ID', 'App Apple Identifier')
+  const unitsIdx = index('Units')
+  const typeIdx = index('Product Type Identifier')
+  const orderIdx = index('Order Type')
+
+  /*
+   * Fail closed, as the subscription parser does. A sales report we cannot
+   * attribute to one app would otherwise credit this listing with every
+   * download in the vendor account.
+   */
+  if (appIdx === -1 || unitsIdx === -1 || typeIdx === -1) {
+    throw new ProviderError(
+      'This sales report is missing the columns that identify a download, so we cannot ' +
+        'count installs from it.',
+    )
+  }
+
+  let installs = 0
+  let rows = 0
+
+  for (const line of lines.slice(1)) {
+    const cells = line.split('\t')
+    if (cells[appIdx]?.trim() !== appStoreId) continue
+    rows++
+
+    if (!isAppDownload(cells[typeIdx])) continue
+    if (cells[orderIdx]?.trim().toLowerCase() === 'redownload') continue
+
+    installs += toNumber(cells[unitsIdx])
+  }
+
+  return { installs, rows }
+}
+
+/** The product types that mean the app itself, not an update or a purchase. */
+function isAppDownload(productType: string | undefined) {
+  const value = (productType ?? '').trim().toUpperCase()
+  return /^(1|1F|1T|1E|1EP|1EU|F1)$/.test(value)
 }
 
 /**
@@ -277,17 +391,54 @@ export const appStoreConnectAdapter: ProviderAdapter<AppStoreConnectCredentials>
   appScoped: true,
 
   async validate(credentials, target): Promise<ValidationResult> {
-    const { parsed, reportDate } = await fetchLatestSubscriptionReport(
+    const { parsed, reportDate, token } = await fetchLatestSubscriptionReport(
       credentials,
       target.appStoreId,
       true,
     )
 
+    const installs = await fetchInstalls(token, credentials, target.appStoreId, reportDate)
+
     return {
       accountLabel: `Vendor ${credentials.vendorNumber}`,
       accountKey: credentials.vendorNumber,
-      metrics: toMetrics(parsed, reportDate),
+      metrics: toMetrics(parsed, reportDate, installs),
     }
+  },
+
+  /*
+   * Installs without the money, for an app whose revenue is already coming
+   * from somewhere else. Both figures live in the same vendor account, so this
+   * needs no extra credential — only a different report and the discipline to
+   * report zero MRR, since the app's real MRR is another connection's to state
+   * and the two are summed per day.
+   */
+  installs: {
+    async validate(credentials, target): Promise<ValidationResult> {
+      const { parsed, reportDate } = await fetchLatestSalesReport(
+        credentials,
+        target.appStoreId,
+        true,
+      )
+
+      return {
+        accountLabel: `Vendor ${credentials.vendorNumber} (installs)`,
+        accountKey: credentials.vendorNumber,
+        metrics: toInstallsMetrics(parsed.installs, reportDate),
+      }
+    },
+
+    async fetchMetrics(credentials, target): Promise<NormalizedMetrics> {
+      // No match required on the re-read, for the same reason the revenue path
+      // drops it: a day nobody downloaded the app is not a broken connection.
+      const { parsed, reportDate } = await fetchLatestSalesReport(
+        credentials,
+        target.appStoreId,
+        false,
+      )
+
+      return toInstallsMetrics(parsed.installs, reportDate)
+    },
   },
 
   async fetchMetrics(credentials, target): Promise<NormalizedMetrics> {
@@ -297,24 +448,101 @@ export const appStoreConnectAdapter: ProviderAdapter<AppStoreConnectCredentials>
      * zero — failing here instead would spend the failure budget and disable a
      * connection for the offence of having no customers this week.
      */
-    const { parsed, reportDate } = await fetchLatestSubscriptionReport(
+    const { parsed, reportDate, token } = await fetchLatestSubscriptionReport(
       credentials,
       target.appStoreId,
       false,
     )
 
-    return toMetrics(parsed, reportDate)
+    const installs = await fetchInstalls(token, credentials, target.appStoreId, reportDate)
+
+    return toMetrics(parsed, reportDate, installs)
   },
+}
+
+/**
+ * Walks back to the newest sales report naming this app.
+ *
+ * The installs-only counterpart to `fetchLatestSubscriptionReport`, and the
+ * ownership test works the same way: with `requireMatch` on, a report that
+ * exists but names only other apps keeps the walk going, so finishing means
+ * Apple itself attributed downloads of this App Store ID to this vendor
+ * account.
+ *
+ * Reading the SALES report for this rather than the subscription one is what
+ * lets a free app connect at all. `validate` on the revenue path insists on a
+ * subscription row, which an app with downloads and no subscribers can never
+ * produce — and installs are exactly the figure that app has to show.
+ */
+async function fetchLatestSalesReport(
+  credentials: AppStoreConnectCredentials,
+  appStoreId: string,
+  requireMatch: boolean,
+) {
+  const token = await mintToken(credentials)
+
+  for (let daysAgo = 1; daysAgo <= MAX_LOOKBACK_DAYS; daysAgo++) {
+    const day = new Date()
+    day.setUTCDate(day.getUTCDate() - daysAgo)
+    const reportDate = day.toISOString().slice(0, 10)
+
+    const tsv = await fetchReport(token, {
+      'filter[frequency]': 'DAILY',
+      'filter[reportType]': 'SALES',
+      'filter[reportSubType]': 'SUMMARY',
+      'filter[vendorNumber]': credentials.vendorNumber,
+      'filter[reportDate]': reportDate,
+      'filter[version]': '1_1',
+    })
+
+    if (tsv === null) continue
+
+    const parsed = parseInstalls(tsv, appStoreId)
+
+    if (requireMatch && parsed.rows === 0) continue
+
+    return { parsed, reportDate }
+  }
+
+  if (requireMatch) {
+    throw new ProviderError(
+      `This App Store Connect account published sales in the last ${MAX_LOOKBACK_DAYS} days, ` +
+        'but none of them name this app. Check the vendor number belongs to the account that ' +
+        'ships it.',
+    )
+  }
+
+  throw new ProviderError(
+    `No sales report published in the last ${MAX_LOOKBACK_DAYS} days. Apple publishes nothing ` +
+      'for a day with no activity at all, so this can simply mean a very quiet week.',
+  )
 }
 
 function toMetrics(
   parsed: ReturnType<typeof parseSubscriptionReport>,
   reportDate: string,
+  installs: number | undefined,
 ): NormalizedMetrics {
   return {
     mrrCents: parsed.mrrCents,
     currency: parsed.currency,
     activeSubscriptions: parsed.activeSubscriptions,
+    installs,
+    capturedOn: new Date(`${reportDate}T00:00:00Z`),
+  }
+}
+
+/**
+ * An installs-only reading. `mrrCents` is zero rather than absent because the
+ * column is not nullable — and zero is the truthful figure for this connection,
+ * which is not being asked about the money and must not add to whatever the
+ * revenue provider reports for the same day.
+ */
+function toInstallsMetrics(installs: number, reportDate: string): NormalizedMetrics {
+  return {
+    mrrCents: 0,
+    currency: 'USD',
+    installs,
     capturedOn: new Date(`${reportDate}T00:00:00Z`),
   }
 }

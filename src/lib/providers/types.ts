@@ -15,6 +15,13 @@ export type NormalizedMetrics = {
   activeTrials?: number
   newCustomers28d?: number
   revenue28dCents?: number
+  /**
+   * Downloads on `capturedOn` alone — people getting the app for the first
+   * time, not updates or redownloads. Only App Store Connect can fill it: it is
+   * the one provider reading Apple's sales figures rather than a payments
+   * ledger, and an app is installed far more often than it is subscribed to.
+   */
+  installs?: number
   /** Money taken on `capturedOn` alone. Only providers with a per-day report
    * can fill this; RevenueCat's overview cannot. */
   revenueCents?: number
@@ -71,6 +78,29 @@ export type ProviderStep = {
   permissions?: readonly string[]
 }
 
+/**
+ * The install-counting half of a provider, for a source that can report
+ * downloads as well as money.
+ *
+ * Same shape as the adapter itself, and used in its place when a connection is
+ * marked installs-only: the caller swaps which object it talks to and nothing
+ * else changes. The metrics it returns carry `installs` and an `mrrCents` of
+ * zero — the money on that app is somebody else's connection to report, and a
+ * second opinion on it would be added to the first.
+ *
+ * Only App Store Connect has one. It is the only provider reading Apple's own
+ * sales figures rather than a payments ledger.
+ */
+export type InstallsAdapter<TCredentials> = {
+  /**
+   * Proves the account ships this app, from the same report the installs come
+   * from — so an installs-only connection is held to the ownership test a
+   * revenue one is, without needing the app to have any subscribers.
+   */
+  validate(credentials: TCredentials, target: VerificationTarget): Promise<ValidationResult>
+  fetchMetrics(credentials: TCredentials, target: VerificationTarget): Promise<NormalizedMetrics>
+}
+
 export type ProviderAdapter<TCredentials> = {
   id: ProviderId
   name: string
@@ -95,6 +125,12 @@ export type ProviderAdapter<TCredentials> = {
    * exactly one listing, or two founders' pages would show the same money.
    */
   appScoped: boolean
+  /**
+   * Present only where the provider can count downloads, which is App Store
+   * Connect alone. A founder whose money is already coming from RevenueCat
+   * connects this side of it to add installs without doubling their MRR.
+   */
+  installs?: InstallsAdapter<TCredentials>
   /** Live test call. Throws ProviderError on failure; never persists anything. */
   validate(credentials: TCredentials, target: VerificationTarget): Promise<ValidationResult>
   fetchMetrics(credentials: TCredentials, target: VerificationTarget): Promise<NormalizedMetrics>

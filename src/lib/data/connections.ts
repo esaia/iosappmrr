@@ -6,6 +6,7 @@ import { encryptCredentials, fingerprintAccount } from '@/lib/crypto/credentials
 import { recomputeAppMetrics } from '@/lib/metrics'
 import {
   getAdapter,
+  getSource,
   ProviderError,
   type NormalizedMetrics,
   type ProviderId,
@@ -28,8 +29,11 @@ export async function connectProvider(options: {
   founderId: string
   provider: ProviderId
   credentials: unknown
+  /** Report downloads instead of money — see `revenueConnections.installsOnly`. */
+  installsOnly?: boolean
 }) {
   const adapter = getAdapter(options.provider)
+  const installsOnly = options.installsOnly ?? false
 
   const parsed = adapter.schema.safeParse(options.credentials)
   if (!parsed.success) {
@@ -56,9 +60,42 @@ export async function connectProvider(options: {
     name: app.name,
   }
 
+  /*
+   * Installs are a companion metric, never a listing's only source.
+   *
+   * An installs-only connection cannot verify an app — a download is not a
+   * dollar — so allowing it on its own would leave a founder with a connected
+   * key, a hidden listing, and no way to tell why. Requiring the revenue
+   * connection first also means the App Store Connect account is being added
+   * beside a provider that already reports the money, which is the only
+   * arrangement where switching the money off makes sense.
+   */
+  if (installsOnly) {
+    const [revenueSource] = await db
+      .select({ id: revenueConnections.id })
+      .from(revenueConnections)
+      .where(
+        and(
+          eq(revenueConnections.appId, options.appId),
+          eq(revenueConnections.status, 'active'),
+          eq(revenueConnections.installsOnly, false),
+        ),
+      )
+      .limit(1)
+
+    if (!revenueSource) {
+      return {
+        ok: false as const,
+        error:
+          'Connect the provider that bills your subscribers first. Installs are added beside ' +
+          'your revenue source, not instead of one — on their own they cannot verify an app.',
+      }
+    }
+  }
+
   let result
   try {
-    result = await adapter.validate(parsed.data, target)
+    result = await getSource(options.provider, installsOnly).validate(parsed.data, target)
   } catch (error) {
     if (error instanceof ProviderError) return { ok: false as const, error: error.message }
     throw error
@@ -106,6 +143,7 @@ export async function connectProvider(options: {
         encryptedCredentials: encryptCredentials(parsed.data),
         accountLabel: result.accountLabel,
         credentialFingerprint: fingerprint,
+        installsOnly,
         lastSyncedAt: new Date(),
         lastError: null,
         consecutiveFailures: 0,
@@ -117,19 +155,27 @@ export async function connectProvider(options: {
           encryptedCredentials: encryptCredentials(parsed.data),
           accountLabel: result.accountLabel,
           credentialFingerprint: fingerprint,
+          installsOnly,
           lastSyncedAt: new Date(),
           lastError: null,
           consecutiveFailures: 0,
         },
       })
 
-    await writeSnapshot(tx, options.appId, options.provider, result.metrics)
+    await writeSnapshot(tx, options.appId, options.provider, result.metrics, installsOnly)
 
-    // Verification is what publishes an app. Nothing else flips this.
-    await tx
-      .update(apps)
-      .set({ isVerified: true, verifiedAt: new Date(), status: 'live' })
-      .where(eq(apps.id, options.appId))
+    /*
+     * Verification is what publishes an app. Nothing else flips this — and an
+     * installs-only connection is not it: it proves the vendor account ships
+     * the app, which is not a claim about revenue, and the badge on this site
+     * means a figure was read from the books.
+     */
+    if (!installsOnly) {
+      await tx
+        .update(apps)
+        .set({ isVerified: true, verifiedAt: new Date(), status: 'live' })
+        .where(eq(apps.id, options.appId))
+    }
   })
 
   await recomputeAppMetrics(options.appId)
@@ -145,6 +191,7 @@ export async function writeSnapshot(
   appId: string,
   provider: ProviderId,
   metrics: NormalizedMetrics,
+  installsOnly = false,
 ) {
   const capturedOn = metrics.capturedOn.toISOString().slice(0, 10)
 
@@ -161,6 +208,8 @@ export async function writeSnapshot(
       newCustomers28d: metrics.newCustomers28d ?? null,
       revenue28dCents: metrics.revenue28dCents ?? null,
       revenueCents: metrics.revenueCents ?? null,
+      installs: metrics.installs ?? null,
+      installsOnly,
       currency: metrics.currency,
     })
     .onConflictDoUpdate({
@@ -173,6 +222,8 @@ export async function writeSnapshot(
         newCustomers28d: metrics.newCustomers28d ?? null,
         revenue28dCents: metrics.revenue28dCents ?? null,
         revenueCents: metrics.revenueCents ?? null,
+        installs: metrics.installs ?? null,
+        installsOnly,
         currency: metrics.currency,
       },
     })
@@ -188,10 +239,26 @@ export async function disconnectProvider(appId: string, provider: ProviderId) {
     .delete(revenueConnections)
     .where(and(eq(revenueConnections.appId, appId), eq(revenueConnections.provider, provider)))
 
+  /*
+   * Only revenue sources count here. An installs-only connection cannot verify
+   * an app, so an app left with nothing but one is unverified just as surely as
+   * an app left with none at all — counting it would keep a listing published
+   * on a download figure.
+   *
+   * The orphaned connection is left in place rather than deleted: it keeps
+   * recording installs, costs nothing while the listing is hidden, and is
+   * already there if the founder reconnects their revenue provider.
+   */
   const remaining = await db
     .select({ id: revenueConnections.id })
     .from(revenueConnections)
-    .where(and(eq(revenueConnections.appId, appId), eq(revenueConnections.status, 'active')))
+    .where(
+      and(
+        eq(revenueConnections.appId, appId),
+        eq(revenueConnections.status, 'active'),
+        eq(revenueConnections.installsOnly, false),
+      ),
+    )
 
   if (remaining.length === 0) {
     await db

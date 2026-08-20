@@ -9,7 +9,7 @@ import { writeSnapshot } from '@/lib/data/connections'
 import { fetchAppStoreReviews } from '@/lib/appstore/reviews'
 import { saveAppStoreMetadata, saveAppStoreReviews } from '@/lib/data/mutations'
 import { recomputeAppMetrics } from '@/lib/metrics'
-import { getAdapter, ProviderError, type ProviderId } from '@/lib/providers'
+import { getSource, ProviderError, type ProviderId } from '@/lib/providers'
 
 /** Failures before a connection is disabled and its owner emailed. */
 const FAILURE_BUDGET = 3
@@ -55,6 +55,7 @@ export async function syncAllRevenue(options: { limit?: number } = {}): Promise<
       appName: apps.name,
       bundleId: apps.bundleId,
       provider: revenueConnections.provider,
+      installsOnly: revenueConnections.installsOnly,
       credentials: revenueConnections.encryptedCredentials,
       consecutiveFailures: revenueConnections.consecutiveFailures,
     })
@@ -80,7 +81,12 @@ export async function syncAllRevenue(options: { limit?: number } = {}): Promise<
     due.map((connection) =>
       limit(async () => {
         try {
-          const adapter = getAdapter(connection.provider as ProviderId)
+          /*
+           * Whichever half of the provider this connection reports through —
+           * the money, or installs alone. Throws for an unregistered provider,
+           * the same as looking the adapter up directly did.
+           */
+          const source = getSource(connection.provider as ProviderId, connection.installsOnly)
           const credentials = decryptCredentials(connection.credentials)
 
           if (isSampleCredential(credentials)) {
@@ -94,13 +100,19 @@ export async function syncAllRevenue(options: { limit?: number } = {}): Promise<
            * covers the whole vendor account, and without the app to filter on
            * the daily snapshot would drift back to a portfolio total.
            */
-          const metrics = await adapter.fetchMetrics(credentials, {
+          const metrics = await source.fetchMetrics(credentials, {
             appStoreId: connection.appStoreId,
             bundleId: connection.bundleId,
             name: connection.appName,
           })
 
-          await writeSnapshot(db, connection.appId, connection.provider as ProviderId, metrics)
+          await writeSnapshot(
+            db,
+            connection.appId,
+            connection.provider as ProviderId,
+            metrics,
+            connection.installsOnly,
+          )
 
           await db
             .update(revenueConnections)

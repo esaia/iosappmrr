@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { getOwnedApp, listConnections } from '@/lib/data/mutations'
-import { CONNECTABLE_PROVIDERS } from '@/lib/providers'
+import { canReportInstalls, CONNECTABLE_PROVIDERS } from '@/lib/providers'
 import { PROVIDER_FIELDS } from '@/lib/provider-fields'
 import { ConnectPanel } from './connect-panel'
 import { Container, Measure } from '@/components/ui/container'
@@ -48,6 +48,7 @@ export default async function ConnectPage({ params }: { params: Promise<{ appId:
             steps: provider.steps,
             docsUrl: provider.docsUrl,
             fields: PROVIDER_FIELDS[provider.id],
+            canReportInstalls: canReportInstalls(provider.id),
           }))}
           connections={connections.map((connection) => ({
             ...connection,

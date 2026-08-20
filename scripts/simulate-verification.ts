@@ -54,6 +54,29 @@ const PLANS = [
 const PROVIDER = 'revenuecat'
 const LABEL = 'Simulated — not a real connection'
 
+/**
+ * Installs ride on a second, installs-only connection, because that is the only
+ * shape this can take for real: RevenueCat cannot report downloads, so an app
+ * whose money comes from it needs an App Store Connect key beside it to chart
+ * them. Writing both from one provider would test a combination that cannot
+ * exist.
+ */
+const INSTALLS_PROVIDER = 'app_store_connect'
+const INSTALLS_LABEL = 'Simulated installs — not a real connection'
+
+/**
+ * Share of installs that ever subscribe. Deliberately low: most people who
+ * download an app never pay for it, which is the whole reason installs are
+ * worth charting separately from revenue.
+ */
+const CONVERSION_RATE = 0.03
+
+/**
+ * Downloads a day from people who were never going to subscribe — the bulk of
+ * the line, and what keeps it from being a scaled copy of the signup series.
+ */
+const BROWSING_INSTALLS = 38
+
 type Day = {
   date: Date
   mrrCents: number
@@ -62,6 +85,7 @@ type Day = {
   revenueCents: number
   revenue28dCents: number
   newCustomers28d: number
+  installs: number
 }
 
 function makeRandom(seedText: string) {
@@ -155,6 +179,16 @@ function simulate(seedText: string, rateScale: number): Day[] {
       revenueCents += plan.priceCents
     }
 
+    /*
+     * Installs, in the same regime and burst the signups saw — a launch is a
+     * spike in both — plus a floor of people who look and leave. Derived from
+     * the day's signups rather than the other way round, so tuning MRR does not
+     * have to fight a second objective.
+     */
+    const installs =
+      poisson(BROWSING_INSTALLS * regime * (burst ? 4 : 1), random) +
+      Math.round((newSubs / CONVERSION_RATE) * (0.75 + random() * 0.5))
+
     recentSignups.push(newSubs)
     if (recentSignups.length > 28) recentSignups.shift()
     dailyRevenue.push(revenueCents)
@@ -182,6 +216,7 @@ function simulate(seedText: string, rateScale: number): Day[] {
       revenueCents,
       revenue28dCents: dailyRevenue.reduce((sum, n) => sum + n, 0),
       newCustomers28d: recentSignups.reduce((sum, n) => sum + n, 0),
+      installs,
     })
   }
 
@@ -242,7 +277,8 @@ async function main() {
 
     if (process.argv.includes('--undo')) {
       await sql`delete from revenue_snapshots where app_id = ${appId}`
-      await sql`delete from revenue_connections where app_id = ${appId} and account_label = ${LABEL}`
+      await sql`delete from revenue_connections where app_id = ${appId}
+                and account_label in (${LABEL}, ${INSTALLS_LABEL})`
       await sql`delete from app_metrics where app_id = ${appId}`
       await sql`update apps set status = 'draft', is_verified = false, verified_at = null
                 where id = ${appId}`
@@ -266,8 +302,31 @@ async function main() {
       revenue_28d_cents: day.revenue28dCents,
       currency: 'USD',
     }))
+    /*
+     * A second row per day, from the installs-only connection. Separate rows
+     * rather than an `installs` column on the RevenueCat ones, because that is
+     * how the sync writes them: one row per provider per day, and this pair is
+     * what the chart has to add up correctly.
+     *
+     * mrr_cents is 0 and installs_only is true, which is what keeps the app's
+     * MRR from doubling — the same flag the aggregates filter on.
+     */
+    const installsRows = history.map((day) => ({
+      app_id: appId,
+      provider: INSTALLS_PROVIDER,
+      captured_on: day.date.toISOString().slice(0, 10),
+      captured_at: day.date.toISOString(),
+      mrr_cents: 0,
+      installs: day.installs,
+      installs_only: true,
+      currency: 'USD',
+    }))
+
     for (let i = 0; i < rows.length; i += 500) {
       await sql`insert into revenue_snapshots ${sql(rows.slice(i, i + 500))}`
+    }
+    for (let i = 0; i < installsRows.length; i += 500) {
+      await sql`insert into revenue_snapshots ${sql(installsRows.slice(i, i + 500))}`
     }
 
     await sql`
@@ -280,6 +339,20 @@ async function main() {
       )
       on conflict (app_id, provider) do update set
         status = 'active', account_label = ${LABEL}, last_synced_at = now()
+    `
+
+    await sql`
+      insert into revenue_connections (
+        app_id, provider, status, encrypted_credentials, account_label,
+        installs_only, last_synced_at
+      )
+      values (
+        ${appId}, ${INSTALLS_PROVIDER}, 'active',
+        ${encryptCredentials({ simulated: true })}, ${INSTALLS_LABEL}, true, now()
+      )
+      on conflict (app_id, provider) do update set
+        status = 'active', account_label = ${INSTALLS_LABEL},
+        installs_only = true, last_synced_at = now()
     `
 
     await sql`update apps set status = 'live', is_verified = true, verified_at = now()
@@ -297,6 +370,8 @@ async function main() {
         `  Subscribers: ${history[history.length - 1].subscribers}\n` +
         `  Last 30d takings: $${(last30.reduce((s, d) => s + d.revenueCents, 0) / 100).toFixed(2)} ` +
         `across ${last30.filter((d) => d.revenueCents > 0).length}/30 days\n` +
+        `  Last 30d installs: ${last30.reduce((s, d) => s + d.installs, 0)} ` +
+        `(peak day ${Math.max(...history.map((d) => d.installs))})\n` +
         `  Page: /apps/${app.slug}\n\n` +
         `Undo with: npm run db:simulate -- ${appId} --undo`,
     )

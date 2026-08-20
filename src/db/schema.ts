@@ -299,6 +299,21 @@ export const revenueConnections = pgTable(
      * nulls as distinct, so those rows neither collide nor need backfilling.
      */
     credentialFingerprint: text('credential_fingerprint'),
+    /**
+     * Whether this connection reports downloads instead of money.
+     *
+     * An App Store Connect key can do either: the vendor account holds both the
+     * subscription report and the sales one. A founder whose revenue already
+     * comes from RevenueCat connects it this way to add installs — the two
+     * providers would otherwise both report the same Apple subscriptions, and
+     * every daily total on the site sums across providers, so the app's MRR
+     * would double.
+     *
+     * Rows written this way carry `mrr_cents` of zero and are excluded from
+     * every revenue aggregate, so the flag has to be read wherever snapshots
+     * are summed, not just here.
+     */
+    installsOnly: boolean('installs_only').notNull().default(false),
     lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
     lastError: text('last_error'),
     consecutiveFailures: integer('consecutive_failures').notNull().default(0),
@@ -345,6 +360,24 @@ export const revenueSnapshots = pgTable(
      * cannot report it advertises nothing.
      */
     revenueCents: bigint('revenue_cents', { mode: 'number' }),
+    /**
+     * First-time downloads on this day, from Apple's SALES report. Null for
+     * every provider but App Store Connect, and null too on a day Apple
+     * published no sales file at all — which is not the same as a day with no
+     * installs, so the chart draws a gap there rather than a zero.
+     */
+    installs: integer('installs'),
+    /**
+     * Whether this row was captured by an installs-only connection, and so says
+     * nothing about the money.
+     *
+     * Recorded on the row rather than read from the connection it came from,
+     * because the connection describes what happens next and this has to
+     * describe what happened. A founder who switches their App Store Connect
+     * connection to installs-only would otherwise retroactively delete every
+     * MRR figure it ever reported from a public chart.
+     */
+    installsOnly: boolean('installs_only').notNull().default(false),
     currency: text('currency').notNull().default('USD'),
   },
   (t) => [

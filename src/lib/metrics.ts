@@ -21,14 +21,25 @@ export async function recomputeAppMetrics(appId: string) {
     mrr_90d_ago: string | null
     sparkline: string[] | null
   }>(sql`
-    with daily as (
+    with revenue as (
+      -- Snapshots that are actually about money.
+      --
+      -- An installs-only connection writes a row a day with mrr_cents = 0, and
+      -- letting those through would do real damage here: on any day its
+      -- provider reported and the revenue provider did not, the latest row would
+      -- be a row of zeroes and the app's headline MRR would read $0.
+      select *
+      from revenue_snapshots
+      where app_id = ${appId}
+        and installs_only = false
+    ),
+    daily as (
       -- One total per day: providers are summed, never double-counted.
       select
         captured_on,
         sum(mrr_cents)::bigint as mrr_cents,
         sum(active_subscriptions) as active_subscriptions
-      from revenue_snapshots
-      where app_id = ${appId}
+      from revenue
       group by captured_on
     ),
     latest as (
@@ -38,11 +49,13 @@ export async function recomputeAppMetrics(appId: string) {
       (select mrr_cents from latest) as mrr_cents,
       (select active_subscriptions from latest) as active_subscriptions,
       (select captured_on from latest) as data_as_of,
+      -- Drawn from the same filtered set, so an installs-only App Store Connect
+      -- connection never appears in the "verified by" list. It did not verify
+      -- anything: it counted downloads.
       (
         select array_agg(distinct provider::text)
-        from revenue_snapshots
-        where app_id = ${appId}
-          and captured_on = (select captured_on from latest)
+        from revenue
+        where captured_on = (select captured_on from latest)
       ) as providers,
       -- Nearest snapshot at or before the comparison date, so a gap in the
       -- history shifts the baseline instead of erasing the growth figure.

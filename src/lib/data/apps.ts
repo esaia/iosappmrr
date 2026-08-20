@@ -230,16 +230,42 @@ export async function getAppReviews(appId: string, limit = 6) {
 /** Daily totals for the app profile chart, oldest first. One row per day, summed
  * across providers, carrying every series the chart can plot. */
 export async function getRevenueHistory(appId: string, days = 180) {
+  /*
+   * Every revenue series is aggregated with a `filter` on the row's own capture
+   * mode, so a snapshot taken by an installs-only connection contributes its
+   * installs without contributing to the money.
+   *
+   * A `filter` rather than a `case`, so a day carrying nothing but an
+   * installs-only row comes back null — a gap in the line — instead of a zero,
+   * which would draw a cliff to the floor and back on any day the revenue
+   * provider missed its run.
+   *
+   * Installs are summed unfiltered: an App Store Connect connection reports
+   * them whether or not it is also reporting the money.
+   */
+  const installsOnly = revenueSnapshots.installsOnly
+
   const rows = await db
     .select({
       date: revenueSnapshots.capturedOn,
-      mrrCents: sql<string>`sum(${revenueSnapshots.mrrCents})`,
+      mrrCents: sql<
+        string | null
+      >`sum(${revenueSnapshots.mrrCents}) filter (where not ${installsOnly})`,
       // Null stays null: a provider that never reports subscriptions should read
       // as "no data", not as zero subscribers.
-      activeSubscriptions: sql<string | null>`sum(${revenueSnapshots.activeSubscriptions})`,
-      activeTrials: sql<string | null>`sum(${revenueSnapshots.activeTrials})`,
-      revenue28dCents: sql<string | null>`sum(${revenueSnapshots.revenue28dCents})`,
-      revenueCents: sql<string | null>`sum(${revenueSnapshots.revenueCents})`,
+      activeSubscriptions: sql<
+        string | null
+      >`sum(${revenueSnapshots.activeSubscriptions}) filter (where not ${installsOnly})`,
+      activeTrials: sql<
+        string | null
+      >`sum(${revenueSnapshots.activeTrials}) filter (where not ${installsOnly})`,
+      revenue28dCents: sql<
+        string | null
+      >`sum(${revenueSnapshots.revenue28dCents}) filter (where not ${installsOnly})`,
+      revenueCents: sql<
+        string | null
+      >`sum(${revenueSnapshots.revenueCents}) filter (where not ${installsOnly})`,
+      installs: sql<string | null>`sum(${revenueSnapshots.installs})`,
     })
     .from(revenueSnapshots)
     .where(
@@ -255,11 +281,12 @@ export async function getRevenueHistory(appId: string, days = 180) {
 
   return rows.map((row) => ({
     date: row.date,
-    mrrCents: Number(row.mrrCents),
+    mrrCents: num(row.mrrCents),
     activeSubscriptions: num(row.activeSubscriptions),
     activeTrials: num(row.activeTrials),
     revenue28dCents: num(row.revenue28dCents),
     revenueCents: num(row.revenueCents),
+    installs: num(row.installs),
   }))
 }
 

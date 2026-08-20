@@ -55,7 +55,8 @@ const PALETTES: Record<ShareOptions['theme'], Palette> = {
 
 export type SharePoint = {
   date: string
-  mrrCents: number
+  /** Null on a day no revenue source reported. */
+  mrrCents: number | null
   /** Money taken that day. Null wherever the provider cannot report one. */
   revenueCents: number | null
 }

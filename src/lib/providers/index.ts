@@ -1,7 +1,7 @@
 import { appStoreConnectAdapter } from './app-store-connect'
 import { revenueCatAdapter } from './revenuecat'
 import { stripeAdapter } from './stripe'
-import type { ProviderAdapter, ProviderId } from './types'
+import { ProviderError, type InstallsAdapter, type ProviderAdapter, type ProviderId } from './types'
 
 /**
  * Superwall is deliberately absent.
@@ -35,6 +35,38 @@ export function getAdapter(provider: ProviderId) {
     throw new Error(`No adapter is registered for provider "${provider}".`)
   }
   return adapter
+}
+
+/**
+ * The half of a provider a connection actually talks to.
+ *
+ * A connection is either reporting the money or reporting installs, and the
+ * two are different objects with the same shape. Resolving it in one place
+ * keeps `connectProvider` and the sync from each deciding for themselves what
+ * an installs-only connection means.
+ */
+export function getSource(
+  provider: ProviderId,
+  installsOnly: boolean,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): ProviderAdapter<any> | InstallsAdapter<any> {
+  const adapter = getAdapter(provider)
+  if (!installsOnly) return adapter
+
+  if (!adapter.installs) {
+    throw new ProviderError(
+      `${adapter.name} cannot report installs. Only App Store Connect reads Apple's download ` +
+        'figures — every other provider here sees payments, and most people who install an app ' +
+        'never pay for it.',
+    )
+  }
+
+  return adapter.installs
+}
+
+/** Providers that can be connected for installs alone. */
+export function canReportInstalls(provider: ProviderId) {
+  return Boolean(ADAPTERS[provider]?.installs)
 }
 
 export function isConnectable(provider: string): provider is ProviderId {

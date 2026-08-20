@@ -10,7 +10,13 @@ import { isConnectable } from '@/lib/providers'
 export type ConnectState = {
   error?: string
   fieldErrors?: Record<string, string>
-  connected?: { mrrCents: number; currency: string }
+  connected?: {
+    mrrCents: number
+    currency: string
+    /** What an installs-only connection has to show for itself instead of MRR. */
+    installs?: number | null
+    installsOnly?: boolean
+  }
 }
 
 export async function connectProviderAction(
@@ -21,6 +27,7 @@ export async function connectProviderAction(
 
   const appId = String(formData.get('appId') ?? '')
   const provider = String(formData.get('provider') ?? '')
+  const installsOnly = formData.get('installsOnly') === 'on'
 
   if (!isConnectable(provider)) return { error: 'That provider cannot be connected.' }
 
@@ -30,7 +37,7 @@ export async function connectProviderAction(
 
   const credentials = Object.fromEntries(
     [...formData.entries()]
-      .filter(([key]) => !['appId', 'provider', '$ACTION_ID'].includes(key))
+      .filter(([key]) => !['appId', 'provider', 'installsOnly', '$ACTION_ID'].includes(key))
       .map(([key, value]) => [key, String(value)]),
   )
 
@@ -39,6 +46,7 @@ export async function connectProviderAction(
     founderId: user.id,
     provider,
     credentials,
+    installsOnly,
   })
 
   // Generic when a field is already carrying the detail — see the note in
@@ -54,7 +62,12 @@ export async function connectProviderAction(
   revalidatePath(`/apps/${app.slug}`)
 
   return {
-    connected: { mrrCents: result.metrics.mrrCents, currency: result.metrics.currency },
+    connected: {
+      mrrCents: result.metrics.mrrCents,
+      currency: result.metrics.currency,
+      installs: result.metrics.installs ?? null,
+      installsOnly,
+    },
   }
 }
 

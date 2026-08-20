@@ -188,6 +188,7 @@ export async function listConnections(appId: string) {
       provider: revenueConnections.provider,
       status: revenueConnections.status,
       accountLabel: revenueConnections.accountLabel,
+      installsOnly: revenueConnections.installsOnly,
       lastSyncedAt: revenueConnections.lastSyncedAt,
       lastError: revenueConnections.lastError,
     })

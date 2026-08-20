@@ -113,12 +113,12 @@ thing that publishes a listing.
 
 ### Providers
 
-| Provider          | Credential                                                              | Notes                                                                                                                                   |
-| ----------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| RevenueCat        | V2 secret key scoped to `charts_metrics:overview:read`, plus project ID | Primary path. 25 req/min per key                                                                                                        |
-| App Store Connect | Issuer ID, key ID, `.p8`, vendor number                                 | Reports lag one day; UI shows a "data as of" date                                                                                       |
-| Stripe            | Restricted key with read on Subscriptions                               | For apps that also bill on the web                                                                                                      |
-| Superwall         | —                                                                       | **Not supported.** Superwall issues public SDK keys only and publishes no metrics API, so there is no way to verify a figure through it |
+| Provider          | Credential                                                              | Notes                                                                                                                                                  |
+| ----------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| RevenueCat        | V2 secret key scoped to `charts_metrics:overview:read`, plus project ID | Primary path. 25 req/min per key                                                                                                                       |
+| App Store Connect | Issuer ID, key ID, `.p8`, vendor number                                 | Reports lag one day; UI shows a "data as of" date. The only source of daily installs — Apple's SALES report counts downloads, a payments ledger cannot |
+| Stripe            | Restricted key with read on Subscriptions                               | For apps that also bill on the web                                                                                                                     |
+| Superwall         | —                                                                       | **Not supported.** Superwall issues public SDK keys only and publishes no metrics API, so there is no way to verify a figure through it                |
 
 Multiple providers on one app are summed once per day, never double-counted.
 

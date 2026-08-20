@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSubscriptionReport } from './app-store-connect'
+import { parseInstalls, parseSubscriptionReport } from './app-store-connect'
 
 /** The app under test. Every row below belongs to it unless it says otherwise. */
 const APP_ID = '6448311069'
@@ -111,5 +111,75 @@ describe('parseSubscriptionReport', () => {
   it('reads the reported currency', () => {
     const tsv = report([row('Focus', '1 Month', '9.99', 'EUR', '10', '0')])
     expect(parseSubscriptionReport(tsv, APP_ID).currency).toBe('EUR')
+  })
+})
+
+/** Column names and layout follow Apple's SALES report, version 1_1. */
+function salesReport(rows: string[][]) {
+  const header = ['Title', 'Product Type Identifier', 'Units', 'Apple Identifier', 'Order Type']
+  return [header, ...rows].map((r) => r.join('\t')).join('\n')
+}
+
+/** A sales row for the app under test. */
+function sale(productType: string, units: string, orderType = '') {
+  return ['Focus', productType, units, APP_ID, orderType]
+}
+
+describe('parseInstalls', () => {
+  it('counts a day of downloads', () => {
+    expect(parseInstalls(salesReport([sale('1', '10')]), APP_ID).installs).toBe(10)
+  })
+
+  it('adds up the platforms an app ships on', () => {
+    const tsv = salesReport([sale('1', '6'), sale('1F', '3'), sale('1T', '2'), sale('F1', '1')])
+    expect(parseInstalls(tsv, APP_ID).installs).toBe(12)
+  })
+
+  it('does not count an update as an install', () => {
+    const tsv = salesReport([sale('1', '2'), sale('7', '900'), sale('7F', '400')])
+    expect(parseInstalls(tsv, APP_ID).installs).toBe(2)
+  })
+
+  it('does not count in-app purchases or renewals as installs', () => {
+    const tsv = salesReport([sale('1', '2'), sale('IA1', '50'), sale('IAY', '30')])
+    expect(parseInstalls(tsv, APP_ID).installs).toBe(2)
+  })
+
+  it('drops redownloads, so a figure means people rather than devices', () => {
+    const tsv = salesReport([sale('1', '10'), sale('1', '40', 'Redownload')])
+    expect(parseInstalls(tsv, APP_ID).installs).toBe(10)
+  })
+
+  it('ignores the other apps in the same vendor account', () => {
+    const tsv = salesReport([sale('1', '10'), ['Someone Else', '1', '900', '1234567890', '']])
+    expect(parseInstalls(tsv, APP_ID).installs).toBe(10)
+  })
+
+  it('reads a quiet day as zero', () => {
+    expect(parseInstalls(salesReport([]), APP_ID)).toEqual({ installs: 0, rows: 0 })
+    expect(parseInstalls('', APP_ID)).toEqual({ installs: 0, rows: 0 })
+  })
+
+  /*
+   * The ownership test an installs-only connection is validated on. A day of
+   * nothing but updates proves the vendor account ships the app while adding
+   * no installs, so the two counts have to be able to disagree.
+   */
+  it("counts the app's rows apart from its installs", () => {
+    const tsv = salesReport([sale('7', '400'), sale('1', '0')])
+    expect(parseInstalls(tsv, APP_ID)).toEqual({ installs: 0, rows: 2 })
+  })
+
+  it('reports no rows when the account does not ship this app', () => {
+    const tsv = salesReport([['Someone Else', '1', '900', '1234567890', '']])
+    expect(parseInstalls(tsv, APP_ID)).toEqual({ installs: 0, rows: 0 })
+  })
+
+  it('refuses a report it cannot attribute to one app', () => {
+    const tsv = [
+      ['Title', 'Product Type Identifier', 'Units'].join('\t'),
+      ['Focus', '1', '10'].join('\t'),
+    ].join('\n')
+    expect(() => parseInstalls(tsv, APP_ID)).toThrow(/installs/)
   })
 })

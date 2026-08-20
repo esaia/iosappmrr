@@ -16,14 +16,21 @@ import { formatCount, formatGrowth, formatMrr, percentChange } from '@/lib/utils
 
 export type RevenuePoint = {
   date: string
-  mrrCents: number
+  /**
+   * Null on a day no revenue source reported. An installs-only connection
+   * writes a snapshot for a day without saying anything about the money, so
+   * "we have a row for this day" and "we know the MRR for this day" came apart
+   * and the level series has to be able to say it does not know.
+   */
+  mrrCents: number | null
   activeSubscriptions?: number | null
   activeTrials?: number | null
   revenue28dCents?: number | null
   revenueCents?: number | null
+  installs?: number | null
 }
 
-type MetricKey = 'revenueDaily' | 'revenue28d' | 'mrr' | 'subscribers' | 'trials'
+type MetricKey = 'revenueDaily' | 'revenue28d' | 'mrr' | 'subscribers' | 'trials' | 'installs'
 
 type Metric = {
   key: MetricKey
@@ -50,6 +57,9 @@ type Metric = {
  * exposes visitors or churn, so offering them — even locked — would advertise
  * something the sync can never fill.
  */
+/** Shared so the tooltip dot and the Installs series cannot drift apart. */
+const INSTALLS_DOT = '#b48ce0'
+
 const METRICS: Metric[] = [
   {
     /*
@@ -64,6 +74,20 @@ const METRICS: Metric[] = [
     dot: 'var(--blue)',
     read: (p) => p.revenueCents ?? null,
     format: formatMrr,
+  },
+  {
+    /*
+     * Downloads, which is the other half of the story a revenue chart tells on
+     * its own: the day a launch lands shows up here long before it shows up in
+     * the money. App Store Connect fills it; every other provider reads a
+     * payments ledger and has no idea how many people installed the app.
+     */
+    key: 'installs',
+    kind: 'flow',
+    label: 'Installs',
+    dot: INSTALLS_DOT,
+    read: (p) => p.installs ?? null,
+    format: formatCount,
   },
   {
     key: 'revenue28d',
@@ -133,6 +157,13 @@ type ChartRow = {
   value: number | null
   prevValue: number | null
   prevDate: string | null
+  /**
+   * The day's downloads, carried alongside whichever metric is plotted so the
+   * tooltip can name both. Not smoothed with the series: it is read off the
+   * day rather than drawn, and a trend-view average would make the tooltip
+   * disagree with the Installs metric on the same date.
+   */
+  installs: number | null
 }
 
 /** Centred moving average. Smooths daily noise without shifting the line sideways. */
@@ -200,7 +231,9 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
   const metricRef = useDismiss(() => setMetricOpen(false))
   const rangeRef = useDismiss(() => setRangeOpen(false))
 
-  const metric = METRICS.find((m) => m.key === metricKey) ?? METRICS[2]
+  // Falls back to MRR by name rather than by position, so inserting a metric
+  // above it in the list cannot silently change what the chart plots.
+  const metric = METRICS.find((m) => m.key === metricKey) ?? METRICS.find((m) => m.key === 'mrr')!
 
   /** A metric is offered only when some day actually carries a value for it. */
   const metricHasData = useMemo(() => {
@@ -238,6 +271,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
       value: currentValues[i],
       prevValue: prevValues[i],
       prevDate: previous[i - offset]?.date ?? null,
+      installs: point.installs ?? null,
     }))
   }, [data, windowDays, trend, metric])
 
@@ -387,7 +421,14 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
         </div>
       </div>
 
-      <div className="h-72 w-full">
+      {/*
+        Recharts makes its wrapper focusable for keyboard tooltip navigation,
+        and a click lands focus on it — which drew the site's accent focus ring
+        as a box around the whole plot. The chart is read, not operated: hover
+        and the range pickers above do everything it offers, and those keep
+        their rings. So the outline is dropped here rather than site-wide.
+      */}
+      <div className="h-72 w-full [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <defs>
@@ -532,6 +573,17 @@ function MetricTooltip({
         })}
       </p>
       <p className="tabular text-fg text-sm font-medium">{metric.format(point.value)}</p>
+      {/*
+       * Downloads on the same day, wherever we hold them — the question any
+       * spike in the takings raises. Hidden while Installs is itself the
+       * plotted metric, where it would print the same number twice.
+       */}
+      {point.installs != null && metric.key !== 'installs' && (
+        <p className="tabular text-muted mt-1.5 flex items-center gap-1.5 text-[11px]">
+          <span className="size-1.5 shrink-0 rounded-full" style={{ background: INSTALLS_DOT }} />
+          {formatCount(point.installs)} install{point.installs === 1 ? '' : 's'}
+        </p>
+      )}
       {point.prevValue != null && (
         <p className="tabular text-muted mt-1 text-[11px]">
           Prev: {metric.format(point.prevValue)}
