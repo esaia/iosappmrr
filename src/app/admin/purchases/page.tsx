@@ -43,10 +43,10 @@ export default async function AdminPurchasesPage({
           <p className="text-fg text-[13px]">
             <span className="font-medium">Before settling anything by hand</span>, run{' '}
             <code className="bg-surface-3 rounded px-1 py-0.5 text-[12px]">
-              npm run polar:reconcile
+              npm run paddle:reconcile
             </code>
-            . It asks Polar whether each pending checkout was actually paid and grants only the ones
-            that were. Settling here skips that check, so it is for payments you have confirmed
+            . It asks Paddle whether each pending checkout was actually paid and grants only the
+            ones that were. Settling here skips that check, so it is for payments you have confirmed
             another way.
           </p>
         </div>
@@ -105,8 +105,8 @@ function PurchaseRow({ row }: { row: AdminPurchaseRow }) {
           </p>
 
           <p className="text-dim mt-1 font-mono text-[11px]">
-            {row.polarCheckoutId ? `checkout ${row.polarCheckoutId}` : 'no checkout (granted)'}
-            {row.polarOrderId && ` · order ${row.polarOrderId}`}
+            {row.checkoutId ? `checkout ${row.checkoutId}` : 'no checkout (granted)'}
+            {row.orderId && ` · order ${row.orderId}`}
           </p>
 
           {row.note && <p className="text-muted mt-1 text-[12px] italic">“{row.note}”</p>}

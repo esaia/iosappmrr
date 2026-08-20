@@ -7,14 +7,14 @@ export type BillingRow = {
   id: string
   kind: 'dofollow' | 'sponsor'
   status: string
-  source: 'polar' | 'admin'
+  source: 'paddle' | 'admin'
   amountCents: number | null
   currency: string | null
   currentPeriodEnd: Date | null
   cancelAtPeriodEnd: boolean
   hidden: boolean
   createdAt: Date
-  polarSubscriptionId: string | null
+  subscriptionId: string | null
   app: { id: string; slug: string; name: string; iconUrl: string | null }
 }
 
@@ -41,7 +41,7 @@ export async function listBillingForProfile(profileId: string): Promise<BillingR
       cancelAtPeriodEnd: purchases.cancelAtPeriodEnd,
       hidden: purchases.hidden,
       createdAt: purchases.createdAt,
-      polarSubscriptionId: purchases.polarSubscriptionId,
+      subscriptionId: purchases.subscriptionId,
       app: {
         id: apps.id,
         slug: apps.slug,

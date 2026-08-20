@@ -241,7 +241,7 @@ export function faqSections(): FaqSection[] {
         {
           question: 'Where are my invoices?',
           answer: [
-            'Purchases run through Polar, our merchant of record, and the billing tab in your account opens their portal.',
+            'Purchases run through Paddle, our merchant of record, and the billing tab in your account opens their portal.',
             'Invoices, receipts and card details all live there rather than here.',
           ],
           link: { href: '/account', label: 'Account and billing' },

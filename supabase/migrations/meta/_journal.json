@@ -127,6 +127,13 @@
       "when": 1787165582220,
       "tag": "0017_absent_firebrand",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787197420847,
+      "tag": "0018_rename_polar_to_paddle",
+      "breakpoints": true
     }
   ]
 }

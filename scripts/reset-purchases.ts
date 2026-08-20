@@ -6,25 +6,25 @@ import { apps, purchases } from '../src/db/schema'
 /**
  * Clears purchases so a checkout can be walked through again.
  *
- * Sandbox-only by intent: it deletes rows Polar still has orders for, which is
+ * Sandbox-only by intent: it deletes rows Paddle still has transactions for, which is
  * exactly what makes a flow re-testable and exactly what would destroy the
  * audit trail behind a real payment. It refuses to run against
- * POLAR_SERVER=production for that reason.
+ * PADDLE_ENV=production for that reason.
  *
  * Deleting rather than revoking is deliberate. `revoked` is a real state the
  * app renders ("your link was withdrawn"); a founder who has never bought is a
  * founder with no row at all, and that absence is the state under test.
  *
- *   npm run polar:reset                    # report only
- *   npm run polar:reset -- --fix           # apply, all kinds
- *   npm run polar:reset -- --fix --kind=dofollow
- *   npm run polar:reset -- --fix --app=<slug>
+ *   npm run paddle:reset                    # report only
+ *   npm run paddle:reset -- --fix           # apply, all kinds
+ *   npm run paddle:reset -- --fix --kind=dofollow
+ *   npm run paddle:reset -- --fix --app=<slug>
  */
 async function main() {
   const apply = process.argv.includes('--fix')
 
-  if (process.env.POLAR_SERVER === 'production') {
-    console.error('\nPOLAR_SERVER=production — refusing to delete purchase history.\n')
+  if (process.env.PADDLE_ENV === 'production') {
+    console.error('\nPADDLE_ENV=production — refusing to delete purchase history.\n')
     process.exit(1)
   }
 
@@ -61,7 +61,7 @@ async function main() {
       name: apps.name,
       amountCents: purchases.amountCents,
       currency: purchases.currency,
-      checkoutId: purchases.polarCheckoutId,
+      checkoutId: purchases.checkoutId,
       dofollow: apps.websiteDofollow,
       createdAt: purchases.createdAt,
     })

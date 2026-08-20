@@ -43,7 +43,7 @@ export function SubmitFlow({
   categories: Category[]
   tech: Tech[]
   providers: Provider[]
-  /** Null when Polar has no dofollow product configured — then it is not for sale. */
+  /** Null when Paddle has no dofollow price configured — then it is not for sale. */
   dofollowOffer: { price: string; blurb: string; domainAuthority: number | null } | null
   isSignedIn: boolean
   initialApp?: LookupState['app'] | null

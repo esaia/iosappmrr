@@ -223,7 +223,7 @@ export async function updateAppInsights(
  * Core listing details a founder can change after submitting.
  *
  * `websiteDofollow` is absent by design: it is a paid benefit, written only by
- * the Polar webhook in `lib/data/purchases.ts`. Keeping it out of this type
+ * the Paddle webhook in `lib/data/purchases.ts`. Keeping it out of this type
  * means a founder-facing form cannot set it even by accident.
  */
 export async function updateAppDetails(

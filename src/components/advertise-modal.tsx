@@ -165,7 +165,7 @@ export function AdvertiseModal({
                 /*
                  * A slot is bought against a listing, so checkout starts from
                  * the dashboard where the founder picks which app is sponsoring.
-                 * Sending them straight to Polar from here would leave the
+                 * Sending them straight to Paddle from here would leave the
                  * webhook with no app to attach the purchase to.
                  */
                 <>

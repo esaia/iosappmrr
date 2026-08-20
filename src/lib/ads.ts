@@ -2,7 +2,7 @@
  * Sponsor rail configuration.
  *
  * The sponsors themselves live in the `purchases` table — a slot is sold
- * through Polar and granted by its webhook, so booking one no longer takes a
+ * through Paddle and granted by its webhook, so booking one no longer takes a
  * deploy. What stays here is the shape of the inventory: how many slots exist
  * and how fast they rotate.
  *
@@ -18,7 +18,7 @@
  * placeholders in its margins, which advertises that nobody is buying — worth
  * less than the empty space it fills.
  *
- * Nothing behind this is removed or stubbed: the Polar products, the webhook
+ * Nothing behind this is removed or stubbed: the Paddle prices, the webhook
  * that grants a slot on payment, the admin slot count, the rotation between
  * rails and the advertise modal are all intact and untested by this flag.
  * Setting it back to `true` is the whole of turning ads on.
@@ -64,7 +64,7 @@ export type Testimonial = {
 export const advertising = {
   /**
    * Monthly price in cents, for display only. The amount actually charged is
-   * whatever the Polar product is priced at — this figure must be kept in step
+   * whatever the Paddle price is set to — this figure must be kept in step
    * with it by hand, and it is the one shown before anyone reaches checkout.
    */
   monthlyPriceCents: 1000 as number | null,

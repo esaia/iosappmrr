@@ -1,9 +1,9 @@
 /**
  * The paid dofollow upgrade.
  *
- * Sold through Polar. The price below is for display only — the amount actually
- * charged is whatever the Polar product is set to, so the two must be kept in
- * step by hand. The flag it grants is written solely by the Polar webhook.
+ * Sold through Paddle. The price below is for display only — the amount actually
+ * charged is whatever the Paddle price is set to, so the two must be kept in
+ * step by hand. The flag it grants is written solely by the Paddle webhook.
  */
 export const dofollow = {
   priceCents: 1900,

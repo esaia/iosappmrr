@@ -7,7 +7,7 @@ import { appTechStack, categories, techStackTags } from '@/db/schema'
 import { requireUser } from '@/lib/auth'
 import { getOwnedApp, listAllTechTags } from '@/lib/data/mutations'
 import { getSlotInventory } from '@/lib/data/purchases'
-import { isPolarConfigured } from '@/lib/polar'
+import { isPaddleConfigured } from '@/lib/paddle'
 import { purchases } from '@/db/schema'
 import { and } from 'drizzle-orm'
 import { EditForm } from './edit-form'
@@ -85,8 +85,8 @@ export default async function EditPage({ params }: { params: Promise<{ appId: st
           categories={categoryList}
           tech={techList.map((t) => ({ slug: t.slug, name: t.name }))}
           offers={{
-            dofollowAvailable: isPolarConfigured('dofollow'),
-            sponsorAvailable: isPolarConfigured('sponsor'),
+            dofollowAvailable: isPaddleConfigured('dofollow'),
+            sponsorAvailable: isPaddleConfigured('sponsor'),
             sponsorActive: Boolean(sponsorPurchase),
             sponsorPurchase,
             dofollowPurchase,

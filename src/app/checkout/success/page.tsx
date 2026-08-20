@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 }
 
 /**
- * Where Polar sends the customer back to.
+ * Where Paddle sends the customer back to.
  *
  * Deliberately does no granting. Landing here is not proof of payment — anyone
  * can type this URL — so the benefit is applied by the signed webhook instead.

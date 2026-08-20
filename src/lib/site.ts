@@ -2,7 +2,7 @@
  * The origin every absolute URL on the site is built from, tidied up.
  *
  * This value ends up in canonical tags, the sitemap, the `@id` of every piece
- * of structured data, Polar's return URLs, and — since the embed badge — inside
+ * of structured data, Paddle's return URLs, and — since the embed badge — inside
  * an `<img src>` pasted into somebody else's page. That last one is why this
  * function exists: an `http://` image on an `https://` site is mixed content,
  * and every browser blocks it outright. A badge that renders here and shows a

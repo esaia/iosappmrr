@@ -404,7 +404,7 @@ export const appViews = pgTable(
 /*                                  Payments                                   */
 /* -------------------------------------------------------------------------- */
 
-/** What was bought. Each value maps to one Polar product. */
+/** What was bought. Each value maps to one Paddle price. */
 export const purchaseKind = pgEnum('purchase_kind', ['dofollow', 'sponsor'])
 
 /**
@@ -427,12 +427,12 @@ export const purchaseStatus = pgEnum('purchase_status', [
 /**
  * Where the entitlement came from.
  *
- * `admin` covers the two cases Polar cannot: a gift, and a repair after a
+ * `admin` covers the two cases Paddle cannot: a gift, and a repair after a
  * webhook that never arrived. Recording it on the row rather than inferring it
  * from a null checkout id means the books stay readable — a gifted slot and a
  * paid one grant exactly the same thing, but only one of them is revenue.
  */
-export const purchaseSource = pgEnum('purchase_source', ['polar', 'admin'])
+export const purchaseSource = pgEnum('purchase_source', ['paddle', 'admin'])
 
 export const purchases = pgTable(
   'purchases',
@@ -440,7 +440,7 @@ export const purchases = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     kind: purchaseKind('kind').notNull(),
     status: purchaseStatus('status').notNull().default('pending'),
-    source: purchaseSource('source').notNull().default('polar'),
+    source: purchaseSource('source').notNull().default('paddle'),
 
     /** Who paid. Kept even if the app is deleted, so refunds can be traced. */
     profileId: uuid('profile_id')
@@ -451,18 +451,20 @@ export const purchases = pgTable(
       .references(() => apps.id, { onDelete: 'cascade' }),
 
     /**
-     * Polar's checkout id. Unique because it is the idempotency key: webhooks
-     * are delivered at least once, and a retry must update this row rather than
-     * grant the benefit twice.
+     * The Paddle transaction the checkout was opened for. Unique because it is
+     * the idempotency key: webhooks are delivered at least once, and a retry
+     * must update this row rather than grant the benefit twice.
      *
-     * Null for an admin grant, which never went through a checkout. Postgres
-     * treats nulls as distinct in a unique index, so any number of grants can
-     * coexist without colliding.
+     * Written before the founder is redirected, so the webhook always has a row
+     * to find however fast it arrives. Null for an admin grant, which never
+     * went through a checkout — Postgres treats nulls as distinct in a unique
+     * index, so any number of grants can coexist without colliding.
      */
-    polarCheckoutId: text('polar_checkout_id'),
-    polarOrderId: text('polar_order_id'),
+    checkoutId: text('checkout_id'),
+    /** The billed transaction, once payment completes. */
+    orderId: text('order_id'),
     /** Set for `sponsor` only — dofollow is a one-time charge. */
-    polarSubscriptionId: text('polar_subscription_id'),
+    subscriptionId: text('subscription_id'),
 
     amountCents: bigint('amount_cents', { mode: 'number' }),
     currency: text('currency'),
@@ -477,7 +479,7 @@ export const purchases = pgTable(
     /**
      * Set when a sponsor has turned off auto-renew but the period they paid
      * for has not run out. Display only — the entitlement is still live, and
-     * `status` stays `active` until Polar says the access has actually ended.
+     * `status` stays `active` until Paddle says the access has actually ended.
      * Without it the account screen cannot tell a slot that renews from one
      * that is winding down, and both read as "Renews".
      */
@@ -504,8 +506,8 @@ export const purchases = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('purchases_polar_checkout_key').on(t.polarCheckoutId),
-    uniqueIndex('purchases_polar_subscription_key').on(t.polarSubscriptionId),
+    uniqueIndex('purchases_checkout_key').on(t.checkoutId),
+    uniqueIndex('purchases_subscription_key').on(t.subscriptionId),
     index('purchases_app_kind_idx').on(t.appId, t.kind, t.status),
     index('purchases_status_idx').on(t.status),
   ],

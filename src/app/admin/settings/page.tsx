@@ -38,8 +38,8 @@ export default async function AdminSettingsPage() {
         <p className="text-muted mt-2 text-[13px] leading-relaxed">
           These describe what is being sold rather than how much of it, so they stay in the
           repository where a change is reviewed before it goes live. The prices are display-only —
-          the amount actually charged is whatever the Polar product is set to, and the two have to
-          be kept in step by hand.
+          the amount actually charged is whatever the Paddle price is set to, and the two have to be
+          kept in step by hand.
         </p>
 
         <dl className="border-border bg-surface rounded-card mt-3 divide-y divide-[var(--color-border)] border text-[13px]">

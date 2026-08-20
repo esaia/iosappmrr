@@ -3,10 +3,10 @@ import { and, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { appStoreMetadata, apps, purchases, siteSettings } from '@/db/schema'
 import { clampSlots } from '@/lib/settings'
-import type { PurchaseKind } from '@/lib/polar'
+import type { PurchaseKind } from '@/lib/paddle'
 
 /**
- * Records a checkout the moment it is created, before Polar has taken any
+ * Records a checkout the moment it is created, before Paddle has taken any
  * money. The row exists so a webhook that arrives before the browser redirect
  * completes has something to update, and so abandoned checkouts are visible
  * rather than invisible.
@@ -15,53 +15,70 @@ export async function recordPendingPurchase(input: {
   kind: PurchaseKind
   appId: string
   profileId: string
-  polarCheckoutId: string
+  checkoutId: string
 }) {
   await db
     .insert(purchases)
     .values({ ...input, status: 'pending' })
     // A founder who abandons a checkout and starts another gets a new row; a
     // duplicate id can only be a retry of the same one.
-    .onConflictDoNothing({ target: purchases.polarCheckoutId })
+    .onConflictDoNothing({ target: purchases.checkoutId })
 }
 
 /**
  * Promotes a purchase to `active` and grants what was bought.
  *
- * Idempotent on the checkout id: Polar delivers webhooks at least once, and
- * `order.paid` can legitimately arrive twice. Granting is a write of a fixed
- * value rather than an increment, so a replay is a no-op.
+ * Idempotent: Paddle delivers webhooks at least once, and the same payment is
+ * reported by more than one event. Granting is a write of a fixed value rather
+ * than an increment, so a replay is a no-op.
  *
- * Returns false when the checkout is unknown — which happens if the metadata
- * was lost or the row was deleted with its app. The caller still acknowledges
- * the webhook, because retrying will not make an absent row appear.
+ * Identified by the subscription where there is one and by the transaction that
+ * opened the checkout otherwise. A renewal carries a new transaction id every
+ * month, so the subscription is the durable key — but it does not exist until
+ * the first payment, which is why both are accepted and the subscription is
+ * tried first.
+ *
+ * Returns false when neither matches — which happens if the metadata was lost
+ * or the row was deleted with its app. The caller still acknowledges the
+ * webhook, because retrying will not make an absent row appear.
  */
 export async function activatePurchase(input: {
-  polarCheckoutId: string
-  polarOrderId?: string | null
-  polarSubscriptionId?: string | null
+  checkoutId?: string | null
+  orderId?: string | null
+  subscriptionId?: string | null
   amountCents?: number | null
   currency?: string | null
   currentPeriodEnd?: Date | null
 }) {
+  const match = input.subscriptionId
+    ? or(
+        eq(purchases.subscriptionId, input.subscriptionId),
+        input.checkoutId ? eq(purchases.checkoutId, input.checkoutId) : undefined,
+      )
+    : input.checkoutId
+      ? eq(purchases.checkoutId, input.checkoutId)
+      : undefined
+
+  if (!match) return false
+
   const [row] = await db
     .update(purchases)
     .set({
       status: 'active',
-      polarOrderId: input.polarOrderId ?? undefined,
-      polarSubscriptionId: input.polarSubscriptionId ?? undefined,
+      orderId: input.orderId ?? undefined,
+      subscriptionId: input.subscriptionId ?? undefined,
       amountCents: input.amountCents ?? undefined,
       currency: input.currency ?? undefined,
       currentPeriodEnd: input.currentPeriodEnd ?? undefined,
       /*
-       * A subscription that is active again is not winding down. This covers
-       * `subscription.uncanceled` without a second write, and is a no-op for
-       * the renewals and first payments that also land here.
+       * A subscription that is billing again is not winding down. The webhook
+       * writes the flag itself straight after, from the scheduled change Paddle
+       * reports, so this only clears a stale one rather than deciding anything.
        */
       cancelAtPeriodEnd: false,
       updatedAt: new Date(),
     })
-    .where(eq(purchases.polarCheckoutId, input.polarCheckoutId))
+    .where(match)
     .returning({
       id: purchases.id,
       kind: purchases.kind,
@@ -72,7 +89,7 @@ export async function activatePurchase(input: {
   if (!row) return false
 
   await applyGrant(row.kind, row.appId)
-  if (row.source === 'polar') await supersedeGifts(row.kind, row.appId, row.id)
+  if (row.source === 'paddle') await supersedeGifts(row.kind, row.appId, row.id)
   return true
 }
 
@@ -84,11 +101,11 @@ export async function activatePurchase(input: {
  * showing them. This only lets the account screen say "Ends" rather than
  * "Renews", and offer the way back.
  *
- * Written both by the founder's own action and by `subscription.canceled`, so
- * a cancellation made in Polar's own portal shows up here too.
+ * Written both by the founder's own action and by `subscription.updated`, so a
+ * cancellation made in Paddle's own portal shows up here too.
  */
 export async function setCancelAtPeriodEnd(
-  polarSubscriptionId: string,
+  subscriptionId: string,
   cancelAtPeriodEnd: boolean,
   currentPeriodEnd?: Date | null,
 ) {
@@ -99,7 +116,7 @@ export async function setCancelAtPeriodEnd(
       currentPeriodEnd: currentPeriodEnd ?? undefined,
       updatedAt: new Date(),
     })
-    .where(eq(purchases.polarSubscriptionId, polarSubscriptionId))
+    .where(eq(purchases.subscriptionId, subscriptionId))
     .returning({ id: purchases.id })
 
   return rows.length > 0
@@ -202,13 +219,13 @@ async function applyRevoke(kind: PurchaseKind, appId: string) {
  * arrives without the original checkout id still finds its row.
  */
 export async function revokePurchase(input: {
-  polarCheckoutId?: string | null
-  polarSubscriptionId?: string | null
+  checkoutId?: string | null
+  subscriptionId?: string | null
 }) {
-  const match = input.polarSubscriptionId
-    ? eq(purchases.polarSubscriptionId, input.polarSubscriptionId)
-    : input.polarCheckoutId
-      ? eq(purchases.polarCheckoutId, input.polarCheckoutId)
+  const match = input.subscriptionId
+    ? eq(purchases.subscriptionId, input.subscriptionId)
+    : input.checkoutId
+      ? eq(purchases.checkoutId, input.checkoutId)
       : null
 
   if (!match) return false
@@ -276,9 +293,9 @@ export async function grantPurchase(input: {
  * Withdraws one purchase by its own id, whoever granted it.
  *
  * This is the admin counterpart to `revokePurchase`, which finds its row
- * through Polar's identifiers. An admin is looking at a specific row on screen
+ * through Paddle's identifiers. An admin is looking at a specific row on screen
  * and means that one — including a paid row, which is how a refund handled
- * outside Polar gets reflected here.
+ * outside Paddle gets reflected here.
  */
 export async function revokePurchaseById(id: string, note?: string | null) {
   const [row] = await db
@@ -296,8 +313,8 @@ export async function revokePurchaseById(id: string, note?: string | null) {
 /**
  * Promotes a stuck `pending` row to `active` by hand.
  *
- * The escape hatch for a webhook that never arrived and a Polar order that
- * `polar:reconcile` cannot see. It grants without proof of payment, so it is
+ * The escape hatch for a webhook that never arrived and a Paddle transaction that
+ * `paddle:reconcile` cannot see. It grants without proof of payment, so it is
  * deliberately a separate, logged action rather than part of the normal flow.
  */
 export async function activatePurchaseById(id: string, note?: string | null) {
@@ -315,10 +332,10 @@ export async function activatePurchaseById(id: string, note?: string | null) {
 
 export type Entitlement = {
   id: string
-  source: 'polar' | 'admin'
+  source: 'paddle' | 'admin'
   /** Null for a one-off purchase, or for a gift with no expiry. */
   currentPeriodEnd: Date | null
-  polarSubscriptionId: string | null
+  subscriptionId: string | null
 }
 
 /**
@@ -338,7 +355,7 @@ export async function getAppEntitlement(
       id: purchases.id,
       source: purchases.source,
       currentPeriodEnd: purchases.currentPeriodEnd,
-      polarSubscriptionId: purchases.polarSubscriptionId,
+      subscriptionId: purchases.subscriptionId,
     })
     .from(purchases)
     .where(
@@ -350,7 +367,7 @@ export async function getAppEntitlement(
       ),
     )
     .orderBy(
-      sql`case when ${purchases.source} = 'polar' then 0 else 1 end`,
+      sql`case when ${purchases.source} = 'paddle' then 0 else 1 end`,
       desc(purchases.createdAt),
     )
     .limit(1)
@@ -498,12 +515,12 @@ export async function revokeActivePurchasesForApp(
    * Restricts the revoke to one source.
    *
    * The admin screens pass 'admin', because a slot someone is paying for is not
-   * theirs to switch off — it ends when the subscription ends, and Polar's
+   * theirs to switch off — it ends when the subscription ends, and Paddle's
    * webhook is what tells us that. Expressing it as a filter here, rather than
    * only as a check in the action, means the safe behaviour survives a future
    * caller that forgets to look first.
    */
-  source?: 'admin' | 'polar',
+  source?: 'admin' | 'paddle',
 ) {
   const rows = await db
     .update(purchases)

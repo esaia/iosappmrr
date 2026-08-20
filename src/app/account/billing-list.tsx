@@ -17,14 +17,14 @@ type Row = {
   id: string
   kind: 'dofollow' | 'sponsor'
   status: string
-  source: 'polar' | 'admin'
+  source: 'paddle' | 'admin'
   amountCents: number | null
   currency: string | null
   currentPeriodEnd: string | null
   cancelAtPeriodEnd: boolean
   hidden: boolean
   createdAt: string
-  polarSubscriptionId: string | null
+  subscriptionId: string | null
   app: { id: string; slug: string; name: string; iconUrl: string | null }
 }
 
@@ -72,13 +72,13 @@ export function BillingList({ rows }: { rows: Row[] }) {
       )}
 
       {/*
-        Invoices, receipts, and card details live at Polar, who is the merchant
+        Invoices, receipts, and card details live at Paddle, who is the merchant
         of record — this site never sees a card number and cannot show them.
       */}
       <form action={openPortal} className="flex flex-wrap items-center gap-3 pt-1">
         <PortalButton />
         <p className="text-muted text-xs">
-          Invoices, receipts, and payment methods are held by Polar, our merchant of record.
+          Invoices, receipts, and payment methods are held by Paddle, our merchant of record.
         </p>
       </form>
       {portal.error && (
@@ -100,7 +100,7 @@ function BillingRow({ row }: { row: Row }) {
   // A sponsor slot is the only recurring product, and only a paid one can be
   // cancelled — a gift is the admin's to withdraw, not the founder's.
   const cancellable =
-    row.status === 'active' && row.source === 'polar' && Boolean(row.polarSubscriptionId)
+    row.status === 'active' && row.source === 'paddle' && Boolean(row.subscriptionId)
   const ending = row.cancelAtPeriodEnd
   // Live sponsor slots only. On a revoked or pending row the switch would
   // imply something could be turned back on, and a dofollow link has nothing

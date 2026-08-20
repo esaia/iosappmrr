@@ -36,7 +36,7 @@ export function EditForm({
   appName: string
   categories: Option[]
   tech: Option[]
-  /** What can be sold right now, decided on the server from the Polar config. */
+  /** What can be sold right now, decided on the server from the Paddle config. */
   offers: {
     dofollowAvailable: boolean
     sponsorAvailable: boolean
@@ -185,7 +185,7 @@ export function EditForm({
 /**
  * The paid link upgrade.
  *
- * A button that opens Polar, not a checkbox. The flag it grants is written by
+ * A button that opens the checkout, not a checkbox. The flag it grants is written by
  * the webhook once the order is paid, so there is nothing here for the founder
  * to tick — and nothing the form could set for free.
  */
@@ -353,7 +353,7 @@ function Offer({
         </form>
       ) : (
         /*
-         * No Polar product configured, or nothing left to sell. Saying so is
+         * No Paddle price configured, or nothing left to sell. Saying so is
          * better than a button that fails once clicked.
          */
         <p className="text-dim mt-3 text-[11px]">Not available right now.</p>

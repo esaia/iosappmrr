@@ -115,7 +115,7 @@ export async function updateProfileAction(
 
 export type BillingActionState = { error?: string }
 
-/** Opens Polar's customer portal for invoices, receipts, and card details. */
+/** Opens Paddle's customer portal for invoices, receipts, and card details. */
 // Takes no arguments: `useActionState` passes the previous state and the form
 // data, and this action needs neither — the customer is the session.
 export async function openBillingPortalAction(): Promise<BillingActionState> {
@@ -130,12 +130,12 @@ export async function openBillingPortalAction(): Promise<BillingActionState> {
  *
  * The row is looked up by id *and* owner, so the form supplies nothing that
  * decides whose subscription is changed. Neither direction touches `status`:
- * Polar keeps billing until the period closes, and the `subscription.revoked`
+ * Paddle keeps billing until the period closes, and the `subscription.canceled`
  * webhook is what withdraws the slot when it does.
  *
  * The local flag is written here rather than left to `subscription.canceled`,
  * because the founder has just clicked and the screen has to answer them. The
- * webhook writes the same value, so an intent set in Polar's own portal still
+ * webhook writes the same value, so an intent set in Paddle's own portal still
  * arrives, and the two agreeing is not a conflict.
  */
 export async function setSponsorCancellationAction(
@@ -152,7 +152,7 @@ export async function setSponsorCancellationAction(
   const cancel = formData.get('cancel') === 'true'
 
   const [row] = await db
-    .select({ subscriptionId: purchases.polarSubscriptionId, status: purchases.status })
+    .select({ subscriptionId: purchases.subscriptionId, status: purchases.status })
     .from(purchases)
     .where(and(eq(purchases.id, purchaseId), eq(purchases.profileId, user.id)))
     .limit(1)

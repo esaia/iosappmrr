@@ -225,7 +225,7 @@ writeFileSync(join(pub, 'icon-192.png'), png(192, render(192)))
  * `icon-512.png` is claimed by the web manifest, so it is not a file to hand to
  * anyone else — a service that wanted a different size would have us edit the
  * manifest's icon to suit it. `logo.png` is the copy for everywhere off this
- * site: the X developer portal's app icon, Polar, anywhere asking for a square
+ * site: the X developer portal's app icon, Paddle, anywhere asking for a square
  * mark to upload. Same pixels, rendered once, so the two cannot disagree.
  */
 const square512 = png(512, render(512))
