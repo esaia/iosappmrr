@@ -80,23 +80,32 @@ export type ShareCardInput = {
  *
  * But most apps will never have it. RevenueCat's overview reports a 28-day
  * aggregate and nothing per day, so for those the honest card is still the MRR
- * one — an empty chart or a floor of zeroes would be worse than the flat line
- * it replaces. Every day in the window has to carry a figure before the daily
- * series is used: a partial one would draw a cliff where the data starts
- * rather than where the revenue changed.
+ * one — an empty chart would be worse than the flat line it replaces.
+ *
+ * Two days are enough to switch, which is the same threshold the app page's
+ * chart uses to offer the metric at all. Anything short of the whole window
+ * used to fall back to MRR, so a card sat on the flat line while the page
+ * beside it drew the spikes. Days without a figure stay null and the line is
+ * drawn across them rather than through a floor of zeroes, which would invent
+ * takings of nothing on a day we simply did not hear about.
  */
 function series(points: SharePoint[]) {
-  const daily = points.every((point) => point.revenueCents != null)
+  const daily = points.filter((point) => point.revenueCents != null)
 
-  return daily
+  return daily.length >= 2
     ? {
-        values: points.map((point) => point.revenueCents as number),
+        values: points.map((point) => point.revenueCents),
         // The period's takings, which is what the line adds up to. MRR is a
         // rate and could not be summed like this.
-        headline: points.reduce((total, point) => total + (point.revenueCents as number), 0),
+        headline: daily.reduce((total, point) => total + (point.revenueCents as number), 0),
         label: 'Revenue',
       }
     : { values: points.map((point) => point.mrrCents), headline: null, label: 'MRR' }
+}
+
+/** The top of the axis: the tallest day, with 8% of headroom above it. */
+function axisMax(values: (number | null)[]) {
+  return Math.max(...values.filter((value): value is number => value != null), 1) * 1.08
 }
 
 /* ---------------------------------------------------------------- the plot */
@@ -122,20 +131,39 @@ const TICKS = [1, 0.75, 0.5, 0.25, 0]
  * are Satori's, so they use the loaded font rather than whatever the SVG
  * renderer would substitute.
  */
-function plotDataUri({ values, hex, grid }: { values: number[]; hex: string; grid: string }) {
+function plotDataUri({
+  values,
+  hex,
+  grid,
+}: {
+  values: (number | null)[]
+  hex: string
+  grid: string
+}) {
   const { width, height } = PLOT
   /*
    * The scale starts at zero. Cropping the axis to the data is how a flat month
    * is made to look like a rocket, and this image goes out with our badge on it.
    * The 8% headroom keeps the peak off the top edge.
    */
-  const max = Math.max(...values, 1) * 1.08
+  const max = axisMax(values)
   const step = values.length > 1 ? width / (values.length - 1) : 0
   const x = (index: number) => +(index * step).toFixed(2)
   const y = (value: number) => +(height - (value / max) * height).toFixed(2)
 
-  const line = values.map((value, index) => `${index ? 'L' : 'M'}${x(index)} ${y(value)}`).join(' ')
-  const area = `${line} L${x(values.length - 1)} ${height} L0 ${height} Z`
+  /*
+   * A day we hold no figure for is stepped over, not drawn as zero — and the x
+   * position still comes from its place in the window, so the line stays lined
+   * up with the dates underneath whatever is missing.
+   */
+  const drawn = values
+    .map((value, index) => ({ value, index }))
+    .filter((point): point is { value: number; index: number } => point.value != null)
+
+  const line = drawn
+    .map((point, order) => `${order ? 'L' : 'M'}${x(point.index)} ${y(point.value)}`)
+    .join(' ')
+  const area = `${line} L${x(drawn[drawn.length - 1].index)} ${height} L${x(drawn[0].index)} ${height} Z`
   const gridlines = TICKS.map((tick) => {
     const at = +((1 - tick) * height).toFixed(2)
     return `<line x1="0" y1="${at}" x2="${width}" y2="${at}" stroke="${grid}" stroke-width="1.5" />`
@@ -288,7 +316,7 @@ function ChartCard({ name, iconUrl, mrrCents, points, periodLabel, options }: Sh
   const palette = PALETTES[options.theme]
   const hex = colorHex(options.color)
   const { values, headline, label } = series(points)
-  const max = Math.max(...values, 1) * 1.08
+  const max = axisMax(values)
 
   return (
     <div
