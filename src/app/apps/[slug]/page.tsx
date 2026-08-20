@@ -197,18 +197,11 @@ export default async function AppPage({ params }: Params) {
                   than nothing at all.
                 */}
                 {metadata?.averageRating != null && (
-                  <span className="inline-flex items-center gap-1">
-                    <Star className="fill-gold text-gold size-3.5" />
-                    <span className="tabular">{metadata.averageRating.toFixed(1)}</span>
-                    {/*
-                      Hidden at zero. "(0)" beside a rating reads as a count that
-                      failed to load; no count reads as what it is — nobody has
-                      reviewed this yet.
-                    */}
-                    {metadata.ratingCount ? (
-                      <span className="text-xs">({formatCount(metadata.ratingCount)})</span>
-                    ) : null}
-                  </span>
+                  <Rating
+                    average={metadata.averageRating}
+                    count={metadata.ratingCount}
+                    appStoreUrl={app.appStoreUrl}
+                  />
                 )}
                 {app.website && (
                   <a
@@ -474,6 +467,51 @@ function fileSizeLabel(bytes: number | null | undefined) {
 function priceLabel(cents: number | null | undefined, currency: string | null | undefined) {
   if (cents === null || cents === undefined) return '—'
   return cents === 0 ? 'Free' : formatMoney(cents, currency ?? 'USD')
+}
+
+/**
+ * The store rating, linking to the reviews it is an average of.
+ *
+ * `see-all=reviews` is Apple's own deep link straight to the review list rather
+ * than to the top of the listing, so a reader who clicks the figure lands on
+ * the thing the figure summarises. Plain text where the app has no store URL,
+ * rather than a link with nowhere to go.
+ */
+function Rating({
+  average,
+  count,
+  appStoreUrl,
+}: {
+  average: number
+  count: number | null | undefined
+  appStoreUrl: string | null | undefined
+}) {
+  const figure = (
+    <>
+      <Star className="fill-gold text-gold size-3.5" />
+      <span className="tabular">{average.toFixed(1)}</span>
+      {/*
+        Hidden at zero. "(0)" beside a rating reads as a count that failed to
+        load; no count reads as what it is — nobody has reviewed this yet.
+      */}
+      {count ? <span className="text-xs">({formatCount(count)})</span> : null}
+    </>
+  )
+
+  if (!appStoreUrl) return <span className="inline-flex items-center gap-1">{figure}</span>
+
+  return (
+    <a
+      href={`${appStoreUrl}?see-all=reviews`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Read the reviews on the App Store"
+      className="hover:text-fg inline-flex items-center gap-1 transition-colors"
+    >
+      {figure}
+      <ExternalLink className="size-3" />
+    </a>
+  )
 }
 
 /**
