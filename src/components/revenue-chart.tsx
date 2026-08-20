@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react'
 import {
   Area,
+  Bar,
   ComposedChart,
   CartesianGrid,
   Line,
@@ -11,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { Check, ChevronDown, Lock } from 'lucide-react'
+import { Check, ChevronDown, Lock, Plus, X } from 'lucide-react'
 import { formatCount, formatGrowth, formatMrr, percentChange } from '@/lib/utils'
 
 export type RevenuePoint = {
@@ -57,8 +58,15 @@ type Metric = {
  * exposes visitors or churn, so offering them — even locked — would advertise
  * something the sync can never fill.
  */
-/** Shared so the tooltip dot and the Installs series cannot drift apart. */
-const INSTALLS_DOT = '#b48ce0'
+/**
+ * Shared so the pill, the line and the tooltip dot cannot drift apart.
+ *
+ * Amber against the blue the money is drawn in — opposite sides of the wheel,
+ * which is what makes two series legible on top of each other. Cooler
+ * candidates sat on the same side as the bars and separated only by
+ * brightness, which the eye reads as a lighter shade of the same thing.
+ */
+const INSTALLS_DOT = 'var(--gold)'
 
 const METRICS: Metric[] = [
   {
@@ -109,7 +117,10 @@ const METRICS: Metric[] = [
     key: 'subscribers',
     kind: 'stock',
     label: 'Subscribers',
-    dot: '#e0a458',
+    // Mint, not the tan this was: installs are amber and can be drawn over
+    // this series, and two oranges on one chart is a colour scheme with a
+    // collision in it rather than two things you can tell apart.
+    dot: '#66d4cf',
     read: (p) => p.activeSubscriptions ?? null,
     format: formatCount,
   },
@@ -117,7 +128,10 @@ const METRICS: Metric[] = [
     key: 'trials',
     kind: 'stock',
     label: 'Trials',
-    dot: '#5bbcd4',
+    // Violet rather than the cyan this was: trials and installs can be drawn
+    // together, and a cool line over cool bars under a cyan area was three
+    // shades of one hue.
+    dot: '#bf5af2',
     read: (p) => p.activeTrials ?? null,
     format: formatCount,
   },
@@ -166,6 +180,11 @@ type ChartRow = {
   installs: number | null
 }
 
+/** The tooltip's date format, shared so both rows read the same. */
+function tooltipDate(value: string) {
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 /** Centred moving average. Smooths daily noise without shifting the line sideways. */
 function smooth(values: (number | null)[], window = 7) {
   const half = Math.floor(window / 2)
@@ -182,6 +201,45 @@ function smooth(values: (number | null)[], window = 7) {
     return n ? Math.round(sum / n) : null
   })
 }
+
+/**
+ * Whether the reader has asked for less motion.
+ *
+ * The site already honours the preference in CSS, but that block only clamps
+ * CSS animations and transitions — Recharts moves its shapes by interpolating
+ * SVG attributes in JavaScript, which no stylesheet can reach. Without this the
+ * one thing on the page that moves the most would be the one thing ignoring the
+ * request not to.
+ *
+ * Starts false and resolves in an effect, so the server and the first client
+ * render agree and hydration does not warn.
+ */
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setReduced(query.matches)
+
+    const onChange = (event: MediaQueryListEvent) => setReduced(event.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+
+  return reduced
+}
+
+/**
+ * Matches the site's own easing and pace — see `.rise` and `.draw` in
+ * globals.css.
+ *
+ * No per-series delay. Staggering the overlay behind the bars read well on
+ * first paint, but a toggle re-renders the chart mid-flight and a delayed
+ * animation restarts from nothing each time — which left the installs line
+ * invisible for as long as the reader kept clicking. Everything starts
+ * together and always arrives.
+ */
+const MOTION = { duration: 650, easing: 'ease-out' } as const
 
 /** Closes a dropdown on outside click and on Escape. */
 function useDismiss(onDismiss: () => void) {
@@ -223,8 +281,25 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
     data.some((point) => point.revenueCents != null) ? 'revenueDaily' : 'mrr',
   )
   const [days, setDays] = useState<number>(DEFAULT_DAYS)
-  const [compare, setCompare] = useState(true)
+  /*
+   * The companion series. On by default where there is anything to draw — it
+   * is the second half of the story a revenue chart tells on its own, and a
+   * founder should not have to find a toggle to see it — but dismissable,
+   * since a chart of one thing is easier to read than a chart of two.
+   */
+  const [showInstalls, setShowInstalls] = useState(true)
+  /*
+   * On only for a chart that would otherwise draw one line.
+   *
+   * The comparison is worth its clutter when there is room for it, and an app
+   * without installs has exactly that. Where installs are drawn the chart is
+   * already carrying two series on two axes, and a third — dashed, on the
+   * left-hand scale, describing a window that is not the one being read — is
+   * where it stops being legible. Still one click away either way.
+   */
+  const [compare, setCompare] = useState(() => !data.some((point) => point.installs != null))
   const [trend, setTrend] = useState(false)
+  const animate = !useReducedMotion()
   const [metricOpen, setMetricOpen] = useState(false)
   const [rangeOpen, setRangeOpen] = useState(false)
 
@@ -247,6 +322,21 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
     return seen
   }, [data])
 
+  /*
+   * Metrics the picker actually lists.
+   *
+   * A locked row is a promise that the figure exists and this app has not
+   * filled it in yet — true of trials or subscribers, which the connected
+   * provider reports as soon as there are any. Installs are not like that: no
+   * payments provider can ever report a download, so on an app without an App
+   * Store Connect key the row would be advertising something that will never
+   * arrive no matter how the app does. Better to say nothing than to dangle it.
+   */
+  const offeredMetrics = useMemo(
+    () => METRICS.filter((m) => m.key !== 'installs' || metricHasData.get('installs')),
+    [metricHasData],
+  )
+
   /** All time means every day we hold; the rest are trailing windows. */
   const windowDays = days === 0 ? data.length : days
   const rangeAvailable = (range: number) => (range === 0 ? data.length > 1 : data.length >= 2)
@@ -263,17 +353,44 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
       const point = previous[i - offset]
       return point ? metric.read(point) : null
     })
+    const rawInstalls = current.map((p) => p.installs ?? null)
+
+    /*
+     * Every series takes the same treatment. Smoothing the plotted metric and
+     * leaving installs raw put two different kinds of quantity in one tooltip
+     * under identical styling — a seven-day average beside a day's true count,
+     * with nothing to say which was which.
+     */
     const currentValues = trend ? smooth(rawCurrent) : rawCurrent
     const prevValues = trend ? smooth(rawPrev) : rawPrev
+    const installValues = trend ? smooth(rawInstalls) : rawInstalls
 
     return current.map((point, i) => ({
       date: point.date,
       value: currentValues[i],
       prevValue: prevValues[i],
       prevDate: previous[i - offset]?.date ?? null,
-      installs: point.installs ?? null,
+      installs: installValues[i],
     }))
   }, [data, windowDays, trend, metric])
+
+  /*
+   * Offered only when the days actually carry installs, and never against the
+   * Installs metric itself — where the overlay would be a second copy of the
+   * series already plotted.
+   */
+  const installsAvailable = metric.key !== 'installs' && rows.some((row) => row.installs != null)
+  const installsOn = installsAvailable && showInstalls
+
+  /*
+   * A flow is drawn as bars and a level as an area.
+   *
+   * A day's takings is a quantity that happened and then stopped, so the line
+   * between two days means nothing — and most of those days are zero. A level
+   * like MRR is the opposite: true at every moment, so a continuous fill is
+   * honest. The distinction already exists on the metric as `kind`.
+   */
+  const asBars = metric.kind === 'flow'
 
   const plotted = rows.filter((r) => r.value != null)
   if (plotted.length < 2) {
@@ -346,7 +463,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
             </button>
             {metricOpen && (
               <div className="glass-raised border-border absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-[14px] border py-1">
-                {METRICS.map((option) => {
+                {offeredMetrics.map((option) => {
                   const enabled = metricHasData.get(option.key)
                   return (
                     <button
@@ -421,6 +538,24 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
         </div>
       </div>
 
+      {installsAvailable && (
+        /*
+         * A legend that does something. With two series drawn the colours need
+         * naming, and the same row is the natural place to put the series back
+         * or take it away — a separate toggle below would leave the reader
+         * hunting for which control governs which line.
+         */
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <SeriesPill color={metric.dot} label={metric.label} />
+          <SeriesPill
+            color={INSTALLS_DOT}
+            label="Installs"
+            active={showInstalls}
+            onToggle={() => setShowInstalls((on) => !on)}
+          />
+        </div>
+      )}
+
       {/*
         Recharts makes its wrapper focusable for keyboard tooltip navigation,
         and a click lands focus on it — which drew the site's accent focus ring
@@ -459,13 +594,39 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
               tick={{ fill: 'var(--fg-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
               tickFormatter={(value: number) => metric.format(value)}
             />
+            {installsOn && (
+              /*
+               * Its own axis, on the right. Installs and money share no unit
+               * and routinely differ by an order of magnitude — forced onto one
+               * scale, the smaller series would lie flat against the floor.
+               */
+              <YAxis
+                yAxisId="installs"
+                orientation="right"
+                tickLine={false}
+                axisLine={false}
+                width={48}
+                tick={{ fill: 'var(--fg-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+                tickFormatter={(value: number) => formatCount(value)}
+              />
+            )}
             <Tooltip
               cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }}
-              content={<MetricTooltip metric={metric} />}
+              content={<MetricTooltip metric={metric} showInstalls={installsOn} trend={trend} />}
             />
 
             {compare && hasComparison && (
               <Line
+                /*
+                 * Stable keys on every series.
+                 *
+                 * These are conditional siblings, so without them React matches
+                 * by position: switching the comparison on shifts the rest down
+                 * the children array, they remount, and an untouched series
+                 * redraws itself from nothing. Keyed, only the series that
+                 * actually appeared animates.
+                 */
+                key="comparison"
                 type="monotone"
                 dataKey="prevValue"
                 stroke="var(--fg-muted)"
@@ -474,21 +635,64 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
                 dot={false}
                 activeDot={false}
                 connectNulls
-                isAnimationActive={false}
+                isAnimationActive={animate}
+                animationDuration={MOTION.duration}
+                animationEasing={MOTION.easing}
               />
             )}
 
-            <Area
-              type="monotone"
-              dataKey="value"
-              stroke={metric.dot}
-              strokeWidth={2}
-              fill="url(#metric-fill)"
-              dot={false}
-              activeDot={{ r: 4, fill: metric.dot, stroke: 'var(--surface)', strokeWidth: 2 }}
-              connectNulls
-              isAnimationActive={false}
-            />
+            {asBars ? (
+              <Bar
+                key="primary"
+                dataKey="value"
+                fill={metric.dot}
+                fillOpacity={0.85}
+                // Rounded at the top only: the bar stands on the axis, and
+                // rounding its base would lift it off its own zero.
+                radius={[3, 3, 0, 0]}
+                maxBarSize={26}
+                isAnimationActive={animate}
+                animationDuration={MOTION.duration}
+                animationEasing={MOTION.easing}
+              />
+            ) : (
+              <Area
+                key="primary"
+                type="monotone"
+                dataKey="value"
+                stroke={metric.dot}
+                strokeWidth={2}
+                fill="url(#metric-fill)"
+                dot={false}
+                activeDot={{ r: 4, fill: metric.dot, stroke: 'var(--surface)', strokeWidth: 2 }}
+                connectNulls
+                isAnimationActive={animate}
+                animationDuration={MOTION.duration}
+                animationEasing={MOTION.easing}
+              />
+            )}
+
+            {installsOn && (
+              /*
+               * Drawn last so it rides over the bars rather than behind them,
+               * and as a line because a download count is a series of readings
+               * rather than a set of quantities to compare side by side.
+               */
+              <Line
+                key="installs"
+                yAxisId="installs"
+                type="monotone"
+                dataKey="installs"
+                stroke={INSTALLS_DOT}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: INSTALLS_DOT, stroke: 'var(--surface)', strokeWidth: 2 }}
+                connectNulls
+                isAnimationActive={animate}
+                animationDuration={MOTION.duration}
+                animationEasing={MOTION.easing}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </div>
@@ -504,6 +708,56 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
         <Toggle checked={trend} onChange={setTrend} label="Trend view" />
       </div>
     </div>
+  )
+}
+
+/**
+ * One series in the legend. Inert for the metric the picker governs, and a
+ * button for the overlay that can be dropped — the icon says which it is.
+ */
+function SeriesPill({
+  color,
+  label,
+  active,
+  onToggle,
+}: {
+  color: string
+  label: string
+  active?: boolean
+  onToggle?: () => void
+}) {
+  const swatch = (
+    <span
+      className="size-2 shrink-0 rounded-[3px]"
+      style={{ background: active === false ? 'var(--fg-muted)' : color }}
+    />
+  )
+
+  if (!onToggle) {
+    return (
+      <span className="border-border bg-surface-2 text-fg flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px]">
+        {swatch}
+        {label}
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      title={active ? `Hide ${label}` : `Show ${label}`}
+      className={
+        active
+          ? 'border-border bg-surface-2 text-fg hover:border-border-strong flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors'
+          : 'border-border text-muted hover:text-fg hover:border-border-strong flex items-center gap-2 rounded-full border border-dashed px-3 py-1.5 text-[12px] transition-colors'
+      }
+    >
+      {swatch}
+      {label}
+      {active ? <X className="size-3 shrink-0" /> : <Plus className="size-3 shrink-0" />}
+    </button>
   )
 }
 
@@ -554,43 +808,105 @@ function MetricTooltip({
   active,
   payload,
   metric,
+  showInstalls,
+  trend,
 }: {
   active?: boolean
   payload?: { payload: ChartRow }[]
   metric?: Metric
+  showInstalls?: boolean
+  trend?: boolean
 }) {
   if (!active || !payload?.length || !metric) return null
   const point = payload[0].payload
   if (point.value == null) return null
 
+  const installs = showInstalls && point.installs != null ? point.installs : null
+
   return (
-    <div className="border-border solid-raised rounded-lg border px-3 py-2">
-      <p className="text-muted text-[11px]">
-        {new Date(point.date).toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        })}
-      </p>
-      <p className="tabular text-fg text-sm font-medium">{metric.format(point.value)}</p>
+    <div className="border-border solid-raised min-w-[170px] rounded-lg border px-3 py-2">
       {/*
-       * Downloads on the same day, wherever we hold them — the question any
-       * spike in the takings raises. Hidden while Installs is itself the
-       * plotted metric, where it would print the same number twice.
+       * One row per series, colour-keyed to the chart. With two series drawn
+       * there is nothing to tell a bare number apart from the other one.
+       *
+       * The plotted metric is labelled by its date rather than its name: the
+       * name is already on the legend pill and the picker directly above, and
+       * printing it here cost a whole line to repeat it — while the date, which
+       * only the tooltip can say, was sitting in a header of its own. The dot
+       * carries the identity, and the row now carries the fact.
        */}
-      {point.installs != null && metric.key !== 'installs' && (
-        <p className="tabular text-muted mt-1.5 flex items-center gap-1.5 text-[11px]">
-          <span className="size-1.5 shrink-0 rounded-full" style={{ background: INSTALLS_DOT }} />
-          {formatCount(point.installs)} install{point.installs === 1 ? '' : 's'}
-        </p>
+      <TooltipRow
+        color={metric.dot}
+        label={tooltipDate(point.date)}
+        value={metric.format(point.value)}
+      />
+      {installs != null && (
+        <TooltipRow color={INSTALLS_DOT} label="Installs" value={formatCount(installs)} />
       )}
-      {point.prevValue != null && (
-        <p className="tabular text-muted mt-1 text-[11px]">
-          Prev: {metric.format(point.prevValue)}
-          {point.prevDate &&
-            ` · ${new Date(point.prevDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+
+      {/*
+       * The comparison reads as a third series, because on the chart it is
+       * one — the grey dashed line. Its grey dot keys it to that line, which
+       * is what "Prev" used to say in words; a row that is already a date, a
+       * colour and a figure does not need a fourth thing on it.
+       *
+       * Dated like the row above, day and month only. On the longest ranges
+       * the window being compared against is a year back, so the two rows can
+       * name the same month a year apart — the range picker overhead says
+       * which, and the tooltip stays short.
+       */}
+      {point.prevValue != null && point.prevDate && (
+        <TooltipRow
+          color="var(--fg-muted)"
+          label={tooltipDate(point.prevDate)}
+          value={metric.format(point.prevValue)}
+          muted
+        />
+      )}
+
+      {/*
+       * Trend view replaces every figure with a seven-day average, so on a day
+       * the app took nothing the tooltip reads a few dollars. Left unsaid that
+       * is simply a wrong number against a date — and this site's whole claim
+       * is that its figures are real. The chart cannot show the smoothing, so
+       * the tooltip has to name it.
+       */}
+      {trend && (
+        <p className="border-border text-muted mt-2 border-t pt-1.5 text-[10px]">
+          7-day average, not the day&apos;s own figure
         </p>
       )}
     </div>
+  )
+}
+
+/**
+ * One series in the tooltip: its colour, its name, its figure for the day.
+ *
+ * `muted` is for the comparison, which is a reading from another window rather
+ * than one of today's — it keeps the shape so the eye can scan the column, and
+ * loses the weight so it does not compete with the day being read.
+ */
+function TooltipRow({
+  color,
+  label,
+  value,
+  muted,
+}: {
+  color: string
+  label: string
+  value: string
+  muted?: boolean
+}) {
+  return (
+    <p className="flex items-center gap-2 py-[3px] text-[12px]">
+      <span className="size-2 shrink-0 rounded-full" style={{ background: color }} />
+      <span className="text-muted">{label}</span>
+      <span
+        className={muted ? 'tabular text-muted ml-auto' : 'tabular text-fg ml-auto font-medium'}
+      >
+        {value}
+      </span>
+    </p>
   )
 }
