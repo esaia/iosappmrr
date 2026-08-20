@@ -1,17 +1,14 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ExternalLink, Loader2, RotateCcw } from 'lucide-react'
 import { AppIcon } from '@/components/app-icon'
 import { Badge } from '@/components/ui/badge'
 import { formatMoney } from '@/lib/utils'
 import { VisibilitySwitch } from '@/components/visibility-switch'
-import {
-  openBillingPortalAction,
-  setSponsorCancellationAction,
-  type BillingActionState,
-} from './actions'
+import { setSponsorCancellationAction, type BillingActionState } from './actions'
 
 type Row = {
   id: string
@@ -48,10 +45,8 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
 })
 
 export function BillingList({ rows }: { rows: Row[] }) {
-  const [portal, openPortal] = useActionState<BillingActionState, FormData>(
-    openBillingPortalAction,
-    {},
-  )
+  // Set by the portal route when Paddle has no customer to open a portal for.
+  const portalFailed = useSearchParams().get('billing') === 'unavailable'
 
   return (
     <div className="mt-4 space-y-3">
@@ -75,15 +70,15 @@ export function BillingList({ rows }: { rows: Row[] }) {
         Invoices, receipts, and card details live at Paddle, who is the merchant
         of record — this site never sees a card number and cannot show them.
       */}
-      <form action={openPortal} className="flex flex-wrap items-center gap-3 pt-1">
-        <PortalButton />
+      <div className="flex flex-wrap items-center gap-3 pt-1">
+        <PortalLink />
         <p className="text-muted text-xs">
           Invoices, receipts, and payment methods are held by Paddle, our merchant of record.
         </p>
-      </form>
-      {portal.error && (
+      </div>
+      {portalFailed && (
         <p role="alert" className="text-red text-xs">
-          {portal.error}
+          No billing history yet, or the payment provider is unreachable.
         </p>
       )}
     </div>
@@ -91,10 +86,24 @@ export function BillingList({ rows }: { rows: Row[] }) {
 }
 
 function BillingRow({ row }: { row: Row }) {
+  const router = useRouter()
   const [state, run, pending] = useActionState<BillingActionState, FormData>(
     setSponsorCancellationAction,
     {},
   )
+
+  /*
+   * The row is rendered from props the server sent, and cancelling changes what
+   * those props should say — "Renews" becomes "Ends", and the button becomes
+   * its own opposite. Revalidating on the server is not enough on its own here:
+   * this list is a client component, so it goes on showing the values it was
+   * handed until something asks for them again. Refreshing on success is that
+   * ask, and it keeps the server as the one source of what is true rather than
+   * flipping the label locally and hoping the write agreed.
+   */
+  useEffect(() => {
+    if (state.ok) router.refresh()
+  }, [state, router])
 
   const periodEnd = row.currentPeriodEnd ? new Date(row.currentPeriodEnd) : null
   // A sponsor slot is the only recurring product, and only a paid one can be
@@ -184,14 +193,22 @@ function BillingRow({ row }: { row: Row }) {
   )
 }
 
-function PortalButton() {
+/**
+ * A link, not a button: the portal is Paddle's page, so it opens in its own tab
+ * and leaves the founder's account screen where they left it. The href is a
+ * route of ours that mints the session on demand — the URL Paddle issues is
+ * short-lived and cannot sit in the markup waiting to be clicked.
+ */
+function PortalLink() {
   return (
-    <button
-      type="submit"
+    <a
+      href="/account/billing/portal"
+      target="_blank"
+      rel="noopener noreferrer"
       className="border-border text-fg hover:border-border-strong rounded-card inline-flex items-center gap-1.5 border px-3 py-2 text-[13px] transition-colors"
     >
       Manage billing
       <ExternalLink className="size-3.5" />
-    </button>
+    </a>
   )
 }

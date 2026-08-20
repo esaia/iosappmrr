@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { and, eq, ne } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/db'
@@ -9,7 +8,7 @@ import { apps } from '@/db/schema'
 import { profiles, purchases } from '@/db/schema'
 import { setCancelAtPeriodEnd, setPurchaseHidden } from '@/lib/data/purchases'
 import { requireUser } from '@/lib/auth'
-import { createBillingPortalSession, setSubscriptionCancellation } from '@/lib/checkout'
+import { setSubscriptionCancellation } from '@/lib/checkout'
 
 export type ProfileState = {
   error?: string
@@ -113,16 +112,14 @@ export async function updateProfileAction(
   return { saved: true }
 }
 
-export type BillingActionState = { error?: string }
-
-/** Opens Paddle's customer portal for invoices, receipts, and card details. */
-// Takes no arguments: `useActionState` passes the previous state and the form
-// data, and this action needs neither — the customer is the session.
-export async function openBillingPortalAction(): Promise<BillingActionState> {
-  const user = await requireUser('/account')
-  const result = await createBillingPortalSession(user)
-  if ('error' in result) return { error: result.error }
-  redirect(result.url)
+export type BillingActionState = {
+  error?: string
+  /**
+   * Set on success so the client knows the write landed and can ask the server
+   * for the row again. An empty object cannot say that — it is also what the
+   * state starts as, before anything has been clicked.
+   */
+  ok?: boolean
 }
 
 /**
@@ -167,7 +164,7 @@ export async function setSponsorCancellationAction(
   await setCancelAtPeriodEnd(row.subscriptionId, cancel)
 
   revalidatePath('/account')
-  return {}
+  return { ok: true }
 }
 
 /**

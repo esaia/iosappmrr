@@ -25,9 +25,27 @@ export async function POST(request: Request) {
     return new Response('Missing signature', { status: 403 })
   }
 
+  /*
+   * Configuration is checked apart from the signature, and answers 500 rather
+   * than 403. The two failures look identical from here — an unset secret and a
+   * forged body both end in "cannot verify this" — but they need opposite
+   * handling: Paddle retries a 500 and gives up on a 403, so folding a missing
+   * environment variable into the signature branch would quietly discard real
+   * payments and log them as if someone had attacked the endpoint.
+   */
+  let paddle: ReturnType<typeof paddleClient>
+  let secret: string
+  try {
+    paddle = paddleClient()
+    secret = webhookSecret()
+  } catch (error) {
+    console.error('[paddle] webhook is not configured', error)
+    return new Response('Webhook not configured', { status: 500 })
+  }
+
   let event: EventEntity | null
   try {
-    event = await paddleClient().webhooks.unmarshal(body, webhookSecret(), signature)
+    event = await paddle.webhooks.unmarshal(body, secret, signature)
   } catch (error) {
     console.error('[paddle] signature verification failed', error)
     return new Response('Invalid signature', { status: 403 })
