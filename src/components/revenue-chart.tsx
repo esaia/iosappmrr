@@ -471,8 +471,13 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
               {metric.label}
               <ChevronDown className="text-muted size-3.5" />
             </button>
+            {/*
+              Solid, not glass: both these menus open downwards over the plot,
+              and a blue bar reading through a row of labels is not a menu any
+              more. The same reason the tooltip below is solid.
+            */}
             {metricOpen && (
-              <div className="glass-raised border-border absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-[14px] border py-1">
+              <div className="solid-raised border-border absolute right-0 z-20 mt-1 w-[180px] overflow-hidden rounded-[14px] border py-1">
                 {offeredMetrics.map((option) => {
                   const enabled = metricHasData.get(option.key)
                   return (
@@ -517,7 +522,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
               <ChevronDown className="text-muted size-3.5" />
             </button>
             {rangeOpen && (
-              <div className="glass-raised border-border absolute right-0 z-20 mt-1 w-[175px] overflow-hidden rounded-[14px] border py-1">
+              <div className="solid-raised border-border absolute right-0 z-20 mt-1 w-[175px] overflow-hidden rounded-[14px] border py-1">
                 {RANGES.map((range) => {
                   const enabled = rangeAvailable(range.days)
                   return (
