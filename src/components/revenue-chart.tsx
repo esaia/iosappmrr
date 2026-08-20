@@ -178,7 +178,19 @@ function useDismiss(onDismiss: () => void) {
  * site, and a revenue line is a level, not a direction.
  */
 export function RevenueChart({ data }: { data: RevenuePoint[] }) {
-  const [metricKey, setMetricKey] = useState<MetricKey>('mrr')
+  /*
+   * Opens on the day's takings where the provider reports them, and on MRR
+   * where it does not.
+   *
+   * MRR is the figure the site is built around, but as an opening chart it is
+   * the least interesting thing an app has: a level moves slowly by
+   * construction, so a healthy app and a dying one both draw a flat line for
+   * thirty days. Daily revenue shows the same business actually working — the
+   * quiet days, the renewal clusters — and MRR is one click away in the picker.
+   */
+  const [metricKey, setMetricKey] = useState<MetricKey>(() =>
+    data.some((point) => point.revenueCents != null) ? 'revenueDaily' : 'mrr',
+  )
   const [days, setDays] = useState<number>(DEFAULT_DAYS)
   const [compare, setCompare] = useState(true)
   const [trend, setTrend] = useState(false)
