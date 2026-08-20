@@ -160,6 +160,7 @@ export async function writeSnapshot(
       activeTrials: metrics.activeTrials ?? null,
       newCustomers28d: metrics.newCustomers28d ?? null,
       revenue28dCents: metrics.revenue28dCents ?? null,
+      revenueCents: metrics.revenueCents ?? null,
       currency: metrics.currency,
     })
     .onConflictDoUpdate({
@@ -171,6 +172,7 @@ export async function writeSnapshot(
         activeTrials: metrics.activeTrials ?? null,
         newCustomers28d: metrics.newCustomers28d ?? null,
         revenue28dCents: metrics.revenue28dCents ?? null,
+        revenueCents: metrics.revenueCents ?? null,
         currency: metrics.currency,
       },
     })

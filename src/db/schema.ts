@@ -333,6 +333,18 @@ export const revenueSnapshots = pgTable(
     activeTrials: integer('active_trials'),
     newCustomers28d: integer('new_customers_28d'),
     revenue28dCents: bigint('revenue_28d_cents', { mode: 'number' }),
+    /**
+     * Money actually taken on this day, as opposed to `revenue_28d_cents`,
+     * which is a trailing window and therefore never spiky and never zero.
+     *
+     * Nullable and expected to stay null for most apps: RevenueCat's v2
+     * overview only ever returns the 28-day aggregate. App Store Connect can
+     * fill it — Apple's SALES/SUMMARY report is per-day — but the sync reads
+     * the SUBSCRIPTION report today and would need that added. The chart hides
+     * the series for any app whose days are all null, so a provider that
+     * cannot report it advertises nothing.
+     */
+    revenueCents: bigint('revenue_cents', { mode: 'number' }),
     currency: text('currency').notNull().default('USD'),
   },
   (t) => [

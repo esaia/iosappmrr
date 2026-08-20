@@ -15,33 +15,194 @@ import { encryptCredentials } from '../src/lib/crypto/credentials'
  */
 
 const DAYS = 365
-const START_MRR_CENTS = 120_000
-const MONTHLY_GROWTH = 0.061
+/**
+ * A settled app, not a growth story: MRR hovers around this figure for the
+ * whole year instead of climbing. At steady state a subscription business
+ * collects about its MRR each month, so this doubles as the monthly takings.
+ */
+const TARGET_MRR_CENTS = 100_000
+/**
+ * Days simulated before the visible window, and discarded.
+ *
+ * The point is the annual plans. A year of history generated from an empty
+ * database has nobody old enough to renew, so every annual charge in the window
+ * would be somebody's first — and the renewals that make the daily line lumpy
+ * would all be missing. Running past a full annual cycle first means the window
+ * opens on a population with birthdays already spread across it.
+ */
+const BURN_IN_DAYS = 420
+
+/**
+ * The plan mix, which is what shapes the daily revenue line.
+ *
+ * Annual plans dominate deliberately. They are charged once, in whatever size
+ * cluster signed up together a year earlier, which is what puts $0 on most days
+ * and several hundred dollars on a few. A catalogue of monthly plans alone
+ * collects a little every day and draws almost a straight line.
+ */
+const PLANS = [
+  { share: 0.9, priceCents: 9999, periodDays: 365, churnAtRenewal: 0.28 },
+  { share: 0.1, priceCents: 999, periodDays: 30, churnAtRenewal: 0.055 },
+] as const
+
 const PROVIDER = 'revenuecat'
 const LABEL = 'Simulated — not a real connection'
 
-function buildHistory(seedText: string) {
+type Day = {
+  date: Date
+  mrrCents: number
+  subscribers: number
+  trials: number
+  revenueCents: number
+  revenue28dCents: number
+  newCustomers28d: number
+}
+
+function makeRandom(seedText: string) {
   let seed = [...seedText].reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) >>> 0, 11)
-  const random = () => {
+  return () => {
     seed = (seed * 1_664_525 + 1_013_904_223) >>> 0
     return seed / 0xffffffff
   }
+}
 
-  const points: { date: Date; mrrCents: number }[] = []
-  for (let i = DAYS - 1; i >= 0; i--) {
+/** Knuth's method. Signups are whole people, so the daily count is a small
+ * integer that is very often zero. */
+function poisson(mean: number, random: () => number) {
+  const limit = Math.exp(-mean)
+  let count = 0
+  let product = random()
+  while (product > limit && count < 60) {
+    count++
+    product *= random()
+  }
+  return count
+}
+
+type Sub = { start: number; priceCents: number; periodDays: number; churnAtRenewal: number }
+
+/**
+ * One run of the subscription business at a given acquisition rate.
+ *
+ * Every subscription is tracked individually and charged on the anniversary of
+ * the day it started, because that is where the shape of the daily revenue line
+ * comes from. Signups arrive in bursts — an App Store feature, a post that did
+ * well — and a year later that burst renews on a single day as one large
+ * charge. Spreading charges evenly across subscribers, which is the obvious
+ * shortcut, erases both the empty days and the spikes.
+ */
+function simulate(seedText: string, rateScale: number): Day[] {
+  const random = makeRandom(seedText)
+  const total = BURN_IN_DAYS + DAYS
+
+  /*
+   * A multiplier per month, drawn once, centred on 1 and with no trend in it.
+   * Some months are quieter than others; none of them is the start of a climb.
+   */
+  const regimes: number[] = []
+  for (let month = 0; month <= Math.ceil(total / 30); month++) {
+    regimes.push(0.75 + random() * 0.55)
+  }
+
+  let live: Sub[] = []
+  const days: Day[] = []
+  const recentSignups: number[] = []
+  const dailyRevenue: number[] = []
+
+  for (let i = 0; i < total; i++) {
+    let revenueCents = 0
+
+    // Renewals first, so a plan bought today is not also renewed today.
+    const surviving: Sub[] = []
+    for (const sub of live) {
+      const due = i > sub.start && (i - sub.start) % sub.periodDays === 0
+      if (!due) {
+        surviving.push(sub)
+        continue
+      }
+      // Cancelling takes effect at the end of a period, so churn is decided
+      // at renewal rather than on some arbitrary day mid-cycle.
+      if (random() < sub.churnAtRenewal) continue
+      revenueCents += sub.priceCents
+      surviving.push(sub)
+    }
+    live = surviving
+
+    /*
+     * Acquisition is clumpy. Most days bring nobody; now and then something
+     * lands and brings a handful at once. This is the burstiness the annual
+     * renewals inherit a year later.
+     */
+    const regime = regimes[Math.floor(i / 30)] ?? 1
+    const burst = random() < 0.07
+    const newSubs = poisson((burst ? 7.5 : 0.09) * rateScale * regime, random)
+
+    for (let n = 0; n < newSubs; n++) {
+      const plan = random() < PLANS[0].share ? PLANS[0] : PLANS[1]
+      live.push({
+        start: i,
+        priceCents: plan.priceCents,
+        periodDays: plan.periodDays,
+        churnAtRenewal: plan.churnAtRenewal,
+      })
+      // The first charge lands the day they subscribe.
+      revenueCents += plan.priceCents
+    }
+
+    recentSignups.push(newSubs)
+    if (recentSignups.length > 28) recentSignups.shift()
+    dailyRevenue.push(revenueCents)
+    if (dailyRevenue.length > 28) dailyRevenue.shift()
+
+    if (i < BURN_IN_DAYS) continue
+
     const date = new Date()
     date.setUTCHours(0, 0, 0, 0)
-    date.setUTCDate(date.getUTCDate() - i)
+    date.setUTCDate(date.getUTCDate() - (total - 1 - i))
 
-    const months = (DAYS - 1 - i) / 30
-    const trend = START_MRR_CENTS * Math.pow(1 + MONTHLY_GROWTH, months)
-    const weekend = date.getUTCDay() === 0 || date.getUTCDay() === 6 ? 0.985 : 1
-    points.push({
+    // An annual plan counts as a twelfth of its price per month, so the two
+    // plans are comparable and MRR means one thing.
+    const mrrCents = Math.round(
+      live.reduce((sum, sub) => sum + (sub.priceCents * 30) / sub.periodDays, 0),
+    )
+
+    const weekIntake = recentSignups.slice(-7).reduce((sum, n) => sum + n, 0)
+
+    days.push({
       date,
-      mrrCents: Math.max(1000, Math.round(trend * weekend * (0.97 + random() * 0.06))),
+      mrrCents,
+      subscribers: live.length,
+      trials: Math.max(0, Math.round(weekIntake * (0.8 + random() * 1.4))),
+      revenueCents,
+      revenue28dCents: dailyRevenue.reduce((sum, n) => sum + n, 0),
+      newCustomers28d: recentSignups.reduce((sum, n) => sum + n, 0),
     })
   }
-  return points
+
+  return days
+}
+
+/**
+ * Rescales acquisition until the year *averages* the target.
+ *
+ * Deliberately the mean rather than the closing value: pinning the last day
+ * would let the run drift and then be dragged back at the end, which is the
+ * growth curve this is meant to avoid.
+ */
+function buildHistory(seedText: string) {
+  let scale = 1
+  let days = simulate(seedText, scale)
+
+  const mean = (list: Day[]) => list.reduce((sum, d) => sum + d.mrrCents, 0) / list.length
+
+  for (let attempt = 0; attempt < 25; attempt++) {
+    const average = mean(days)
+    if (average > 0 && Math.abs(average - TARGET_MRR_CENTS) / TARGET_MRR_CENTS < 0.03) break
+    scale *= average > 0 ? TARGET_MRR_CENTS / average : 2
+    days = simulate(seedText, scale)
+  }
+
+  return days
 }
 
 async function main() {
@@ -71,15 +232,17 @@ async function main() {
     const history = buildHistory(app.slug)
     await sql`delete from revenue_snapshots where app_id = ${appId}`
 
-    const rows = history.map((point) => ({
+    const rows = history.map((day) => ({
       app_id: appId,
       provider: PROVIDER,
-      captured_on: point.date.toISOString().slice(0, 10),
-      captured_at: point.date.toISOString(),
-      mrr_cents: point.mrrCents,
-      active_subscriptions: Math.round(point.mrrCents / 100 / 7.5),
-      active_trials: Math.round(point.mrrCents / 100 / 120),
-      revenue_28d_cents: Math.round(point.mrrCents * 0.94),
+      captured_on: day.date.toISOString().slice(0, 10),
+      captured_at: day.date.toISOString(),
+      mrr_cents: day.mrrCents,
+      active_subscriptions: day.subscribers,
+      active_trials: day.trials,
+      new_customers_28d: day.newCustomers28d,
+      revenue_cents: day.revenueCents,
+      revenue_28d_cents: day.revenue28dCents,
       currency: 'USD',
     }))
     for (let i = 0; i < rows.length; i += 500) {
@@ -104,10 +267,15 @@ async function main() {
     const { recomputeAppMetrics } = await import('../src/lib/metrics')
     await recomputeAppMetrics(appId)
 
-    const latest = history[history.length - 1].mrrCents
+    const last30 = history.slice(-30)
+    const mrrs = history.map((d) => d.mrrCents)
     console.log(
       `${app.name} is now live with simulated revenue.\n` +
-        `  MRR: $${(latest / 100).toFixed(2)} across ${DAYS} days\n` +
+        `  MRR: $${(history[history.length - 1].mrrCents / 100).toFixed(2)} ` +
+        `(year low $${(Math.min(...mrrs) / 100).toFixed(0)}, high $${(Math.max(...mrrs) / 100).toFixed(0)})\n` +
+        `  Subscribers: ${history[history.length - 1].subscribers}\n` +
+        `  Last 30d takings: $${(last30.reduce((s, d) => s + d.revenueCents, 0) / 100).toFixed(2)} ` +
+        `across ${last30.filter((d) => d.revenueCents > 0).length}/30 days\n` +
         `  Page: /apps/${app.slug}\n\n` +
         `Undo with: npm run db:simulate -- ${appId} --undo`,
     )

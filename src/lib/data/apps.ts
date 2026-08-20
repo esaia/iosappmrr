@@ -239,6 +239,7 @@ export async function getRevenueHistory(appId: string, days = 180) {
       activeSubscriptions: sql<string | null>`sum(${revenueSnapshots.activeSubscriptions})`,
       activeTrials: sql<string | null>`sum(${revenueSnapshots.activeTrials})`,
       revenue28dCents: sql<string | null>`sum(${revenueSnapshots.revenue28dCents})`,
+      revenueCents: sql<string | null>`sum(${revenueSnapshots.revenueCents})`,
     })
     .from(revenueSnapshots)
     .where(
@@ -258,6 +259,7 @@ export async function getRevenueHistory(appId: string, days = 180) {
     activeSubscriptions: num(row.activeSubscriptions),
     activeTrials: num(row.activeTrials),
     revenue28dCents: num(row.revenue28dCents),
+    revenueCents: num(row.revenueCents),
   }))
 }
 

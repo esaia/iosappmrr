@@ -15,6 +15,9 @@ export type NormalizedMetrics = {
   activeTrials?: number
   newCustomers28d?: number
   revenue28dCents?: number
+  /** Money taken on `capturedOn` alone. Only providers with a per-day report
+   * can fill this; RevenueCat's overview cannot. */
+  revenueCents?: number
   /**
    * The day this measurement describes. Providers with reporting lag (App Store
    * Connect) report an older date than today, and the UI surfaces it.

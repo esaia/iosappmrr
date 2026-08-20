@@ -20,9 +20,10 @@ export type RevenuePoint = {
   activeSubscriptions?: number | null
   activeTrials?: number | null
   revenue28dCents?: number | null
+  revenueCents?: number | null
 }
 
-type MetricKey = 'revenue28d' | 'mrr' | 'subscribers' | 'trials'
+type MetricKey = 'revenueDaily' | 'revenue28d' | 'mrr' | 'subscribers' | 'trials'
 
 type Metric = {
   key: MetricKey
@@ -31,6 +32,15 @@ type Metric = {
   /** Pulls the value out of a day's row. Null means "no data for this day". */
   read: (point: RevenuePoint) => number | null
   format: (value: number) => string
+  /**
+   * How the window collapses to one headline figure.
+   *
+   * A stock — MRR, subscribers, trials — is a level, so the headline is the
+   * last day and the comparison is the previous window's last day. A flow —
+   * money taken — only means anything added up, and its last day is often zero,
+   * which would headline a healthy month as "$0, down 100%".
+   */
+  kind: 'stock' | 'flow'
 }
 
 /*
@@ -42,14 +52,30 @@ type Metric = {
  */
 const METRICS: Metric[] = [
   {
-    key: 'revenue28d',
-    label: 'Revenue',
+    /*
+     * A day's takings, which is the series that actually looks like a business:
+     * mostly small, occasionally a renewal cluster, and frequently zero. Only
+     * providers with a per-day report can fill it, so for most apps every day
+     * is null and `metricHasData` drops it from the picker.
+     */
+    key: 'revenueDaily',
+    kind: 'flow',
+    label: 'Daily revenue',
     dot: 'var(--blue)',
+    read: (p) => p.revenueCents ?? null,
+    format: formatMrr,
+  },
+  {
+    key: 'revenue28d',
+    kind: 'stock',
+    label: 'Revenue (28d)',
+    dot: '#7c86ff',
     read: (p) => p.revenue28dCents ?? null,
     format: formatMrr,
   },
   {
     key: 'mrr',
+    kind: 'stock',
     label: 'MRR',
     dot: 'var(--green)',
     read: (p) => p.mrrCents,
@@ -57,6 +83,7 @@ const METRICS: Metric[] = [
   },
   {
     key: 'subscribers',
+    kind: 'stock',
     label: 'Subscribers',
     dot: '#e0a458',
     read: (p) => p.activeSubscriptions ?? null,
@@ -64,6 +91,7 @@ const METRICS: Metric[] = [
   },
   {
     key: 'trials',
+    kind: 'stock',
     label: 'Trials',
     dot: '#5bbcd4',
     read: (p) => p.activeTrials ?? null,
@@ -210,9 +238,24 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
     )
   }
 
-  const latest = plotted[plotted.length - 1].value as number
-  // Compare like for like: the last day of the previous window, not its average.
-  const priorEnd = [...rows].reverse().find((r) => r.prevValue != null)?.prevValue ?? null
+  const sum = (values: (number | null)[]) =>
+    values.reduce<number>((total, value) => total + (value ?? 0), 0)
+
+  const latest =
+    metric.kind === 'flow'
+      ? sum(rows.map((r) => r.value))
+      : (plotted[plotted.length - 1].value as number)
+
+  /*
+   * Compare like for like: a level against the previous window's closing level,
+   * a total against the previous window's total.
+   */
+  const priorEnd =
+    metric.kind === 'flow'
+      ? rows.some((r) => r.prevValue != null)
+        ? sum(rows.map((r) => r.prevValue))
+        : null
+      : ([...rows].reverse().find((r) => r.prevValue != null)?.prevValue ?? null)
   const change = priorEnd != null ? percentChange(priorEnd, latest) : null
   const hasComparison = rows.some((r) => r.prevValue != null)
   const activeRange =
