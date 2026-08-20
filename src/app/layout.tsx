@@ -61,11 +61,35 @@ export const metadata: Metadata = {
     locale: 'en_US',
     title: `${site.shortName} - ${site.tagline}`,
     description: site.description,
+    /*
+     * A real screenshot, served from `public/`, rather than the card this used
+     * to generate at request time.
+     *
+     * It is inherited, so it covers every route that does not draw a card of
+     * its own — the home page, the leaderboard, the FAQ, the legal pages. App,
+     * founder and category pages still generate theirs, and should: those carry
+     * a figure, and a figure is the reason the link gets clicked.
+     *
+     * Sized explicitly because several scrapers lay the card out before they
+     * have fetched the image, and one that has to guess falls back to the small
+     * summary card.
+     */
+    images: [
+      {
+        url: '/featured.png',
+        width: 1200,
+        height: 630,
+        alt: `${site.shortName} - ${site.tagline}`,
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: `${site.shortName} - ${site.tagline}`,
     description: site.description,
+    // Named again rather than inherited: X reads the `twitter:` tags first and
+    // only falls back to `og:` when they are absent.
+    images: ['/featured.png'],
   },
   robots: {
     index: true,
