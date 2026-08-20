@@ -5,8 +5,10 @@ import { ExternalLink, Star } from 'lucide-react'
 import { AdRail } from '@/components/ad-rail'
 import { AppIcon } from '@/components/app-icon'
 import { AnonymousName } from '@/components/anonymous-name'
+import { FounderAvatar } from '@/components/founder-avatar'
 import { AppleMark } from '@/components/apple-mark'
 import { GrowthPill } from '@/components/growth-pill'
+import { InfoTip } from '@/components/info-tip'
 import { RevenueChart } from '@/components/revenue-chart'
 import { AppScreenshots } from '@/components/app-screenshots'
 import { AppReviews } from '@/components/app-reviews'
@@ -144,145 +146,158 @@ export default async function AppPage({ params }: Params) {
           )}
         </nav>
 
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-start">
-          <AppIcon src={metadata?.iconUrl} name={app.name} size={88} />
+        {/*
+          One card, not three.
 
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="display text-2xl font-semibold sm:text-3xl">
-                {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
-              </h1>
-              <VerifiedBadge providers={providers} />
-              <span className="ml-auto">
-                <ShareButton
-                  slug={app.slug}
-                  url={`${site.url}/apps/${app.slug}`}
-                  name={app.name}
-                  mrr={mrrCents > 0 ? formatMoney(mrrCents) : undefined}
-                  // A line needs two points; below that the dialog offers the
-                  // badge alone rather than a chart with nothing in it.
-                  hasHistory={history.length >= 2}
-                />
-              </span>
-            </div>
-            {app.tagline && (
-              <p className="text-muted mt-2 text-base">
-                {app.isAnonymous ? <AnonymousName block>{app.tagline}</AnonymousName> : app.tagline}
-              </p>
-            )}
+          The masthead, the headline figures and the chart are all one claim —
+          this app earns this much, and here is how it got there — so they share
+          a frame with hairlines between them rather than floating as three
+          panels with strips of page ground in between. The gaps were doing no
+          work except pushing the chart, which is what anyone came for, further
+          down the page.
+        */}
+        <section className="border-border glass-panel rounded-card border">
+          <header className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:p-7">
+            <AppIcon src={metadata?.iconUrl} name={app.name} size={88} />
 
-            <div className="text-muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              {founder && (
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="text-dim">by</span>
-                  <Link href={`/founders/${founder.handle}`} className="hover:text-blue">
-                    {founder.name ?? `@${founder.handle}`}
-                  </Link>
-                  {founder.twitter && (
-                    <a
-                      href={`https://x.com/${founder.twitter}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-muted hover:text-fg inline-flex items-center gap-1 text-xs transition-colors"
-                      title={`@${founder.twitter} on X`}
-                    >
-                      <XMark />
-                      {founder.twitterFollowers != null && (
-                        <span className="tabular">{formatCount(founder.twitterFollowers)}</span>
-                      )}
-                    </a>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="display text-2xl font-semibold sm:text-3xl">
+                  {app.isAnonymous ? <AnonymousName tooltip>{app.name}</AnonymousName> : app.name}
+                </h1>
+                <VerifiedBadge providers={providers} />
+                <span className="ml-auto">
+                  <ShareButton
+                    slug={app.slug}
+                    url={`${site.url}/apps/${app.slug}`}
+                    name={app.name}
+                    mrr={mrrCents > 0 ? formatMoney(mrrCents) : undefined}
+                    // A line needs two points; below that the dialog offers the
+                    // badge alone rather than a chart with nothing in it.
+                    hasHistory={history.length >= 2}
+                  />
+                </span>
+              </div>
+              {app.tagline && (
+                <p className="text-muted mt-2 text-base">
+                  {app.isAnonymous ? (
+                    <AnonymousName block>{app.tagline}</AnonymousName>
+                  ) : (
+                    app.tagline
                   )}
-                </span>
+                </p>
               )}
-              {/*
-                `!= null`, not a truthiness check: an app Apple has rated 0, or
-                one nobody has reviewed yet, is still an app with a rating we
-                know — and `0 &&` renders a bare 0 next to the byline rather
-                than nothing at all.
-              */}
-              {metadata?.averageRating != null && (
-                <span className="inline-flex items-center gap-1">
-                  <Star className="fill-gold text-gold size-3.5" />
-                  <span className="tabular">{metadata.averageRating.toFixed(1)}</span>
-                  {/*
-                    Hidden at zero. "(0)" beside a rating reads as a count that
-                    failed to load; no count reads as what it is — nobody has
-                    reviewed this yet.
-                  */}
-                  {metadata.ratingCount ? (
-                    <span className="text-xs">({formatCount(metadata.ratingCount)})</span>
-                  ) : null}
-                </span>
-              )}
-              {app.website && (
-                <a
-                  href={app.website}
-                  target="_blank"
-                  /*
-                   * Nofollow unless the founder paid for the upgrade. Passing
-                   * authority to every listing by default would make the link
-                   * worthless to sell and would make this site a link farm.
-                   */
-                  rel={app.websiteDofollow ? 'noopener noreferrer' : 'nofollow noopener noreferrer'}
-                  className="hover:text-blue inline-flex items-center gap-1"
-                >
-                  Website
-                  <ExternalLink className="size-3" />
-                </a>
-              )}
-              {app.appStoreUrl && (
-                <a
-                  href={app.appStoreUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-blue inline-flex items-center gap-1"
-                >
-                  <AppleMark />
-                  App Store
-                  <ExternalLink className="size-3" />
-                </a>
-              )}
-            </div>
-          </div>
-        </header>
 
-        {/* Headline figures, one card each, ahead of the chart. */}
-        <dl className="mt-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="MRR" value={formatMoney(mrrCents)} suffix="/mo">
-            <div className="mt-2 flex items-center gap-2">
+              <div className="text-muted mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                {/* The founder has a cell of their own in the grid below. */}
+                {/*
+                  `!= null`, not a truthiness check: an app Apple has rated 0, or
+                  one nobody has reviewed yet, is still an app with a rating we
+                  know — and `0 &&` renders a bare 0 next to the byline rather
+                  than nothing at all.
+                */}
+                {metadata?.averageRating != null && (
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="fill-gold text-gold size-3.5" />
+                    <span className="tabular">{metadata.averageRating.toFixed(1)}</span>
+                    {/*
+                      Hidden at zero. "(0)" beside a rating reads as a count that
+                      failed to load; no count reads as what it is — nobody has
+                      reviewed this yet.
+                    */}
+                    {metadata.ratingCount ? (
+                      <span className="text-xs">({formatCount(metadata.ratingCount)})</span>
+                    ) : null}
+                  </span>
+                )}
+                {app.website && (
+                  <a
+                    href={app.website}
+                    target="_blank"
+                    /*
+                     * Nofollow unless the founder paid for the upgrade. Passing
+                     * authority to every listing by default would make the link
+                     * worthless to sell and would make this site a link farm.
+                     */
+                    rel={
+                      app.websiteDofollow ? 'noopener noreferrer' : 'nofollow noopener noreferrer'
+                    }
+                    className="hover:text-blue inline-flex items-center gap-1"
+                  >
+                    Website
+                    <ExternalLink className="size-3" />
+                  </a>
+                )}
+                {app.appStoreUrl && (
+                  <a
+                    href={app.appStoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-blue inline-flex items-center gap-1"
+                  >
+                    <AppleMark />
+                    App Store
+                    <ExternalLink className="size-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/*
+            Headline figures on a hairline grid rather than in cards of their
+            own. Four bordered boxes inside a bordered box is a border too many;
+            the rules alone separate them, and the figures line up across the
+            width of the card the way a table's would.
+          */}
+          <dl className="border-border grid grid-cols-2 border-t lg:grid-cols-4">
+            <StatCell
+              label="MRR"
+              value={formatMoney(mrrCents)}
+              suffix="/mo"
+              note="Monthly recurring revenue from currently active subscriptions, not the last 30 days of sales."
+            >
               <GrowthPill value={metrics?.growth30d ?? null} />
-              <span className="text-muted text-[11px]">vs. 30 days ago</span>
-            </div>
-          </StatCard>
-          <StatCard label="ARR" value={formatMrr(Number(metrics?.arrCents ?? 0))}>
-            <p className="text-muted mt-2 text-[11px]">Annualised run rate</p>
-          </StatCard>
-          <StatCard
-            label="Subscribers"
-            value={metrics?.activeSubscriptions ? formatCount(metrics.activeSubscriptions) : '—'}
-          >
-            <p className="text-muted mt-2 text-[11px]">
-              {metrics?.activeSubscriptions ? 'Active subscriptions' : 'Not reported by provider'}
-            </p>
-          </StatCard>
-          <StatCard label="90-day change" value={growthLabel(metrics?.growth90d)}>
-            <p className="text-muted mt-2 text-[11px]">
-              {metrics?.growth90d == null ? 'Needs 90 days of history' : 'vs. 90 days ago'}
-            </p>
-          </StatCard>
-        </dl>
+              <span>vs. 30 days ago</span>
+            </StatCell>
+            <StatCell
+              label="ARR"
+              value={formatMrr(Number(metrics?.arrCents ?? 0))}
+              note="MRR multiplied by twelve — what the app earns over a year if today's subscriptions simply keep renewing. A projection, not money taken."
+              align="end"
+            >
+              <span>Annualised run rate</span>
+            </StatCell>
+            <StatCell
+              label="Subscribers"
+              value={metrics?.activeSubscriptions ? formatCount(metrics.activeSubscriptions) : '—'}
+              note="Paying subscriptions active right now, straight from the connected provider. Free trials are not counted until they convert."
+            >
+              <span>
+                {metrics?.activeSubscriptions ? 'Active subscriptions' : 'Not reported by provider'}
+              </span>
+            </StatCell>
+            {/*
+              A person, in the last cell, rather than a fourth figure.
 
-        {/* Revenue — the reason anyone is on this page. */}
-        <section className="border-border bg-surface rounded-card mt-3 border p-5 sm:p-6">
-          <div>
+              The other three cells are the app; this one is who is behind it,
+              which on a site built on verified revenue is the fact a reader
+              most wants next — and it reads far better here, at the size of a
+              headline, than it did as a grey byline under the tagline.
+            */}
+            <FounderCell founder={founder} />
+          </dl>
+
+          {/* Revenue — the reason anyone is on this page. */}
+          <div className="border-border border-t p-5 sm:p-6">
             <RevenueChart data={history} />
-          </div>
 
-          <p className="border-border text-muted mt-4 border-t pt-3 text-[11px] leading-relaxed">
-            Read from {providers.map(providerLabel).join(' and ') || 'no connected provider'}{' '}
-            {metrics?.dataAsOf && ` · data as of ${metrics.dataAsOf}`}
-            {metrics?.updatedAt && ` · last synced ${timeAgo(metrics.updatedAt)}`}
-          </p>
+            <p className="border-border text-dim mt-5 border-t pt-3 text-[11px] leading-relaxed">
+              Read from {providers.map(providerLabel).join(' and ') || 'no connected provider'}{' '}
+              {metrics?.dataAsOf && ` · data as of ${metrics.dataAsOf}`}
+              {metrics?.updatedAt && ` · last synced ${timeAgo(metrics.updatedAt)}`}
+            </p>
+          </div>
         </section>
 
         {/* Apple's own screenshots straight after the revenue they belong to. */}
@@ -342,8 +357,8 @@ export default async function AppPage({ params }: Params) {
                 </>
               }
             >
-              <Row label="Category" value={category?.name ?? metadata?.primaryGenre ?? '—'} />{' '}
-              <Row label="Version" value={metadata?.version ?? '—'} />{' '}
+              <Row label="Category" value={category?.name ?? metadata?.primaryGenre ?? '—'} />
+              <Row label="Version" value={metadata?.version ?? '—'} />
               {/*
               "Download", not "Price": this is what the App Store charges to
               install, which for a subscription app is almost always zero. The
@@ -369,9 +384,9 @@ export default async function AppPage({ params }: Params) {
               not said, rather than shown as an empty panel.
             */}
             {tech.length > 0 && (
-              <section className="border-border bg-surface rounded-card border p-5">
-                <h2 className="label">Built with</h2>
-                <div className="mt-3 flex flex-wrap gap-1.5">
+              <section className="border-border glass-panel rounded-card overflow-hidden border">
+                <h2 className="label border-border border-b px-4 py-3">Built with</h2>
+                <div className="flex flex-wrap gap-1.5 p-4">
                   {tech.map((tag) => (
                     <Link
                       key={tag.slug}
@@ -444,13 +459,6 @@ export default async function AppPage({ params }: Params) {
   )
 }
 
-function growthLabel(value: number | null | undefined) {
-  if (value === null || value === undefined) return '—'
-
-  const rounded = Math.round(value * 10) / 10
-  return `${rounded > 0 ? '+' : ''}${rounded}%`
-}
-
 /**
  * Apple reports bytes and displays megabytes on the decimal scale — 76,375,040
  * bytes is shown as 76.4 MB, not the 72.8 MiB a binary divisor would give. Match
@@ -468,44 +476,153 @@ function priceLabel(cents: number | null | undefined, currency: string | null | 
   return cents === 0 ? 'Free' : formatMoney(cents, currency ?? 'USD')
 }
 
-function StatCard({
+/**
+ * The chrome every masthead cell shares.
+ *
+ * The dividing rules are the cell's own borders rather than a wrapper's, which
+ * is what lets the grid reflow from four columns to two without the hairlines
+ * landing in the wrong places: the right-hand rule is drawn on the odd cells,
+ * so it always falls between a pair, and the bottom rule is dropped from the
+ * last two cells, which are the final row at either width.
+ */
+const CELL =
+  'border-border border-b p-4 odd:border-r sm:p-5 lg:border-r lg:border-b-0 lg:last:border-r-0 [&:nth-last-child(-n+2)]:border-b-0'
+
+/** One headline figure in the masthead grid. */
+function StatCell({
   label,
   value,
   suffix,
+  note,
+  align,
   children,
 }: {
   label: string
   value: string
   suffix?: string
+  /** What the figure counts, shown on the ⓘ beside the label. */
+  note?: string
+  align?: 'start' | 'end'
   children?: React.ReactNode
 }) {
   return (
-    <div className="border-border bg-surface rounded-card border p-4 sm:p-5">
-      <dt className="label">{label}</dt>
+    <div className={CELL}>
+      <dt className="label flex items-center gap-1.5">
+        {label}
+        {note && <InfoTip text={note} align={align} />}
+      </dt>
       <dd>
-        <p className="tabular text-fg mt-2 text-2xl font-semibold tracking-tight">
+        <p className="tabular text-fg mt-2.5 text-2xl font-semibold tracking-tight">
           {value}
-          {suffix && <span className="text-muted text-sm font-normal">{suffix}</span>}
+          {suffix && <span className="text-dim text-sm font-normal">{suffix}</span>}
         </p>
-        {children}
+        <div className="text-dim mt-1.5 flex flex-wrap items-center gap-x-2 text-[11px]">
+          {children}
+        </div>
       </dd>
     </div>
   )
 }
 
+const FOUNDER_NOTE =
+  'The person who claimed this listing and connected the payment provider every figure above is read from.'
+
+/**
+ * The founder, in the same grid as the figures.
+ *
+ * A picture and a name where the other cells put a number, so the row reads as
+ * four facts of equal weight rather than three facts and an afterthought. An
+ * unclaimed listing keeps the cell and says so, rather than collapsing the grid
+ * to three columns on some apps and four on others.
+ */
+function FounderCell({
+  founder,
+}: {
+  founder: {
+    handle: string
+    name: string | null
+    avatarUrl: string | null
+    twitter: string | null
+    twitterFollowers: number | null
+  } | null
+}) {
+  if (!founder) {
+    return (
+      <div className={CELL}>
+        <dt className="label flex items-center gap-1.5">
+          Founder
+          <InfoTip text={FOUNDER_NOTE} align="end" />
+        </dt>
+        <dd>
+          <p className="text-dim mt-2.5 text-2xl font-semibold tracking-tight">—</p>
+          <div className="text-dim mt-1.5 text-[11px]">Listing not claimed</div>
+        </dd>
+      </div>
+    )
+  }
+
+  const name = founder.name ?? `@${founder.handle}`
+
+  return (
+    <div className={CELL}>
+      <dt className="label flex items-center gap-1.5">
+        Founder
+        <InfoTip text={FOUNDER_NOTE} align="end" />
+      </dt>
+      <dd>
+        <Link
+          href={`/founders/${founder.handle}`}
+          className="text-fg hover:text-blue mt-2.5 flex min-w-0 items-center gap-2.5 transition-colors"
+        >
+          <FounderAvatar avatarUrl={founder.avatarUrl} name={name} size={30} />
+          <span className="truncate text-lg font-semibold tracking-tight">{name}</span>
+        </Link>
+        <div className="text-dim mt-1.5 flex flex-wrap items-center gap-x-2 text-[11px]">
+          {founder.twitter ? (
+            <a
+              href={`https://x.com/${founder.twitter}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-fg inline-flex items-center gap-1 transition-colors"
+              title={`@${founder.twitter} on X`}
+            >
+              <XMark />
+              <span>@{founder.twitter}</span>
+              {founder.twitterFollowers != null && (
+                <span className="tabular">· {formatCount(founder.twitterFollowers)}</span>
+              )}
+            </a>
+          ) : (
+            <span>@{founder.handle}</span>
+          )}
+        </div>
+      </dd>
+    </div>
+  )
+}
+
+/**
+ * A sidebar panel: a titled strip over a list of facts.
+ *
+ * The title used to float inside the padding with the rows beneath it, which
+ * left it reading as the first row rather than as the heading of the set. On
+ * its own bordered strip it belongs to the panel, and the rows below can then
+ * be divided from each other — so a column of unrelated facts scans as a table
+ * instead of as a paragraph of pairs.
+ */
 function Panel({ title, children }: { title: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="border-border bg-surface rounded-card border p-5">
-      <h2 className="label flex items-center gap-1.5">{title}</h2>
-      <dl className="mt-3 space-y-2">{children}</dl>
+    <section className="border-border glass-panel rounded-card overflow-hidden border">
+      <h2 className="label border-border flex items-center gap-1.5 border-b px-4 py-3">{title}</h2>
+      <dl className="divide-border divide-y">{children}</dl>
     </section>
   )
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 text-sm">
-      <dt className="text-muted">{label}</dt>
+    <div className="flex items-baseline justify-between gap-4 px-4 py-2.5 text-[13px]">
+      <dt className="text-dim">{label}</dt>
       <dd className="tabular text-fg truncate">{value}</dd>
     </div>
   )

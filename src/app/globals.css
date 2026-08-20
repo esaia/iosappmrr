@@ -178,6 +178,53 @@
   }
 
   /*
+   * The masthead panel, and the only place on the site that gets it.
+   *
+   * `.glass` earns its look from the blur of whatever passes beneath, which on
+   * a page that scrolls under a fixed header is a great deal. This panel has
+   * nothing behind it but the flat page ground, so blurring alone leaves a grey
+   * box — the material needs its own light. Hence a lit corner: a broad radial
+   * highlight at the top left, falling away to nothing by the far edge, as
+   * though a source were sitting off the top of the panel. The vertical wash
+   * underneath it is the same film every surface uses, just thinning downwards,
+   * so the sheet reads as tilted rather than as painted.
+   *
+   * For the page's structural panels — the masthead and the column of facts
+   * beside it — rather than for every box on the site. A lit corner is a light
+   * source, and one shared across a handful of large panels reads as a room
+   * lit from one side; spread over every card on every page it stops meaning
+   * anything and just makes the whole site paler.
+   */
+  .glass-panel {
+    background:
+      radial-gradient(
+        135% 110% at 0% 0%,
+        rgba(255, 255, 255, 0.085) 0%,
+        rgba(255, 255, 255, 0.028) 42%,
+        transparent 72%
+      ),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.09),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.025),
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 28px 70px -28px rgba(0, 0, 0, 0.75);
+  }
+
+  /*
+   * The same ground and film as `.solid-raised`, without its shadow.
+   *
+   * For the caret under a tooltip: a rotated square carrying the panel's drop
+   * shadow casts a second one out of its underside, directly onto the thing the
+   * caret is pointing at.
+   */
+  .solid-flat {
+    background: linear-gradient(var(--surface-2), var(--surface-2)), var(--bg);
+  }
+
+  /*
    * Headlines. Monospace at display size needs tighter tracking than its
    * default or the letters drift apart.
    */

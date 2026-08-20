@@ -26,7 +26,7 @@ export function AsoScore({
   }[band]
 
   return (
-    <section className="border-border bg-surface rounded-card border p-5">
+    <section className="border-border glass-panel rounded-card border p-5">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="label">Listing quality (ASO)</h2>
         <span

@@ -427,9 +427,20 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        {/*
+          Label above figure, not below it.
+          
+          On a page where this chart sits under a row of headline figures the
+          reader needs to know what they are looking at before they read the
+          number, and the old order made them read a bare figure and then go
+          looking for its name. The figure is also a step smaller than the
+          headline row above: it answers "over this window", which is a
+          narrower question than the ones in the masthead.
+        */}
         <div>
-          <div className="flex items-baseline gap-2.5">
-            <p className="tabular text-fg text-3xl font-semibold tracking-tight">
+          <p className="label">{metric.label}</p>
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-2.5">
+            <p className="tabular text-fg text-[26px] leading-none font-semibold tracking-tight">
               {metric.format(latest)}
             </p>
             {change != null && (
@@ -443,9 +454,8 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
                 {change >= 0 ? '↑' : '↓'} {formatMagnitude(change)}
               </span>
             )}
-            {change != null && <span className="text-muted text-[13px]">vs. prev period</span>}
+            {change != null && <span className="text-dim text-[13px]">vs. prev period</span>}
           </div>
-          <p className="text-muted mt-1 text-[11px]">{metric.label}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -545,7 +555,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
          * or take it away — a separate toggle below would leave the reader
          * hunting for which control governs which line.
          */
-        <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-2">
           <SeriesPill color={metric.dot} label={metric.label} />
           <SeriesPill
             color={INSTALLS_DOT}
@@ -697,7 +707,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-5">
+      <div className="border-border mt-4 flex flex-wrap items-center gap-5 border-t pt-4">
         <Toggle
           checked={compare && hasComparison}
           disabled={!hasComparison}
