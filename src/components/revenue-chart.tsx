@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, useEffect } from 'react'
+import Link from 'next/link'
 import {
   Area,
   Bar,
@@ -173,9 +174,7 @@ type ChartRow = {
   prevDate: string | null
   /**
    * The day's downloads, carried alongside whichever metric is plotted so the
-   * tooltip can name both. Not smoothed with the series: it is read off the
-   * day rather than drawn, and a trend-view average would make the tooltip
-   * disagree with the Installs metric on the same date.
+   * tooltip can name both.
    */
   installs: number | null
 }
@@ -183,23 +182,6 @@ type ChartRow = {
 /** The tooltip's date format, shared so both rows read the same. */
 function tooltipDate(value: string) {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-/** Centred moving average. Smooths daily noise without shifting the line sideways. */
-function smooth(values: (number | null)[], window = 7) {
-  const half = Math.floor(window / 2)
-  return values.map((_, i) => {
-    let sum = 0
-    let n = 0
-    for (let j = Math.max(0, i - half); j <= Math.min(values.length - 1, i + half); j++) {
-      const v = values[j]
-      if (v != null) {
-        sum += v
-        n++
-      }
-    }
-    return n ? Math.round(sum / n) : null
-  })
 }
 
 /**
@@ -266,7 +248,18 @@ function useDismiss(onDismiss: () => void) {
  * blue rather than green because green means "growing" everywhere else on the
  * site, and a revenue line is a level, not a direction.
  */
-export function RevenueChart({ data }: { data: RevenuePoint[] }) {
+export function RevenueChart({
+  data,
+  signedIn = false,
+}: {
+  data: RevenuePoint[]
+  /**
+   * Longer windows are for signed-in readers. The page enforces it where it
+   * counts — a signed-out visitor is only sent the days they may see — so this
+   * exists to say why the control is locked rather than to do the locking.
+   */
+  signedIn?: boolean
+}) {
   /*
    * Opens on the day's takings where the provider reports them, and on MRR
    * where it does not.
@@ -298,7 +291,6 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
    * where it stops being legible. Still one click away either way.
    */
   const [compare, setCompare] = useState(() => !data.some((point) => point.installs != null))
-  const [trend, setTrend] = useState(false)
   const animate = !useReducedMotion()
   const [metricOpen, setMetricOpen] = useState(false)
   const [rangeOpen, setRangeOpen] = useState(false)
@@ -339,7 +331,19 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
 
   /** All time means every day we hold; the rest are trailing windows. */
   const windowDays = days === 0 ? data.length : days
-  const rangeAvailable = (range: number) => (range === 0 ? data.length > 1 : data.length >= 2)
+
+  /**
+   * Why a range cannot be picked, or nothing if it can.
+   *
+   * Two different refusals, and they are worth telling apart: an app three days
+   * old has no year to show anybody, while a year that exists but is not for
+   * this reader is an invitation to sign in. Same lock, different sentence.
+   */
+  const rangeBlocked = (range: number) => {
+    if (!signedIn && range !== DEFAULT_DAYS) return 'Sign in to see other date ranges'
+    if (range === 0 ? data.length <= 1 : data.length < 2) return 'Not enough history for this range'
+    return null
+  }
 
   const rows = useMemo<ChartRow[]>(() => {
     const current = data.slice(-windowDays)
@@ -355,24 +359,14 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
     })
     const rawInstalls = current.map((p) => p.installs ?? null)
 
-    /*
-     * Every series takes the same treatment. Smoothing the plotted metric and
-     * leaving installs raw put two different kinds of quantity in one tooltip
-     * under identical styling — a seven-day average beside a day's true count,
-     * with nothing to say which was which.
-     */
-    const currentValues = trend ? smooth(rawCurrent) : rawCurrent
-    const prevValues = trend ? smooth(rawPrev) : rawPrev
-    const installValues = trend ? smooth(rawInstalls) : rawInstalls
-
     return current.map((point, i) => ({
       date: point.date,
-      value: currentValues[i],
-      prevValue: prevValues[i],
+      value: rawCurrent[i],
+      prevValue: rawPrev[i],
       prevDate: previous[i - offset]?.date ?? null,
-      installs: installValues[i],
+      installs: rawInstalls[i],
     }))
-  }, [data, windowDays, trend, metric])
+  }, [data, windowDays, metric])
 
   /*
    * Offered only when the days actually carry installs, and never against the
@@ -524,13 +518,14 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
             {rangeOpen && (
               <div className="solid-raised border-border absolute right-0 z-20 mt-1 w-[175px] overflow-hidden rounded-[14px] border py-1">
                 {RANGES.map((range) => {
-                  const enabled = rangeAvailable(range.days)
+                  const blocked = rangeBlocked(range.days)
+                  const enabled = !blocked
                   return (
                     <button
                       key={range.label}
                       type="button"
                       disabled={!enabled}
-                      title={enabled ? undefined : 'Not enough history for this range'}
+                      title={blocked ?? undefined}
                       onClick={() => {
                         setDays(range.days)
                         setRangeOpen(false)
@@ -547,6 +542,20 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
                     </button>
                   )
                 })}
+
+                {/*
+                  A row of locks with no way past them is a dead end. Everything
+                  above this line is one sign-in away, so the menu says so and
+                  offers the door rather than leaving the reader to find it.
+                */}
+                {!signedIn && (
+                  <Link
+                    href="/login"
+                    className="border-border text-blue hover:bg-surface-2 mt-1 flex items-center gap-2 border-t px-3 py-2 text-[13px] transition-colors"
+                  >
+                    Sign in to unlock
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -627,7 +636,7 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
             )}
             <Tooltip
               cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }}
-              content={<MetricTooltip metric={metric} showInstalls={installsOn} trend={trend} />}
+              content={<MetricTooltip metric={metric} showInstalls={installsOn} />}
             />
 
             {compare && hasComparison && (
@@ -720,7 +729,6 @@ export function RevenueChart({ data }: { data: RevenuePoint[] }) {
           label="Compare previous period"
           hint={hasComparison ? undefined : 'Needs a full earlier period of history'}
         />
-        <Toggle checked={trend} onChange={setTrend} label="Trend view" />
       </div>
     </div>
   )
@@ -824,13 +832,11 @@ function MetricTooltip({
   payload,
   metric,
   showInstalls,
-  trend,
 }: {
   active?: boolean
   payload?: { payload: ChartRow }[]
   metric?: Metric
   showInstalls?: boolean
-  trend?: boolean
 }) {
   if (!active || !payload?.length || !metric) return null
   const point = payload[0].payload
@@ -877,19 +883,6 @@ function MetricTooltip({
           value={metric.format(point.prevValue)}
           muted
         />
-      )}
-
-      {/*
-       * Trend view replaces every figure with a seven-day average, so on a day
-       * the app took nothing the tooltip reads a few dollars. Left unsaid that
-       * is simply a wrong number against a date — and this site's whole claim
-       * is that its figures are real. The chart cannot show the smoothing, so
-       * the tooltip has to name it.
-       */}
-      {trend && (
-        <p className="border-border text-muted mt-2 border-t pt-1.5 text-[10px]">
-          7-day average, not the day&apos;s own figure
-        </p>
       )}
     </div>
   )

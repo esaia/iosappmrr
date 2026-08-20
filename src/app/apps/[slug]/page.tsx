@@ -20,6 +20,7 @@ import { ShareButton } from '@/components/share-dialog'
 import { ExpandableText } from '@/components/expandable-text'
 import { VibecodeVerdict } from '@/components/vibecode-verdict'
 import { TechIcon } from '@/components/tech-icon'
+import { getCurrentUser } from '@/lib/auth'
 import { getAppBySlug, getAppReviews, getRevenueHistory, listApps } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
 import { getVerdict } from '@/lib/data/vibecode'
@@ -54,8 +55,16 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 export default async function AppPage({ params }: Params) {
   const { slug } = await params
-  const record = await getAppBySlug(slug)
+  /*
+   * Who is reading, alongside the app itself. The header already asks for the
+   * session on every route, so this costs nothing extra — `getCurrentUser` is
+   * cached per request — but it decides how much history the page is allowed to
+   * send, so it has to be answered before the fetch below.
+   */
+  const [record, viewer] = await Promise.all([getAppBySlug(slug), getCurrentUser()])
   if (!record) notFound()
+
+  const signedIn = viewer != null
 
   const { app, metadata, metrics, category, founder, tech } = record
 
@@ -66,7 +75,14 @@ export default async function AppPage({ params }: Params) {
    * database in another country; run together they cost one.
    */
   const [history, reviews, verdict, relatedAll, totalSpots, allSponsors] = await Promise.all([
-    getRevenueHistory(app.id, 365),
+    /*
+     * A signed-out reader gets the last 30 days, and gets them as data rather
+     * than as a locked control over a full year already sitting in the page
+     * source — a gate drawn in the client is not a gate. Sixty, not thirty:
+     * "compare previous period" needs the window before the one on screen, and
+     * that comparison is part of what the free view offers.
+     */
+    getRevenueHistory(app.id, signedIn ? 365 : 60),
     getAppReviews(app.id),
     // Read from cache only. An app with no verdict simply does not show the
     // section, rather than blocking the page on a model call.
@@ -283,7 +299,7 @@ export default async function AppPage({ params }: Params) {
 
           {/* Revenue — the reason anyone is on this page. */}
           <div className="border-border border-t p-5 sm:p-6">
-            <RevenueChart data={history} />
+            <RevenueChart data={history} signedIn={signedIn} />
 
             <p className="border-border text-dim mt-5 border-t pt-3 text-[11px] leading-relaxed">
               Read from {providers.map(providerLabel).join(' and ') || 'no connected provider'}{' '}
