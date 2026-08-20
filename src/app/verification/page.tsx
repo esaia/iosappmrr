@@ -25,11 +25,13 @@ export default function VerificationPage() {
           including what we cannot verify.
         </p>
 
-        <Section title="1. The founder connects a read-only key">
+        <Section title="1. The founder connects a provider key">
           <p>
             Verification starts with the founder granting us the narrowest credential their provider
             offers. We test it immediately, and only store it if the test call succeeds — so a key
-            that does not work is never saved.
+            that does not work is never saved. Most of these keys can do nothing but read; where a
+            provider issues only one key for everything, we say so on the connect screen, and we
+            still call nothing but its metrics endpoint.
           </p>
           <div className="mt-5 space-y-4">
             {CONNECTABLE_PROVIDERS.map((provider) => (

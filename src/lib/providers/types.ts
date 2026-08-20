@@ -1,6 +1,12 @@
 import { z } from 'zod'
 
-export const PROVIDER_IDS = ['revenuecat', 'app_store_connect', 'superwall', 'stripe'] as const
+export const PROVIDER_IDS = [
+  'revenuecat',
+  'adapty',
+  'app_store_connect',
+  'superwall',
+  'stripe',
+] as const
 export type ProviderId = (typeof PROVIDER_IDS)[number]
 
 /**

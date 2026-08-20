@@ -14,6 +14,9 @@ export const PROVIDER_FIELDS: Record<
     { name: 'projectId', label: 'Project ID', placeholder: 'proj1ab2cd3e' },
     { name: 'apiKey', label: 'V2 secret key', type: 'password', placeholder: 'sk_…' },
   ],
+  adapty: [
+    { name: 'secretKey', label: 'Secret key', type: 'password', placeholder: 'secret_live_…' },
+  ],
   app_store_connect: [
     { name: 'issuerId', label: 'Issuer ID', placeholder: '57246542-96fe-1a63-e053-0824d011072a' },
     { name: 'keyId', label: 'Key ID', placeholder: '2X9R4HXF34' },

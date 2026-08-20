@@ -69,7 +69,9 @@ export default function PrivacyPage() {
           <p className="text-muted mt-4 leading-relaxed">
             We ask for the narrowest key each provider offers: a RevenueCat key scoped to read
             metrics, or an App Store Connect key limited to finance reports. Neither can move money,
-            issue refunds, or change your account.
+            issue refunds, or change your account. Adapty is the exception, and not a silent one —
+            it issues a single secret key per app that can also write through its server API, which
+            the connect screen says plainly. We call its analytics endpoint and nothing else.
           </p>
         </Section>
 

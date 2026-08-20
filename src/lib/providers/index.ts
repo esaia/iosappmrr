@@ -1,3 +1,4 @@
+import { adaptyAdapter } from './adapty'
 import { appStoreConnectAdapter } from './app-store-connect'
 import { revenueCatAdapter } from './revenuecat'
 import { stripeAdapter } from './stripe'
@@ -15,6 +16,7 @@ import { ProviderError, type InstallsAdapter, type ProviderAdapter, type Provide
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const ADAPTERS: Partial<Record<ProviderId, ProviderAdapter<any>>> = {
   revenuecat: revenueCatAdapter,
+  adapty: adaptyAdapter,
   app_store_connect: appStoreConnectAdapter,
   stripe: stripeAdapter,
 }
@@ -27,7 +29,11 @@ const ADAPTERS: Partial<Record<ProviderId, ProviderAdapter<any>>> = {
  * above so connections already made keep syncing — dropping it there would
  * strand them with "no adapter registered" on the next run.
  */
-export const CONNECTABLE_PROVIDERS = [revenueCatAdapter, appStoreConnectAdapter] as const
+export const CONNECTABLE_PROVIDERS = [
+  revenueCatAdapter,
+  adaptyAdapter,
+  appStoreConnectAdapter,
+] as const
 
 export function getAdapter(provider: ProviderId) {
   const adapter = ADAPTERS[provider]

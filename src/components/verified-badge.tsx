@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 
 const PROVIDER_LABELS: Record<string, string> = {
   revenuecat: 'RevenueCat',
+  adapty: 'Adapty',
   app_store_connect: 'App Store Connect',
   superwall: 'Superwall',
   stripe: 'Stripe',

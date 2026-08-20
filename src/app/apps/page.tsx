@@ -8,7 +8,7 @@ import { Container } from '@/components/ui/container'
 export const revalidate = 600
 
 const DESCRIPTION =
-  'Browse App Store apps with revenue read directly from RevenueCat or App Store Connect. Filter by category, tech stack, and revenue.'
+  'Browse App Store apps with revenue read directly from RevenueCat, Adapty, or App Store Connect. Filter by category, tech stack, and revenue.'
 
 /**
  * This route is one list behind five query parameters, so most of its URLs are

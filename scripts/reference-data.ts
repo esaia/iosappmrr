@@ -60,6 +60,7 @@ export const TECH_TAGS = [
   ['firebase', 'Firebase', 'backend'],
   ['cloudkit', 'CloudKit', 'backend'],
   ['revenuecat', 'RevenueCat', 'monetization'],
+  ['adapty', 'Adapty', 'monetization'],
   ['superwall', 'Superwall', 'monetization'],
   ['storekit-2', 'StoreKit 2', 'monetization'],
 ] as const

@@ -26,6 +26,7 @@ const bytea = customType<{ data: Buffer; notNull: false; default: false }>({
 export const appStatus = pgEnum('app_status', ['draft', 'pending', 'live', 'hidden'])
 export const providerId = pgEnum('provider_id', [
   'revenuecat',
+  'adapty',
   'app_store_connect',
   'superwall',
   'stripe',
