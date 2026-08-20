@@ -109,7 +109,9 @@ export function AppRow({
         )}
       </div>
 
-      <div className="tabular text-fg pointer-events-none relative w-24 shrink-0 text-right text-[13px] font-extrabold sm:w-28">
+      {/* Larger than the app's name beside it: this is the figure the table is
+          sorted by, and it should be the first thing read across a row. */}
+      <div className="tabular text-fg pointer-events-none relative w-24 shrink-0 text-right text-[15px] font-extrabold sm:w-28">
         {formatMoney(app.mrrCents)}
       </div>
 
