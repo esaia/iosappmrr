@@ -212,6 +212,33 @@ function useReducedMotion() {
 }
 
 /**
+ * A phone has no width to spare.
+ *
+ * The plot sits inside the card's padding with a value axis on each side, and
+ * on a 390px screen those four gutters ate roughly a third of the row — the
+ * bars were squeezed into the middle while the edges sat empty. Below `sm` the
+ * chart bleeds out to the card's own edges and the axes give back what they
+ * can, which is where the missing width comes from.
+ *
+ * Starts false and resolves in an effect so server and first client render
+ * agree and hydration does not warn.
+ */
+function useNarrow() {
+  const [narrow, setNarrow] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 639px)')
+    setNarrow(query.matches)
+
+    const onChange = (event: MediaQueryListEvent) => setNarrow(event.matches)
+    query.addEventListener('change', onChange)
+    return () => query.removeEventListener('change', onChange)
+  }, [])
+
+  return narrow
+}
+
+/**
  * Matches the site's own easing and pace — see `.rise` and `.draw` in
  * globals.css.
  *
@@ -292,6 +319,7 @@ export function RevenueChart({
    */
   const [compare, setCompare] = useState(() => !data.some((point) => point.installs != null))
   const animate = !useReducedMotion()
+  const narrow = useNarrow()
   const [metricOpen, setMetricOpen] = useState(false)
   const [rangeOpen, setRangeOpen] = useState(false)
 
@@ -587,9 +615,12 @@ export function RevenueChart({
         and the range pickers above do everything it offers, and those keep
         their rings. So the outline is dropped here rather than site-wide.
       */}
-      <div className="h-72 w-full [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none">
+      <div className="-mx-5 h-72 w-auto sm:mx-0 sm:w-full [&_.recharts-surface]:outline-none [&_.recharts-wrapper]:outline-none">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <ComposedChart
+            data={rows}
+            margin={{ top: 4, right: narrow ? 2 : 8, bottom: 0, left: narrow ? 2 : 0 }}
+          >
             <defs>
               {/* Deep at the line, fading to nothing at the axis. */}
               <linearGradient id="metric-fill" x1="0" y1="0" x2="0" y2="1">
@@ -605,8 +636,12 @@ export function RevenueChart({
               dataKey="date"
               tickLine={false}
               axisLine={false}
-              minTickGap={48}
-              tick={{ fill: 'var(--fg-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+              minTickGap={narrow ? 28 : 48}
+              tick={{
+                fill: 'var(--fg-muted)',
+                fontSize: narrow ? 10 : 11,
+                fontFamily: 'var(--font-mono)',
+              }}
               tickFormatter={(value: string) =>
                 new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
               }
@@ -614,8 +649,12 @@ export function RevenueChart({
             <YAxis
               tickLine={false}
               axisLine={false}
-              width={56}
-              tick={{ fill: 'var(--fg-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+              width={narrow ? 40 : 56}
+              tick={{
+                fill: 'var(--fg-muted)',
+                fontSize: narrow ? 10 : 11,
+                fontFamily: 'var(--font-mono)',
+              }}
               tickFormatter={(value: number) => metric.format(value)}
             />
             {installsOn && (
@@ -629,8 +668,12 @@ export function RevenueChart({
                 orientation="right"
                 tickLine={false}
                 axisLine={false}
-                width={48}
-                tick={{ fill: 'var(--fg-muted)', fontSize: 11, fontFamily: 'var(--font-mono)' }}
+                width={narrow ? 32 : 48}
+                tick={{
+                  fill: 'var(--fg-muted)',
+                  fontSize: narrow ? 10 : 11,
+                  fontFamily: 'var(--font-mono)',
+                }}
                 tickFormatter={(value: number) => formatCount(value)}
               />
             )}
