@@ -1,8 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import type { User } from '@supabase/supabase-js'
+import { timeoutFetch } from '@/lib/supabase/timeout'
 import { NextResponse, type NextRequest } from 'next/server'
-
-const AUTH_TIMEOUT_MS = 3000
 
 /**
  * Refreshes the auth session on every request and gates the private routes.
@@ -38,13 +37,10 @@ export async function updateSession(request: NextRequest) {
           }
         },
       },
-      global: {
-        // A slow Supabase must not hold the request open until the platform
-        // kills the middleware — a 504 for every signed-in visitor is far worse
-        // than serving them a stale session for one request.
-        fetch: (input, init) =>
-          fetch(input, { ...init, signal: AbortSignal.timeout(AUTH_TIMEOUT_MS) }),
-      },
+      // A slow Supabase must not hold the request open until the platform kills
+      // the middleware — a 504 for every signed-in visitor is far worse than
+      // serving them a stale session for one request.
+      global: { fetch: timeoutFetch },
     },
   )
 

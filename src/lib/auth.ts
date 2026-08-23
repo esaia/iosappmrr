@@ -9,9 +9,16 @@ import { createClient } from '@/lib/supabase/server'
 /** Cached per request so a page and its children don't each hit Supabase. */
 export const getCurrentUser = cache(async () => {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+
+  // A hung or failing Supabase Auth reads as "nobody is signed in" rather than
+  // throwing. The header renders on every page, so letting the error escape
+  // would turn an auth outage into a site outage.
+  let user
+  try {
+    user = (await supabase.auth.getUser()).data.user
+  } catch {
+    return null
+  }
 
   if (!user) return null
 

@@ -1,6 +1,7 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
+import { timeoutFetch } from '@/lib/supabase/timeout'
 
 function requireEnv(name: string) {
   const value = process.env[name]
@@ -29,6 +30,7 @@ export async function createClient() {
           }
         },
       },
+      global: { fetch: timeoutFetch },
     },
   )
 }
