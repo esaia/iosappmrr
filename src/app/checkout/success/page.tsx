@@ -3,38 +3,53 @@ import Link from 'next/link'
 import { Container } from '@/components/ui/container'
 
 export const metadata: Metadata = {
-  title: 'Payment received',
+  title: 'Checkout',
   robots: { index: false },
 }
 
 /**
- * Where Dodo sends the customer back to.
+ * Where Dodo sends the customer back to, on success and on failure alike —
+ * the same `return_url` is used for both, distinguished only by a `status`
+ * query param Dodo appends (`succeeded`, `failed`, `cancelled`, …).
  *
- * Deliberately does no granting. Landing here is not proof of payment — anyone
- * can type this URL — so the benefit is applied by the signed webhook instead.
- * That means it can arrive a second or two after this page renders, which is
- * what the copy says rather than pretending the purchase is already live.
+ * A successful-looking status here is still not proof of payment — anyone can
+ * type this URL with `status=succeeded` on it — so the benefit is applied by
+ * the signed webhook regardless of what this page says. That means it can
+ * arrive a second or two after this page renders, which is what the success
+ * copy says rather than pretending the purchase is already live. A failed
+ * status, on the other hand, is safe to trust for display purposes: showing
+ * a wrong "payment received" to someone whose card was declined is a worse
+ * failure than showing a wrong "something went wrong" to nobody, since the
+ * webhook never grants anything for a payment that did not happen.
  *
  * The animation is CSS only, so this stays a server component and the text is
  * in the HTML whether or not anything moves. Each element ends at its resting
  * state, so the reduced-motion rule in globals.css simply lands them there.
  */
-export default function CheckoutSuccessPage() {
+export default async function CheckoutSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>
+}) {
+  const { status } = await searchParams
+  const failed = status != null && status !== 'succeeded'
+
   return (
     <Container className="py-20">
       <div className="mx-auto flex max-w-lg flex-col items-center text-center">
-        <SuccessMark />
+        {failed ? <FailureMark /> : <SuccessMark />}
 
         <h1 className="display rise mt-8 text-3xl font-semibold" style={{ animationDelay: '0.5s' }}>
-          Payment received
+          {failed ? 'Payment failed' : 'Payment received'}
         </h1>
 
         <p
           className="text-muted rise mt-4 text-[13px] leading-relaxed"
           style={{ animationDelay: '0.62s' }}
         >
-          Thank you. Your purchase is being applied now — it usually takes a few seconds. Reload
-          your dashboard if you do not see it straight away.
+          {failed
+            ? 'Your card was not charged. Try again from the app’s edit screen, or use a different card.'
+            : 'Thank you. Your purchase is being applied now — it usually takes a few seconds. Reload your dashboard if you do not see it straight away.'}
         </p>
 
         <Link
@@ -102,6 +117,58 @@ function SuccessMark() {
           d="M34 51.5 L45.5 63 L67 41"
           pathLength={1}
           className="stroke-green draw"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeDasharray="1"
+          strokeDashoffset="1"
+          style={{ animationDelay: '0.42s', animationDuration: '0.4s' }}
+        />
+      </svg>
+    </div>
+  )
+}
+
+/** The same ring-and-mark shape as `SuccessMark`, in red and with a cross. */
+function FailureMark() {
+  return (
+    <div className="relative flex size-24 items-center justify-center">
+      <div className="bg-red/12 absolute inset-0 rounded-full blur-2xl" aria-hidden="true" />
+
+      <span className="border-red/40 halo absolute inset-2 rounded-full border" aria-hidden="true" />
+
+      <svg
+        viewBox="0 0 100 100"
+        className="settle relative size-24"
+        fill="none"
+        role="img"
+        aria-label="Payment failed"
+      >
+        <circle
+          cx="50"
+          cy="50"
+          r="34"
+          pathLength={1}
+          className="stroke-red/25"
+          strokeWidth="4"
+          strokeDasharray="1"
+        />
+        <circle
+          cx="50"
+          cy="50"
+          r="34"
+          pathLength={1}
+          className="stroke-red draw"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray="1"
+          strokeDashoffset="1"
+          transform="rotate(-90 50 50)"
+        />
+        <path
+          d="M39 39 L61 61 M61 39 L39 61"
+          pathLength={1}
+          className="stroke-red draw"
           strokeWidth="5"
           strokeLinecap="round"
           strokeLinejoin="round"
