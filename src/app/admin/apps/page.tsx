@@ -96,12 +96,13 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
   const dofollow = row.websiteDofollow
   /*
    * A paid slot or link is not the admin's to switch off. Both are bought
-   * through Paddle, and Paddle's webhook already removes them on cancellation or
-   * refund — so there is nothing here that needs a button, and a button would
-   * only make it possible to take away something a founder is paying for.
+   * through the payment provider, and its webhook already removes them on
+   * cancellation or refund — so there is nothing here that needs a button,
+   * and a button would only make it possible to take away something a
+   * founder is paying for.
    */
-  const slotIsPaid = row.sponsorSource === 'paddle'
-  const dofollowIsPaid = row.dofollowSource === 'paddle'
+  const slotIsPaid = row.sponsorSource !== null && row.sponsorSource !== 'admin'
+  const dofollowIsPaid = row.dofollowSource !== null && row.dofollowSource !== 'admin'
 
   return (
     <li className="border-border bg-surface rounded-card border p-4">
@@ -133,7 +134,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
               <Badge tone="up">
                 {row.dofollowSource === 'admin'
                   ? 'Dofollow — gifted'
-                  : row.dofollowSource === 'paddle'
+                  : row.dofollowSource
                     ? 'Dofollow — paid'
                     : /*
                        * The flag is on with no purchase behind it. Worth naming
@@ -192,7 +193,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
           {slotIsPaid ? (
             <p className="text-dim text-[12px]">
               Paying sponsor — the slot ends when their subscription does. Cancel or refund it in
-              Paddle.
+              Dodo.
             </p>
           ) : sponsoring ? (
             <ActionForm
@@ -230,7 +231,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
             dofollow
               ? row.dofollowSource === 'admin'
                 ? 'On — gifted'
-                : row.dofollowSource === 'paddle'
+                : row.dofollowSource
                   ? 'On — paid'
                   : 'On — no purchase on record'
               : row.website
@@ -240,7 +241,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
         >
           {dofollowIsPaid ? (
             <p className="text-dim text-[12px]">
-              Paid for — refund it in Paddle, or revoke the purchase from Purchases.
+              Paid for — refund it in Dodo, or revoke the purchase from Purchases.
             </p>
           ) : dofollow ? (
             <ActionForm

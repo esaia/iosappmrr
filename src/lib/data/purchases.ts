@@ -3,19 +3,20 @@ import { and, desc, eq, gt, isNull, ne, or, sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { appStoreMetadata, apps, purchases, siteSettings } from '@/db/schema'
 import { clampSlots } from '@/lib/settings'
-import type { PurchaseKind } from '@/lib/paddle'
+import type { PurchaseKind } from '@/lib/dodo'
 
 /**
- * Records a checkout the moment it is created, before Paddle has taken any
- * money. The row exists so a webhook that arrives before the browser redirect
- * completes has something to update, and so abandoned checkouts are visible
- * rather than invisible.
+ * Records a checkout the moment it is created, before the provider has taken
+ * any money. The row exists so a webhook that arrives before the browser
+ * redirect completes has something to update, and so abandoned checkouts are
+ * visible rather than invisible.
  */
 export async function recordPendingPurchase(input: {
   kind: PurchaseKind
   appId: string
   profileId: string
   checkoutId: string
+  source: 'dodo'
 }) {
   await db
     .insert(purchases)
@@ -28,15 +29,15 @@ export async function recordPendingPurchase(input: {
 /**
  * Promotes a purchase to `active` and grants what was bought.
  *
- * Idempotent: Paddle delivers webhooks at least once, and the same payment is
- * reported by more than one event. Granting is a write of a fixed value rather
- * than an increment, so a replay is a no-op.
+ * Idempotent: the provider delivers webhooks at least once, and the same
+ * payment is reported by more than one event. Granting is a write of a fixed
+ * value rather than an increment, so a replay is a no-op.
  *
- * Identified by the subscription where there is one and by the transaction that
- * opened the checkout otherwise. A renewal carries a new transaction id every
- * month, so the subscription is the durable key — but it does not exist until
- * the first payment, which is why both are accepted and the subscription is
- * tried first.
+ * Identified by the subscription where there is one and by the checkout that
+ * opened it otherwise. A renewal carries a new payment id every month, so the
+ * subscription is the durable key — but it does not exist until the first
+ * payment, which is why both are accepted and the subscription is tried
+ * first.
  *
  * Returns false when neither matches — which happens if the metadata was lost
  * or the row was deleted with its app. The caller still acknowledges the
@@ -72,8 +73,9 @@ export async function activatePurchase(input: {
       currentPeriodEnd: input.currentPeriodEnd ?? undefined,
       /*
        * A subscription that is billing again is not winding down. The webhook
-       * writes the flag itself straight after, from the scheduled change Paddle
-       * reports, so this only clears a stale one rather than deciding anything.
+       * writes the flag itself straight after, from the scheduled change the
+       * provider reports, so this only clears a stale one rather than deciding
+       * anything.
        */
       cancelAtPeriodEnd: false,
       updatedAt: new Date(),
@@ -89,7 +91,7 @@ export async function activatePurchase(input: {
   if (!row) return false
 
   await applyGrant(row.kind, row.appId)
-  if (row.source === 'paddle') await supersedeGifts(row.kind, row.appId, row.id)
+  if (row.source !== 'admin') await supersedeGifts(row.kind, row.appId, row.id)
   return true
 }
 
@@ -101,8 +103,8 @@ export async function activatePurchase(input: {
  * showing them. This only lets the account screen say "Ends" rather than
  * "Renews", and offer the way back.
  *
- * Written both by the founder's own action and by `subscription.updated`, so a
- * cancellation made in Paddle's own portal shows up here too.
+ * Written both by the founder's own action and by the subscription webhook, so
+ * a cancellation made in the provider's own portal shows up here too.
  */
 export async function setCancelAtPeriodEnd(
   subscriptionId: string,
@@ -216,17 +218,23 @@ async function applyRevoke(kind: PurchaseKind, appId: string) {
  * Withdraws a purchase after a refund or a lapsed subscription.
  *
  * Looked up by subscription id when there is one, so a cancellation that
- * arrives without the original checkout id still finds its row.
+ * arrives without the original checkout id still finds its row. A refund
+ * carries neither — only the id of the payment it refunds — which is why
+ * `orderId` is matched too: `activatePurchase` writes it there the moment the
+ * payment first succeeds.
  */
 export async function revokePurchase(input: {
   checkoutId?: string | null
+  orderId?: string | null
   subscriptionId?: string | null
 }) {
   const match = input.subscriptionId
     ? eq(purchases.subscriptionId, input.subscriptionId)
     : input.checkoutId
       ? eq(purchases.checkoutId, input.checkoutId)
-      : null
+      : input.orderId
+        ? eq(purchases.orderId, input.orderId)
+        : null
 
   if (!match) return false
 
@@ -293,9 +301,9 @@ export async function grantPurchase(input: {
  * Withdraws one purchase by its own id, whoever granted it.
  *
  * This is the admin counterpart to `revokePurchase`, which finds its row
- * through Paddle's identifiers. An admin is looking at a specific row on screen
- * and means that one — including a paid row, which is how a refund handled
- * outside Paddle gets reflected here.
+ * through the provider's identifiers. An admin is looking at a specific row on
+ * screen and means that one — including a paid row, which is how a refund
+ * handled outside the provider's own dashboard gets reflected here.
  */
 export async function revokePurchaseById(id: string, note?: string | null) {
   const [row] = await db
@@ -313,8 +321,8 @@ export async function revokePurchaseById(id: string, note?: string | null) {
 /**
  * Promotes a stuck `pending` row to `active` by hand.
  *
- * The escape hatch for a webhook that never arrived and a Paddle transaction that
- * `paddle:reconcile` cannot see. It grants without proof of payment, so it is
+ * The escape hatch for a webhook that never arrived and a payment that
+ * `dodo:reconcile` cannot see. It grants without proof of payment, so it is
  * deliberately a separate, logged action rather than part of the normal flow.
  */
 export async function activatePurchaseById(id: string, note?: string | null) {
@@ -332,7 +340,7 @@ export async function activatePurchaseById(id: string, note?: string | null) {
 
 export type Entitlement = {
   id: string
-  source: 'paddle' | 'admin'
+  source: 'paddle' | 'dodo' | 'admin'
   /** Null for a one-off purchase, or for a gift with no expiry. */
   currentPeriodEnd: Date | null
   subscriptionId: string | null
@@ -367,7 +375,7 @@ export async function getAppEntitlement(
       ),
     )
     .orderBy(
-      sql`case when ${purchases.source} = 'paddle' then 0 else 1 end`,
+      sql`case when ${purchases.source} = 'admin' then 1 else 0 end`,
       desc(purchases.createdAt),
     )
     .limit(1)
@@ -515,12 +523,12 @@ export async function revokeActivePurchasesForApp(
    * Restricts the revoke to one source.
    *
    * The admin screens pass 'admin', because a slot someone is paying for is not
-   * theirs to switch off — it ends when the subscription ends, and Paddle's
-   * webhook is what tells us that. Expressing it as a filter here, rather than
-   * only as a check in the action, means the safe behaviour survives a future
-   * caller that forgets to look first.
+   * theirs to switch off — it ends when the subscription ends, and the
+   * provider's webhook is what tells us that. Expressing it as a filter here,
+   * rather than only as a check in the action, means the safe behaviour
+   * survives a future caller that forgets to look first.
    */
-  source?: 'admin' | 'paddle',
+  source?: 'admin' | 'paddle' | 'dodo',
 ) {
   const rows = await db
     .update(purchases)

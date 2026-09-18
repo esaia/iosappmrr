@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth'
 import { createBillingPortalSession } from '@/lib/checkout'
 
 /**
- * Sends the founder to Paddle's customer portal.
+ * Sends the founder to Dodo's customer portal.
  *
  * A GET route rather than a server action, because this is the one control on
  * the page that leaves the site: a plain link can carry `target="_blank"` and

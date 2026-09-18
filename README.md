@@ -151,7 +151,7 @@ waiting for the 04:30 cron.
 
 ## Payments
 
-Paddle is the merchant of record for the two paid products:
+Dodo Payments is the merchant of record for the two paid products:
 
 | Product       | Billing  | Grants                                                                                  |
 | ------------- | -------- | --------------------------------------------------------------------------------------- |
@@ -161,56 +161,53 @@ Paddle is the merchant of record for the two paid products:
 Both are bought from the app's edit screen, which is the only place that knows
 which listing a purchase belongs to.
 
-Paddle replaced Polar, which settles to sellers over Stripe Connect Express and
-does not support Georgia — the checkout worked, the payout did not.
+Dodo replaced Paddle, whose live account never finished Paddle's own account
+review — checkout stayed dead with no ETA and no setting on our side to fix.
+Before that, Paddle had replaced Polar, which settles to sellers over Stripe
+Connect Express and does not support Georgia — the checkout worked, the payout
+did not. Dodo's payout eligibility for this seller's country was confirmed
+before switching.
 
-**Paddle hosts no checkout page.** The overlay is drawn by Paddle.js over a page
-of ours, so `createCheckout` creates the transaction server-side and returns
-`/checkout/pay?_ptxn=txn_…`; that page loads Paddle.js, which opens the checkout
-for the transaction named in the URL. Callers are unaware — they still receive a
-URL and redirect to it.
+**Dodo hosts its own checkout page.** `createCheckout` creates a checkout
+session server-side and returns Dodo's `checkout_url` directly — callers just
+redirect to it, no page of ours needs to draw a payment form.
 
-**Nothing is granted by the browser.** The success URL proves nothing — anyone
-can type it, and so can anyone fire the `checkout.completed` event in their own
-console — so `/api/webhooks/paddle` is the only code that promotes a purchase to
-`active`. It verifies Paddle's signature, and every handler is idempotent
+**Nothing is granted by the browser.** The return URL proves nothing — anyone
+can type it — so `/api/webhooks/dodo` is the only code that promotes a purchase
+to `active`. It verifies Dodo's signature, and every handler is idempotent
 because webhooks are delivered at least once. `websiteDofollow` is deliberately
 absent from `updateAppDetails`, so no founder-facing form can set it.
 
-Leave `PADDLE_API_KEY` or a price id unset and that product simply is not
-offered — the UI says so rather than showing a button that throws.
+Leave `DODO_PAYMENTS_API_KEY` or a product id unset and that product simply is
+not offered — the UI says so rather than showing a button that throws.
 
 To set it up:
 
-1. Create the two products in Paddle and copy their **price** ids (`pri_…`, not
-   `pro_…`) into `PADDLE_PRICE_DOFOLLOW` and `PADDLE_PRICE_SPONSOR`. The sponsor
-   price must recur monthly; `npm run paddle:prices` checks that for you.
-2. Add a notification destination pointing at
-   `https://your-host/api/webhooks/paddle`, subscribed to
-   `transaction.completed`, `subscription.activated`, `subscription.updated`,
-   `subscription.canceled`, and `adjustment.created`.
-3. Copy that destination's signing secret into `PADDLE_WEBHOOK_SECRET`, and the
-   client-side token into `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`.
-4. Approve the site's domain in Paddle → Checkout → Checkout settings. Paddle.js
-   refuses to open on an unapproved domain, and sandbox accepts `localhost`.
-5. Keep `PADDLE_ENV=sandbox` until you have tested end to end. Sandbox is a
-   separate deployment — its keys, tokens and price ids do not work in
-   production.
+1. Create the two products in Dodo and copy their product ids (`pdt_…`) into
+   `DODO_PRODUCT_DOFOLLOW` and `DODO_PRODUCT_SPONSOR`. The sponsor product must
+   be a subscription; `npm run dodo:products` checks that for you.
+2. Add a webhook endpoint pointing at `https://your-host/api/webhooks/dodo`,
+   subscribed to `payment.succeeded`, `subscription.active`,
+   `subscription.renewed`, `subscription.cancelled`, and `refund.succeeded`.
+3. Copy that endpoint's signing key into `DODO_PAYMENTS_WEBHOOK_KEY`.
+4. Keep `DODO_PAYMENTS_ENV=test_mode` until you have tested end to end. Test
+   mode is a separate deployment — its keys, webhook secret and product ids do
+   not work in live mode.
 
 ### When a webhook is missed
 
 A webhook is a delivery, not a guarantee. If the endpoint is missing,
-misconfigured, or down when a transaction completes, Paddle has nowhere to
-deliver to — and it retries only for a limited window, so that payment is
-stranded: charged, but never granted.
+misconfigured, or down when a payment succeeds, Dodo has nowhere to deliver to
+— and it retries only for a limited window, so that payment is stranded:
+charged, but never granted.
 
-`npm run paddle:reconcile` asks Paddle the question the webhook would have
-answered. For every purchase still `pending` it checks whether that transaction
-completed, and grants what was bought:
+`npm run dodo:reconcile` asks Dodo the question the webhook would have
+answered. For every purchase still `pending` it checks whether that checkout
+session produced a completed payment, and grants what was bought:
 
 ```bash
-npm run paddle:reconcile          # report what would change
-npm run paddle:reconcile -- --fix # apply it
+npm run dodo:reconcile          # report what would change
+npm run dodo:reconcile -- --fix # apply it
 ```
 
 It calls the same `activatePurchase` the webhook does rather than reimplementing
@@ -219,10 +216,11 @@ repeatedly, or alongside a webhook that later arrives, is safe. Worth running
 after any webhook outage, and worth checking if a founder reports paying for
 something they did not receive.
 
-> **Payouts.** Paddle is a merchant of record: it bills the customer, owns the
-> VAT, and pays the seller out on its own schedule. That is the reason it is
-> here — Polar settles over Stripe Connect Express, which does not cover
-> Georgia, so the checkout worked and the payout did not.
+> **Payouts.** Dodo Payments is a merchant of record: it bills the customer,
+> owns the tax, and pays the seller out on its own schedule. That is the
+> reason it is here — the provider before it, Paddle, never finished its own
+> account approval, and the one before that, Polar, settles over Stripe
+> Connect Express, which does not cover Georgia.
 
 ## Admin
 
@@ -280,10 +278,11 @@ Three rules, because a sponsor slot is a subscription and someone is paying for
 it:
 
 **An admin cannot switch off anything paid for.** Not the sponsor slot, not the
-dofollow link. Both end when Paddle says they end — `subscription.canceled` and
-a refund adjustment already withdraw them without anyone clicking anything — so the
-button would exist only to make it possible to take away something a founder is
-paying for. The Apps screen says who is paying instead of offering a control.
+dofollow link. Both end when Dodo says they end — `subscription.cancelled` and
+a `refund.succeeded` event already withdraw them without anyone clicking
+anything — so the button would exist only to make it possible to take away
+something a founder is paying for. The Apps screen says who is paying instead
+of offering a control.
 `revokeActivePurchasesForApp` takes a `source` filter and the admin screens pass
 `'admin'`, so the restriction holds in the data layer rather than only in the UI.
 

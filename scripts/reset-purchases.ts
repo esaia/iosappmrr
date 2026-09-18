@@ -6,25 +6,25 @@ import { apps, purchases } from '../src/db/schema'
 /**
  * Clears purchases so a checkout can be walked through again.
  *
- * Sandbox-only by intent: it deletes rows Paddle still has transactions for, which is
- * exactly what makes a flow re-testable and exactly what would destroy the
- * audit trail behind a real payment. It refuses to run against
- * PADDLE_ENV=production for that reason.
+ * Test-mode-only by intent: it deletes rows Dodo still has payments for,
+ * which is exactly what makes a flow re-testable and exactly what would
+ * destroy the audit trail behind a real payment. It refuses to run against
+ * DODO_PAYMENTS_ENV=live_mode for that reason.
  *
  * Deleting rather than revoking is deliberate. `revoked` is a real state the
  * app renders ("your link was withdrawn"); a founder who has never bought is a
  * founder with no row at all, and that absence is the state under test.
  *
- *   npm run paddle:reset                    # report only
- *   npm run paddle:reset -- --fix           # apply, all kinds
- *   npm run paddle:reset -- --fix --kind=dofollow
- *   npm run paddle:reset -- --fix --app=<slug>
+ *   npm run dodo:reset                    # report only
+ *   npm run dodo:reset -- --fix           # apply, all kinds
+ *   npm run dodo:reset -- --fix --kind=dofollow
+ *   npm run dodo:reset -- --fix --app=<slug>
  */
 async function main() {
   const apply = process.argv.includes('--fix')
 
-  if (process.env.PADDLE_ENV === 'production') {
-    console.error('\nPADDLE_ENV=production — refusing to delete purchase history.\n')
+  if (process.env.DODO_PAYMENTS_ENV === 'live_mode') {
+    console.error('\nDODO_PAYMENTS_ENV=live_mode — refusing to delete purchase history.\n')
     process.exit(1)
   }
 

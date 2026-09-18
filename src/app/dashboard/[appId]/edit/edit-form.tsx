@@ -37,7 +37,7 @@ export function EditForm({
   appName: string
   categories: Option[]
   tech: Option[]
-  /** What can be sold right now, decided on the server from the Paddle config. */
+  /** What can be sold right now, decided on the server from the Dodo config. */
   offers: {
     dofollowAvailable: boolean
     sponsorAvailable: boolean
@@ -406,7 +406,7 @@ function Offer({
         </form>
       ) : (
         /*
-         * No Paddle price configured, or nothing left to sell. Saying so is
+         * No Dodo product configured, or nothing left to sell. Saying so is
          * better than a button that fails once clicked.
          */
         <p className="text-dim mt-3 text-[11px]">Not available right now.</p>

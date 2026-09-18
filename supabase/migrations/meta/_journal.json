@@ -162,6 +162,13 @@
       "when": 1787293470575,
       "tag": "0022_adapty_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1787380000000,
+      "tag": "0023_dodo_payments",
+      "breakpoints": true
     }
   ]
 }

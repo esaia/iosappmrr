@@ -17,7 +17,7 @@ import {
   slugForAnonymity,
   uniqueSlug,
 } from '@/lib/data/mutations'
-import { isPaddleConfigured } from '@/lib/paddle'
+import { isDodoConfigured } from '@/lib/dodo'
 import { isConnectable } from '@/lib/providers'
 import { PROVIDER_FIELDS } from '@/lib/provider-fields'
 import { LISTING_LIMITS, tooLong } from '@/lib/listing'
@@ -313,12 +313,12 @@ export async function submitAppAction(
   /*
    * The upgrade is charged only once the app is real and verified. A founder
    * whose key was wrong has not been billed for a link on a listing that never
-   * went live, and one who reaches Paddle is buying something that already
+   * went live, and one who reaches checkout is buying something that already
    * exists. If the checkout cannot be opened we still send them to the app they
    * just published — the sale can be made again from the edit screen, but the
    * listing is not something to hand back as an error.
    */
-  if (data.dofollow && isPaddleConfigured('dofollow')) {
+  if (data.dofollow && isDodoConfigured('dofollow')) {
     const checkout = await createCheckout('dofollow', app, user)
     if ('url' in checkout) redirect(checkout.url)
   }

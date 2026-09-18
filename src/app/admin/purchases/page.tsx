@@ -43,9 +43,9 @@ export default async function AdminPurchasesPage({
           <p className="text-fg text-[13px]">
             <span className="font-medium">Before settling anything by hand</span>, run{' '}
             <code className="bg-surface-3 rounded px-1 py-0.5 text-[12px]">
-              npm run paddle:reconcile
+              npm run dodo:reconcile
             </code>
-            . It asks Paddle whether each pending checkout was actually paid and grants only the
+            . It asks Dodo whether each pending checkout was actually paid and grants only the
             ones that were. Settling here skips that check, so it is for payments you have confirmed
             another way.
           </p>

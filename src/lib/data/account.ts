@@ -7,7 +7,7 @@ export type BillingRow = {
   id: string
   kind: 'dofollow' | 'sponsor'
   status: string
-  source: 'paddle' | 'admin'
+  source: 'paddle' | 'dodo' | 'admin'
   amountCents: number | null
   currency: string | null
   currentPeriodEnd: Date | null

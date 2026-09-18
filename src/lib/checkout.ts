@@ -1,40 +1,12 @@
 import 'server-only'
 import { getAppEntitlement, getSlotInventory, recordPendingPurchase } from '@/lib/data/purchases'
-import { isPaddleConfigured, paddleClient, priceId, type PurchaseKind } from '@/lib/paddle'
+import { dodoClient, isDodoConfigured, productId, type PurchaseKind } from '@/lib/dodo'
 import { site } from '@/lib/site'
 
 export type CheckoutResult = { url: string } | { error: string }
 
-/** The page that loads Paddle.js and opens the overlay for a transaction. */
-const PAY_PAGE = `${site.url}/checkout/pay`
-
 /**
- * Finds the Paddle customer for a founder, or makes one.
- *
- * Paddle has no field for a foreign id on a customer, so email is the join —
- * and Paddle enforces it as unique, which is what makes this safe to call on
- * every checkout. The create is attempted only after the lookup misses, and a
- * miss that turns into a conflict (two checkouts opened at once) falls back to
- * looking again rather than failing the purchase.
- */
-async function findOrCreateCustomer(email: string) {
-  const paddle = paddleClient()
-
-  const existing = await paddle.customers.list({ email: [email] }).next()
-  if (existing[0]) return existing[0].id
-
-  try {
-    const created = await paddle.customers.create({ email })
-    return created.id
-  } catch {
-    const raced = await paddle.customers.list({ email: [email] }).next()
-    if (raced[0]) return raced[0].id
-    throw new Error(`Could not find or create a Paddle customer for ${email}.`)
-  }
-}
-
-/**
- * Opens a Paddle checkout for one paid product and records it as pending.
+ * Opens a Dodo checkout for one paid product and records it as pending.
  *
  * Shared by the edit screen's upgrade buttons and by the submit form, which
  * offers the dofollow link as part of listing an app. Both arrive here with an
@@ -45,19 +17,18 @@ async function findOrCreateCustomer(email: string) {
  * they do when a checkout cannot be opened: one reports it beside a button,
  * the other has just verified an app and must not lose that.
  *
- * The URL is one of ours. Paddle does not host a checkout page — it opens over
- * a page carrying Paddle.js, so the transaction is created here and handed to
- * `/checkout/pay` in the `_ptxn` parameter Paddle appends.
+ * The URL is Dodo's own hosted checkout page — unlike the previous provider,
+ * nothing here needs to draw a payment form of its own.
  */
 export async function createCheckout(
   kind: PurchaseKind,
   app: { id: string },
   user: { id: string; email?: string | null },
 ): Promise<CheckoutResult> {
-  if (!isPaddleConfigured(kind)) return { error: 'Checkout is not available yet.' }
+  if (!isDodoConfigured(kind)) return { error: 'Checkout is not available yet.' }
 
   /*
-   * Don't sell the same thing twice — Paddle would happily take the money.
+   * Don't sell the same thing twice — Dodo would happily take the money.
    *
    * A gift is the exception. Someone who was given a slot and then chooses to
    * pay for it is upgrading, not buying a duplicate: the payment takes over and
@@ -67,7 +38,7 @@ export async function createCheckout(
    */
   const existing = await getAppEntitlement(app.id, kind)
 
-  if (existing?.source === 'paddle') {
+  if (existing && existing.source !== 'admin') {
     return {
       error:
         kind === 'dofollow'
@@ -88,138 +59,76 @@ export async function createCheckout(
     if (free <= 0) return { error: 'All sponsor spots are currently taken.' }
   }
 
-  let transactionId: string
+  let sessionId: string
   let url: string
   try {
-    const paddle = paddleClient()
+    const dodo = dodoClient()
 
     /*
-     * A customer up front, rather than letting the overlay collect an email.
-     * It prefills the checkout, and it is what ties a second purchase to the
-     * same customer record instead of creating a duplicate — the job
-     * `externalCustomerId` did at Paddle.
+     * Passing the email lets Dodo find the existing customer by it (the
+     * default behaviour) rather than creating a duplicate for a second
+     * purchase, so there is no need to look one up by hand first.
      */
-    const customerId = user.email ? await findOrCreateCustomer(user.email) : undefined
+    const session = await dodo.checkoutSessions.create({
+      product_cart: [{ product_id: productId(kind), quantity: 1 }],
+      customer: user.email ? { email: user.email } : undefined,
+      metadata: { kind, appId: app.id, profileId: user.id },
+      return_url: `${site.url}/checkout/success`,
+    })
 
-    const fields = {
-      items: [{ priceId: priceId(kind), quantity: 1 }],
-      customerId,
-      customData: { kind, appId: app.id, profileId: user.id },
+    if (!session.checkout_url) {
+      throw new Error('Dodo returned a checkout session with no checkout URL.')
     }
 
-    /*
-     * Paddle will only put a checkout on a domain it has approved, and approval
-     * is a review of a real website — localhost is never getting one. So the
-     * approved page is asked for first, and a rejection falls back to the
-     * account's default payment link, whose URL is then pointed back at
-     * whatever origin this deployment actually runs on.
-     *
-     * What travels between the two is `_ptxn`, and the transaction it names is
-     * identical either way. Only the page that opens over it changes, which is
-     * the whole difference between testing against production and testing
-     * against a laptop.
-     */
-    let transaction
-    try {
-      transaction = await paddle.transactions.create({ ...fields, checkout: { url: PAY_PAGE } })
-    } catch (error) {
-      if (
-        (error as { code?: string })?.code !== 'transaction_checkout_url_domain_is_not_approved'
-      ) {
-        throw error
-      }
-      transaction = await paddle.transactions.create(fields)
-    }
-
-    if (!transaction.checkout?.url) {
-      throw new Error('Paddle returned a transaction with no checkout URL.')
-    }
-
-    transactionId = transaction.id
-    url = onThisOrigin(transaction.checkout.url)
+    sessionId = session.session_id
+    url = session.checkout_url
   } catch (error) {
-    console.error('[paddle] checkout creation failed', error)
+    console.error('[dodo] checkout creation failed', error)
     return { error: checkoutFailureMessage(error) }
   }
 
   /*
-   * Written before the caller redirects. The webhook can beat the customer back
-   * to the site, and it needs this row to already exist.
+   * Written before the caller redirects. The webhook can beat the customer
+   * back to the site, and it needs this row to already exist.
    */
   await recordPendingPurchase({
     kind,
     appId: app.id,
     profileId: user.id,
-    checkoutId: transactionId,
+    checkoutId: sessionId,
+    source: 'dodo',
   })
 
   return { url }
 }
 
 /**
- * Rewrites a Paddle checkout URL onto this deployment's own origin.
+ * Turns a Dodo failure into a sentence that names the thing to go and fix.
  *
- * A no-op in production, where Paddle already returns the approved page. It
- * matters on a machine Paddle has never heard of: the URL comes back pointing
- * at the default payment link's domain, and the only part worth keeping is the
- * `_ptxn` query it carries.
- */
-function onThisOrigin(checkoutUrl: string) {
-  try {
-    const { search } = new URL(checkoutUrl)
-    return `${PAY_PAGE}${search}`
-  } catch {
-    // Not a URL we can parse. Paddle's own is likelier to work than a guess.
-    return checkoutUrl
-  }
-}
-
-/**
- * Turns a Paddle failure into a sentence that names the thing to go and fix.
- *
- * Two of these are configuration rather than weather, and both otherwise
- * surface as "could not reach the payment provider" — which is untrue, and
- * sends whoever reads it looking at the network instead of at the dashboard
- * setting that is actually missing. They are worth naming because both are
- * settings only a person with the Paddle login can change, and neither can be
- * detected from here until someone tries to buy something.
- *
- * Everything else keeps the vague sentence on purpose: a founder mid-purchase
- * cannot act on a Paddle error code, and the log has the detail.
+ * A founder mid-purchase cannot act on a raw API error, so this only names the
+ * handful of cases that are a dashboard setting rather than a passing outage —
+ * everything else keeps the vague sentence on purpose, and the log has the
+ * detail.
  */
 function checkoutFailureMessage(error: unknown) {
-  const code = (error as { code?: string })?.code
+  const status = (error as { status?: number })?.status
 
-  if (code === 'transaction_checkout_url_domain_is_not_approved') {
-    return (
-      `Checkout is not set up for ${PAY_PAGE}. That domain has to be approved in Paddle ` +
-      'before a payment can open on it.'
-    )
+  if (status === 401 || status === 403) {
+    return 'Checkout is not set up yet: the payment provider has not finished approving this account.'
   }
 
-  if (code === 'transaction_default_checkout_url_not_set') {
-    return 'Checkout is not set up yet: Paddle needs a default payment link before it will take a payment.'
-  }
-
-  /*
-   * The live account exists and its key works, but Paddle has not finished
-   * onboarding it — website approval is part of that, and it is a review by a
-   * person rather than a setting. Worth naming because everything on our side
-   * looks correct while it is pending, which is the most confusing shape a
-   * failure can take.
-   */
-  if (code === 'transaction_checkout_not_enabled') {
-    return 'Checkout is not live yet: Paddle has not finished approving this account.'
+  if (status === 404 || status === 422) {
+    return 'Checkout is not set up correctly. The product id on file does not match anything in Dodo.'
   }
 
   return 'Could not reach the payment provider. Try again in a moment.'
 }
 
 /**
- * A signed link into Paddle's customer portal — invoices, receipts, and card
- * details, all of which live at Paddle rather than here.
+ * A signed link into Dodo's customer portal — invoices, receipts, and card
+ * details, all of which live at Dodo rather than here.
  *
- * Keyed by the customer Paddle holds for this founder's email, the same one
+ * Keyed by the customer Dodo holds for this founder's email, the same one
  * every checkout is created against, so they see every purchase they have made
  * rather than one product's. Returns an error rather than throwing when they
  * have bought nothing yet: there is no customer to open a portal for, and that
@@ -229,21 +138,22 @@ export async function createBillingPortalSession(user: {
   id: string
   email?: string | null
 }): Promise<CheckoutResult> {
-  if (!process.env.PADDLE_API_KEY || !user.email) return { error: 'Billing is not available yet.' }
+  if (!process.env.DODO_PAYMENTS_API_KEY || !user.email) {
+    return { error: 'Billing is not available yet.' }
+  }
 
   try {
-    const paddle = paddleClient()
+    const dodo = dodoClient()
 
-    const [customer] = await paddle.customers.list({ email: [user.email] }).next()
+    const customers = await dodo.customers.list({ email: user.email })
+    const customer = customers.items[0]
     if (!customer) return { error: 'No billing history yet.' }
 
-    // Empty list: the portal shows every subscription the customer has, which
-    // is what "manage my billing" should mean. Naming some would hide the rest.
-    const session = await paddle.customerPortalSessions.create(customer.id, [])
+    const session = await dodo.customers.customerPortal.create(customer.customer_id)
 
-    return { url: session.urls.general.overview }
+    return { url: session.link }
   } catch (error) {
-    console.error('[paddle] customer portal session failed', error)
+    console.error('[dodo] customer portal session failed', error)
     return { error: 'No billing history yet, or the payment provider is unreachable.' }
   }
 }
@@ -251,32 +161,28 @@ export async function createBillingPortalSession(user: {
 /**
  * Turns a sponsor's auto-renew off, or back on.
  *
- * Cancelling is never an immediate revoke: the founder has paid through the end
- * of the period and the rails should keep showing them until then. Paddle takes
- * that as `effective_from: next_billing_period`, holds it as a scheduled
- * change, and sends `subscription.canceled` when the period actually ends — the
- * webhook is what withdraws the slot, so nothing here touches the entitlement.
+ * Cancelling is never an immediate revoke: the founder has paid through the
+ * end of the period and the rails should keep showing them until then. Dodo
+ * takes that as `cancel_at_next_billing_date`, holds it as a scheduled
+ * change, and sends `subscription.cancelled` when the period actually ends —
+ * the webhook is what withdraws the slot, so nothing here touches the
+ * entitlement.
  *
- * Resuming is clearing that scheduled change, which is why this takes a flag
- * rather than being two functions. A period that has not ended yet was never
- * interrupted, so resuming costs nothing and starts no new billing period.
+ * Resuming is clearing that same flag, which is why this takes a boolean
+ * rather than being two functions.
  */
 export async function setSubscriptionCancellation(
   subscriptionId: string,
   cancelAtPeriodEnd: boolean,
 ): Promise<{ error?: string }> {
   try {
-    const paddle = paddleClient()
-
-    if (cancelAtPeriodEnd) {
-      await paddle.subscriptions.cancel(subscriptionId, { effectiveFrom: 'next_billing_period' })
-    } else {
-      await paddle.subscriptions.update(subscriptionId, { scheduledChange: null })
-    }
-
+    const dodo = dodoClient()
+    await dodo.subscriptions.update(subscriptionId, {
+      cancel_at_next_billing_date: cancelAtPeriodEnd,
+    })
     return {}
   } catch (error) {
-    console.error('[paddle] subscription cancel toggle failed', error)
+    console.error('[dodo] subscription cancel toggle failed', error)
     return { error: 'Could not reach the payment provider. Try again in a moment.' }
   }
 }

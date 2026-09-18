@@ -6,7 +6,7 @@ import { categories, techStackTags } from '@/db/schema'
 import { lookupApp } from '@/lib/appstore/lookup'
 import { getCurrentUser } from '@/lib/auth'
 import { dofollow } from '@/lib/dofollow'
-import { isPaddleConfigured } from '@/lib/paddle'
+import { isDodoConfigured } from '@/lib/dodo'
 import { CONNECTABLE_PROVIDERS } from '@/lib/providers'
 import { PROVIDER_FIELDS } from '@/lib/provider-fields'
 import { formatMoney } from '@/lib/utils'
@@ -89,9 +89,9 @@ export default async function SubmitPage({
             docsUrl: provider.docsUrl,
             fields: PROVIDER_FIELDS[provider.id],
           }))}
-          /* Not for sale until Paddle has a price for it, so it is not offered. */
+          /* Not for sale until Dodo has a product for it, so it is not offered. */
           dofollowOffer={
-            isPaddleConfigured('dofollow')
+            isDodoConfigured('dofollow')
               ? {
                   price: formatMoney(dofollow.priceCents),
                   blurb: dofollow.blurb,

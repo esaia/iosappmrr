@@ -1,9 +1,10 @@
 /**
  * The paid dofollow upgrade.
  *
- * Sold through Paddle. The price below is for display only — the amount actually
- * charged is whatever the Paddle price is set to, so the two must be kept in
- * step by hand. The flag it grants is written solely by the Paddle webhook.
+ * Sold through Dodo Payments. The price below is for display only — the amount
+ * actually charged is whatever the Dodo price is set to, so the two must be
+ * kept in step by hand. The flag it grants is written solely by the Dodo
+ * webhook.
  */
 export const dofollow = {
   priceCents: 1900,

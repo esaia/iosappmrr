@@ -4,12 +4,12 @@ import { redirect } from 'next/navigation'
 import { requireUser } from '@/lib/auth'
 import { createCheckout } from '@/lib/checkout'
 import { getOwnedApp } from '@/lib/data/mutations'
-import type { PurchaseKind } from '@/lib/paddle'
+import type { PurchaseKind } from '@/lib/dodo'
 
 export type CheckoutState = { error?: string }
 
 /**
- * Opens a Paddle checkout for one of the paid products.
+ * Opens a Dodo checkout for one of the paid products.
  *
  * Every input that decides what is being bought and for whom is derived here
  * from the session and an ownership check, never from the form. The form

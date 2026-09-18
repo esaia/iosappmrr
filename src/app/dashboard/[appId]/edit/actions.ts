@@ -82,7 +82,7 @@ export async function updateAppAction(
     ...(rotated ? { slug: rotated } : {}),
     /*
      * `websiteDofollow` is deliberately not read from this form. It is granted
-     * only by the Paddle webhook once an order is paid — accepting it here
+     * only by the Dodo webhook once an order is paid — accepting it here
      * would let anyone POST the field and take the paid link for free.
      */
   })

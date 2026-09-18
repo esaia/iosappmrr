@@ -127,12 +127,12 @@ export type BillingActionState = {
  *
  * The row is looked up by id *and* owner, so the form supplies nothing that
  * decides whose subscription is changed. Neither direction touches `status`:
- * Paddle keeps billing until the period closes, and the `subscription.canceled`
+ * Dodo keeps billing until the period closes, and the `subscription.cancelled`
  * webhook is what withdraws the slot when it does.
  *
- * The local flag is written here rather than left to `subscription.canceled`,
+ * The local flag is written here rather than left to `subscription.cancelled`,
  * because the founder has just clicked and the screen has to answer them. The
- * webhook writes the same value, so an intent set in Paddle's own portal still
+ * webhook writes the same value, so an intent set in Dodo's own portal still
  * arrives, and the two agreeing is not a conflict.
  */
 export async function setSponsorCancellationAction(

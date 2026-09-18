@@ -33,9 +33,9 @@ export default async function AdminOverviewPage() {
                 {overview.stuckCheckouts} checkout{overview.stuckCheckouts === 1 ? '' : 's'} never
                 settled. Run{' '}
                 <code className="bg-surface-2 rounded px-1 py-0.5 text-[12px]">
-                  npm run paddle:reconcile
+                  npm run dodo:reconcile
                 </code>{' '}
-                first — it checks Paddle for the payment.{' '}
+                first — it checks Dodo for the payment.{' '}
                 <Link href="/admin/purchases?status=pending" className="text-blue hover:underline">
                   Review them
                 </Link>

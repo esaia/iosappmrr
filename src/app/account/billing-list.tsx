@@ -14,7 +14,7 @@ type Row = {
   id: string
   kind: 'dofollow' | 'sponsor'
   status: string
-  source: 'paddle' | 'admin'
+  source: 'paddle' | 'dodo' | 'admin'
   amountCents: number | null
   currency: string | null
   currentPeriodEnd: string | null
@@ -45,7 +45,7 @@ const dateFormat = new Intl.DateTimeFormat('en-US', {
 })
 
 export function BillingList({ rows }: { rows: Row[] }) {
-  // Set by the portal route when Paddle has no customer to open a portal for.
+  // Set by the portal route when Dodo has no customer to open a portal for.
   const portalFailed = useSearchParams().get('billing') === 'unavailable'
 
   return (
@@ -67,13 +67,14 @@ export function BillingList({ rows }: { rows: Row[] }) {
       )}
 
       {/*
-        Invoices, receipts, and card details live at Paddle, who is the merchant
-        of record — this site never sees a card number and cannot show them.
+        Invoices, receipts, and card details live at Dodo Payments, who is the
+        merchant of record — this site never sees a card number and cannot
+        show them.
       */}
       <div className="flex flex-wrap items-center gap-3 pt-1">
         <PortalLink />
         <p className="text-muted text-xs">
-          Invoices, receipts, and payment methods are held by Paddle, our merchant of record.
+          Invoices, receipts, and payment methods are held by Dodo Payments, our merchant of record.
         </p>
       </div>
       {portalFailed && (
@@ -109,7 +110,7 @@ function BillingRow({ row }: { row: Row }) {
   // A sponsor slot is the only recurring product, and only a paid one can be
   // cancelled — a gift is the admin's to withdraw, not the founder's.
   const cancellable =
-    row.status === 'active' && row.source === 'paddle' && Boolean(row.subscriptionId)
+    row.status === 'active' && row.source !== 'admin' && Boolean(row.subscriptionId)
   const ending = row.cancelAtPeriodEnd
   // Live sponsor slots only. On a revoked or pending row the switch would
   // imply something could be turned back on, and a dofollow link has nothing
@@ -194,9 +195,9 @@ function BillingRow({ row }: { row: Row }) {
 }
 
 /**
- * A link, not a button: the portal is Paddle's page, so it opens in its own tab
+ * A link, not a button: the portal is Dodo's page, so it opens in its own tab
  * and leaves the founder's account screen where they left it. The href is a
- * route of ours that mints the session on demand — the URL Paddle issues is
+ * route of ours that mints the session on demand — the URL Dodo issues is
  * short-lived and cannot sit in the markup waiting to be clicked.
  */
 function PortalLink() {

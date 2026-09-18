@@ -450,7 +450,7 @@ export const appViews = pgTable(
 /*                                  Payments                                   */
 /* -------------------------------------------------------------------------- */
 
-/** What was bought. Each value maps to one Paddle price. */
+/** What was bought. Each value maps to one product on the payment provider. */
 export const purchaseKind = pgEnum('purchase_kind', ['dofollow', 'sponsor'])
 
 /**
@@ -473,12 +473,18 @@ export const purchaseStatus = pgEnum('purchase_status', [
 /**
  * Where the entitlement came from.
  *
- * `admin` covers the two cases Paddle cannot: a gift, and a repair after a
- * webhook that never arrived. Recording it on the row rather than inferring it
- * from a null checkout id means the books stay readable — a gifted slot and a
- * paid one grant exactly the same thing, but only one of them is revenue.
+ * `admin` covers the two cases a payment provider cannot: a gift, and a
+ * repair after a webhook that never arrived. Recording it on the row rather
+ * than inferring it from a null checkout id means the books stay readable —
+ * a gifted slot and a paid one grant exactly the same thing, but only one of
+ * them is revenue.
+ *
+ * `paddle` is kept for history rather than renamed or removed — Dodo Payments
+ * replaced Paddle as the active provider, but a real purchase, if one ever
+ * settled, stays recorded as what it actually was. `dodo` is what every new
+ * paid row uses now.
  */
-export const purchaseSource = pgEnum('purchase_source', ['paddle', 'admin'])
+export const purchaseSource = pgEnum('purchase_source', ['paddle', 'dodo', 'admin'])
 
 export const purchases = pgTable(
   'purchases',
@@ -486,7 +492,7 @@ export const purchases = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     kind: purchaseKind('kind').notNull(),
     status: purchaseStatus('status').notNull().default('pending'),
-    source: purchaseSource('source').notNull().default('paddle'),
+    source: purchaseSource('source').notNull().default('dodo'),
 
     /** Who paid. Kept even if the app is deleted, so refunds can be traced. */
     profileId: uuid('profile_id')
@@ -497,9 +503,10 @@ export const purchases = pgTable(
       .references(() => apps.id, { onDelete: 'cascade' }),
 
     /**
-     * The Paddle transaction the checkout was opened for. Unique because it is
-     * the idempotency key: webhooks are delivered at least once, and a retry
-     * must update this row rather than grant the benefit twice.
+     * The checkout the payment provider opened for this purchase. Unique
+     * because it is the idempotency key: webhooks are delivered at least
+     * once, and a retry must update this row rather than grant the benefit
+     * twice.
      *
      * Written before the founder is redirected, so the webhook always has a row
      * to find however fast it arrives. Null for an admin grant, which never
@@ -507,7 +514,7 @@ export const purchases = pgTable(
      * index, so any number of grants can coexist without colliding.
      */
     checkoutId: text('checkout_id'),
-    /** The billed transaction, once payment completes. */
+    /** The id of the completed payment, once one exists. */
     orderId: text('order_id'),
     /** Set for `sponsor` only — dofollow is a one-time charge. */
     subscriptionId: text('subscription_id'),
@@ -525,7 +532,8 @@ export const purchases = pgTable(
     /**
      * Set when a sponsor has turned off auto-renew but the period they paid
      * for has not run out. Display only — the entitlement is still live, and
-     * `status` stays `active` until Paddle says the access has actually ended.
+     * `status` stays `active` until the provider says the access has actually
+     * ended.
      * Without it the account screen cannot tell a slot that renews from one
      * that is winding down, and both read as "Renews".
      */

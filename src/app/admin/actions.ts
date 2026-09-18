@@ -112,7 +112,7 @@ export async function giftDofollowAction(
   if (existing) {
     return {
       error:
-        existing.source === 'paddle'
+        existing.source !== 'admin'
           ? `${app.name} already paid for a dofollow link — there is nothing to gift.`
           : `${app.name} already has a gifted dofollow link.`,
     }
@@ -153,9 +153,9 @@ export async function revokeDofollowAction(
   if (!app) return { error: 'App not found.' }
 
   const existing = await getAppEntitlement(appId, 'dofollow')
-  if (existing?.source === 'paddle') {
+  if (existing && existing.source !== 'admin') {
     return {
-      error: `${app.name} paid for this link. Refund it in Paddle, or revoke the purchase from the Purchases screen if you mean to.`,
+      error: `${app.name} paid for this link. Refund it in Dodo, or revoke the purchase from the Purchases screen if you mean to.`,
     }
   }
 
@@ -209,7 +209,7 @@ export async function giftSponsorAction(
   if (existing) {
     return {
       error:
-        existing.source === 'paddle'
+        existing.source !== 'admin'
           ? `${app.name} is a paying sponsor — there is nothing to gift.`
           : `${app.name} already holds a gifted sponsor slot.`,
     }
@@ -266,14 +266,14 @@ export async function revokeSponsorAction(
 
   /*
    * A slot someone is paying for is not the admin's to switch off. It ends when
-   * the subscription ends, and Paddle's webhook is what tells us that — which
-   * also means a cancellation or refund already removes it without anyone
-   * clicking anything here.
+   * the subscription ends, and the provider's webhook is what tells us that —
+   * which also means a cancellation or refund already removes it without
+   * anyone clicking anything here.
    */
   const existing = await getAppEntitlement(appId, 'sponsor')
-  if (existing?.source === 'paddle') {
+  if (existing && existing.source !== 'admin') {
     return {
-      error: `${app.name} pays for this slot. It ends when their subscription does — cancel or refund it in Paddle instead.`,
+      error: `${app.name} pays for this slot. It ends when their subscription does — cancel or refund it in Dodo instead.`,
     }
   }
 
@@ -300,10 +300,10 @@ export async function revokeSponsorAction(
 /**
  * Settles a stuck checkout by hand.
  *
- * `npm run paddle:reconcile` is the right tool when Paddle can still see the
+ * `npm run dodo:reconcile` is the right tool when Dodo can still see the
  * order — it checks that the money actually arrived. This grants without that
  * check, so it is for the case where you have confirmed the payment yourself
- * and Paddle's API cannot close the loop. The note is required for exactly that
+ * and Dodo's API cannot close the loop. The note is required for exactly that
  * reason: the log should say what the evidence was.
  */
 export async function settlePurchaseAction(
