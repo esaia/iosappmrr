@@ -244,7 +244,6 @@ function DofollowOffer({
       action={action}
       error={state.error}
       cta="Buy"
-      comingSoon
     />
   )
 }
