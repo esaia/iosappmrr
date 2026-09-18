@@ -186,13 +186,22 @@ To set it up:
 1. Create the two products in Dodo and copy their product ids (`pdt_…`) into
    `DODO_PRODUCT_DOFOLLOW` and `DODO_PRODUCT_SPONSOR`. The sponsor product must
    be a subscription; `npm run dodo:products` checks that for you.
-2. Add a webhook endpoint pointing at `https://your-host/api/webhooks/dodo`,
-   subscribed to `payment.succeeded`, `subscription.active`,
-   `subscription.renewed`, `subscription.cancelled`, and `refund.succeeded`.
-3. Copy that endpoint's signing key into `DODO_PAYMENTS_WEBHOOK_KEY`.
-4. Keep `DODO_PAYMENTS_ENV=test_mode` until you have tested end to end. Test
-   mode is a separate deployment — its keys, webhook secret and product ids do
-   not work in live mode.
+2. In Dodo's **live mode**, add a webhook endpoint pointing at
+   `https://your-host/api/webhooks/dodo`, subscribed to `payment.succeeded`,
+   `subscription.active`, `subscription.renewed`, `subscription.cancelled`,
+   and `refund.succeeded`. Copy its signing key into
+   `DODO_PAYMENTS_WEBHOOK_KEY`.
+3. In Dodo's **test mode**, add a second webhook endpoint the same way, but
+   pointed at `https://your-host/api/webhooks/dodo-test` on the same
+   deployment, and copy its signing key into
+   `DODO_PAYMENTS_TEST_WEBHOOK_KEY`. A live deployment can never verify a
+   test-mode signature against `DODO_PAYMENTS_WEBHOOK_KEY`, so test-mode
+   purchases — including ones made from `localhost`, which shares this
+   database — need this second route and secret to still be granted
+   automatically.
+4. Keep `DODO_PAYMENTS_ENV=test_mode` locally until you have tested end to
+   end. Test mode is a separate catalogue — its keys, webhook secret and
+   product ids do not work in live mode.
 
 ### When a webhook is missed
 

@@ -71,6 +71,22 @@ export function webhookSecret() {
 }
 
 /**
+ * The signing secret for `/api/webhooks/dodo-test`.
+ *
+ * This deployment always runs in live mode, so a webhook Dodo signs with its
+ * test-mode secret can never verify against `webhookSecret()` above. This is
+ * the second secret that lets test-mode purchases — made anywhere, including
+ * localhost, which shares this database — still get granted.
+ */
+export function testWebhookSecret() {
+  const secret = process.env.DODO_PAYMENTS_TEST_WEBHOOK_KEY
+  if (!secret) {
+    throw new Error('DODO_PAYMENTS_TEST_WEBHOOK_KEY is not set.')
+  }
+  return secret
+}
+
+/**
  * Written onto every checkout session as `metadata`, and copied by Dodo onto
  * both the resulting payment and, for a subscription, the subscription
  * itself. The webhook reads it to decide what to grant.
