@@ -15,7 +15,7 @@ import { graph, itemList, organization, website } from '@/lib/seo'
 
 export const metadata: Metadata = { alternates: { canonical: '/' } }
 
-export const revalidate = 600
+export const revalidate = 86400
 
 const QUICK_LINKS = [
   { href: '/leaderboard', label: 'Leaderboard' },

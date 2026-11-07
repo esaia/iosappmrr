@@ -8,7 +8,13 @@ import { Container } from '@/components/ui/container'
 import { JsonLd } from '@/components/json-ld'
 import { breadcrumbs, graph, profilePage } from '@/lib/seo'
 
-export const revalidate = 600
+export const revalidate = 86400
+
+// None at build time: each page is rendered on its first visit, then served from
+// the cache for a day. Without this the route renders on every request.
+export async function generateStaticParams() {
+  return []
+}
 
 type Params = { params: Promise<{ handle: string }> }
 

@@ -4,7 +4,7 @@ import { listCategories } from '@/lib/data/apps'
 import { formatMrr } from '@/lib/utils'
 import { Container } from '@/components/ui/container'
 
-export const revalidate = 600
+export const revalidate = 86400
 
 export const metadata: Metadata = {
   alternates: { canonical: '/categories' },

@@ -292,7 +292,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
 
         {/* ------------------------------ Reviews ---------------------------- */}
         {/*
-          The nightly sync reads a listing's reviews once and then leaves it
+          The metadata sync reads a listing's reviews once and then leaves it
           alone — each read is an 800KB scrape of a page meant for browsers.
           This is the button for when a founder asks for a refresh.
         */}
@@ -303,7 +303,7 @@ function AppCard({ row, slotsFree }: { row: AdminAppRow; slotsFree: number }) {
               ? 'No App Store ID'
               : row.reviewsFetchedAt
                 ? `${row.reviewCount} stored · read ${timeAgo(row.reviewsFetchedAt)}`
-                : 'Not read yet — the nightly sync will pick it up'
+                : 'Not read yet — the next metadata sync will pick it up'
           }
         >
           {row.appStoreId ? (

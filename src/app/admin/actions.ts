@@ -39,7 +39,7 @@ async function actor(): Promise<AdminActor> {
 function revalidatePublic(slug?: string | null) {
   revalidatePath('/')
   revalidatePath('/apps')
-  revalidatePath('/leaderboard')
+  revalidatePath('/leaderboard', 'layout')
   if (slug) revalidatePath(`/apps/${slug}`)
 }
 

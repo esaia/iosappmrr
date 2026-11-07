@@ -8,7 +8,7 @@ import { Container } from '@/components/ui/container'
 import { JsonLd } from '@/components/json-ld'
 import { breadcrumbs, graph, itemList } from '@/lib/seo'
 
-export const revalidate = 600
+export const revalidate = 86400
 
 type Params = { params: Promise<{ slug: string }> }
 

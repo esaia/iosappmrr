@@ -14,7 +14,7 @@ category, and version from Apple's public catalogue alongside verified MRR.
 - **Prettier** (`npm run format`) with the Tailwind class-sorting plugin
 - **Supabase** — Postgres, Auth (X + Google OAuth), RLS
 - **Drizzle ORM** for queries and migrations
-- **Vercel** for hosting and cron
+- **Vercel** for hosting (no cron: syncs are run by hand, see Deploying)
 
 ## Getting started
 
@@ -103,8 +103,8 @@ for a label/value pair, `AppRow` + `AppRowHeader` for any table of apps,
 2. They connect a **read-only** provider credential. We make one live call to
    confirm it works, and **only store it if that call succeeds**.
 3. The credential is encrypted with AES-256-GCM before it touches the database.
-4. A daily cron re-reads every active connection and appends a snapshot for that
-   day.
+4. A sync (`/api/cron/sync-revenue`, run by hand) re-reads every active
+   connection and appends a snapshot for that day.
 5. `app_metrics` is rebuilt from those snapshots — every leaderboard and card
    reads that rollup, never the raw history.
 
@@ -147,7 +147,7 @@ run for any app in the store.
 
 The score appears once the metadata sync has run. `npm run aso` prints it for
 every live app, and `npm run aso -- --refresh` re-reads Apple first rather than
-waiting for the 04:30 cron.
+waiting for the next metadata sync.
 
 ## Payments
 
@@ -416,8 +416,9 @@ scripts/                  seed and policy-application CLIs
    and `DATABASE_URL` (transaction pooler) variables in Vercel.
 2. Run `npm run db:migrate && npm run db:policies` against it.
 3. Set `CREDENTIALS_ENCRYPTION_KEY` and `CRON_SECRET`.
-4. Deploy. `vercel.json` registers the daily revenue sync and the daily App
-   Store metadata refresh.
+4. Deploy. `vercel.json` registers no cron jobs: they were removed to keep the
+   project's function CPU near zero. Run the syncs by hand when you want fresh
+   figures (see below).
 
 > **Cron cadence is a plan limit, not a design choice.** Vercel's Hobby plan
 > only permits daily cron jobs and rejects a deployment whose schedule runs more

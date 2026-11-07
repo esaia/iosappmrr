@@ -9,7 +9,7 @@ import { FounderAvatar } from '@/components/founder-avatar'
 import { AppleMark } from '@/components/apple-mark'
 import { GrowthPill } from '@/components/growth-pill'
 import { InfoTip } from '@/components/info-tip'
-import { RevenueChart } from '@/components/revenue-chart'
+import { AppRevenueChart } from '@/components/app-revenue-chart'
 import { AppScreenshots } from '@/components/app-screenshots'
 import { AppReviews } from '@/components/app-reviews'
 import { AsoScore } from '@/components/aso-score'
@@ -20,7 +20,6 @@ import { ShareButton } from '@/components/share-dialog'
 import { ExpandableText } from '@/components/expandable-text'
 import { VibecodeVerdict } from '@/components/vibecode-verdict'
 import { TechIcon } from '@/components/tech-icon'
-import { getCurrentUser } from '@/lib/auth'
 import { getAppBySlug, getAppReviews, getRevenueHistory, listApps } from '@/lib/data/apps'
 import { listActiveSponsors } from '@/lib/data/purchases'
 import { getVerdict } from '@/lib/data/vibecode'
@@ -31,7 +30,13 @@ import { Container } from '@/components/ui/container'
 import { JsonLd } from '@/components/json-ld'
 import { breadcrumbs, graph, mobileApplication } from '@/lib/seo'
 
-export const revalidate = 600
+export const revalidate = 86400
+
+// None at build time: each page is rendered on its first visit, then served from
+// the cache for a day. Without this the route renders on every request.
+export async function generateStaticParams() {
+  return []
+}
 
 type Params = { params: Promise<{ slug: string }> }
 
@@ -56,15 +61,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function AppPage({ params }: Params) {
   const { slug } = await params
   /*
-   * Who is reading, alongside the app itself. The header already asks for the
-   * session on every route, so this costs nothing extra — `getCurrentUser` is
-   * cached per request — but it decides how much history the page is allowed to
-   * send, so it has to be answered before the fetch below.
+   * No session is read here, so the page is cached and costs nothing per visit.
+   * It carries the free window; a signed-in reader's browser fetches the rest
+   * (see `AppRevenueChart`).
    */
-  const [record, viewer] = await Promise.all([getAppBySlug(slug), getCurrentUser()])
+  const record = await getAppBySlug(slug)
   if (!record) notFound()
-
-  const signedIn = viewer != null
 
   const { app, metadata, metrics, category, founder, tech } = record
 
@@ -82,7 +84,7 @@ export default async function AppPage({ params }: Params) {
      * "compare previous period" needs the window before the one on screen, and
      * that comparison is part of what the free view offers.
      */
-    getRevenueHistory(app.id, signedIn ? 365 : 60),
+    getRevenueHistory(app.id, 60),
     getAppReviews(app.id),
     // Read from cache only. An app with no verdict simply does not show the
     // section, rather than blocking the page on a model call.
@@ -311,7 +313,7 @@ export default async function AppPage({ params }: Params) {
 
           {/* Revenue — the reason anyone is on this page. */}
           <div className="border-border border-t p-5 sm:p-6">
-            <RevenueChart data={history} signedIn={signedIn} />
+            <AppRevenueChart slug={app.slug} initial={history} />
 
             <p className="border-border text-dim mt-5 border-t pt-3 text-[11px] leading-relaxed">
               Read from {providers.map(providerLabel).join(' and ') || 'no connected provider'}{' '}

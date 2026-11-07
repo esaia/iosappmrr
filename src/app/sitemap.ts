@@ -5,7 +5,7 @@ import { appMetrics, apps, profiles } from '@/db/schema'
 import { listCategories } from '@/lib/data/apps'
 import { site } from '@/lib/site'
 
-export const revalidate = 3600
+export const revalidate = 86400
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [liveApps, categories, founders] = await Promise.all([

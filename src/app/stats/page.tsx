@@ -4,7 +4,7 @@ import { getEcosystemStats, listCategories, listTechTags } from '@/lib/data/apps
 import { formatMoney, formatMrr } from '@/lib/utils'
 import { Container } from '@/components/ui/container'
 
-export const revalidate = 600
+export const revalidate = 86400
 
 export const metadata: Metadata = {
   alternates: { canonical: '/stats' },

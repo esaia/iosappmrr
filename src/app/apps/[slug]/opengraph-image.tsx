@@ -11,7 +11,13 @@ import { formatMrr } from '@/lib/utils'
 export const alt = 'Monthly revenue'
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
-export const revalidate = 3600
+export const revalidate = 86400
+
+// None at build time: each page is rendered on its first visit, then served from
+// the cache for a day. Without this the route renders on every request.
+export async function generateStaticParams() {
+  return []
+}
 
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params

@@ -56,6 +56,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
    * on every click.
    */
   const headers = new Headers(image.headers)
-  headers.set('cache-control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400')
+  headers.set('cache-control', 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800')
   return new Response(image.body, { headers })
 }

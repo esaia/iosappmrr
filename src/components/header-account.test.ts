@@ -10,17 +10,17 @@ import type { ReactElement } from 'react'
  * *visible*, and a regression here would leak the existence of the section to
  * every signed-in founder while looking completely normal in review.
  *
- * The component is called directly and its returned element tree is walked. No
+ * The component is called directly, with the session it reads from the browser
+ * stubbed, and its returned element tree is walked. No
  * DOM, no renderer: the question is only whether a link to /admin is present,
  * and answering it structurally keeps the test indifferent to styling.
  */
 
-const getCurrentUser = vi.fn()
+const useViewer = vi.fn()
 
-vi.mock('@/lib/auth', () => ({ getCurrentUser: () => getCurrentUser() }))
-vi.mock('@/app/auth/actions', () => ({ signOutAction: async () => {} }))
+vi.mock('@/lib/use-viewer', () => ({ useViewer: () => useViewer() }))
 
-const { SiteHeader } = await import('./site-header')
+const { HeaderAccount } = await import('./header-account')
 
 /** Every `href` anywhere in a rendered element tree. */
 function hrefsIn(node: unknown, found: string[] = []): string[] {
@@ -40,41 +40,47 @@ function hrefsIn(node: unknown, found: string[] = []): string[] {
   return found
 }
 
-async function renderHeaderFor(user: unknown) {
-  getCurrentUser.mockResolvedValue(user)
-  return hrefsIn(await SiteHeader())
+// Both places the account corner is drawn: the header bar and the small-screen rail.
+function renderHeaderFor(viewer: unknown) {
+  useViewer.mockReturnValue(viewer)
+  return [
+    ...hrefsIn(HeaderAccount({ variant: 'bar' })),
+    ...hrefsIn(HeaderAccount({ variant: 'rail' })),
+  ]
 }
 
-const profile = (role: 'admin' | 'founder') => ({
-  id: 'u1',
-  email: 'someone@example.com',
-  profile: { handle: 'someone', role },
-})
+const profile = (role: 'admin' | 'founder') => ({ handle: 'someone', role })
 
-describe('SiteHeader admin link', () => {
-  beforeEach(() => getCurrentUser.mockReset())
+describe('HeaderAccount admin link', () => {
+  beforeEach(() => useViewer.mockReset())
 
-  it('shows it to an admin', async () => {
-    expect(await renderHeaderFor(profile('admin'))).toContain('/admin')
+  it('shows it to an admin', () => {
+    expect(renderHeaderFor(profile('admin'))).toContain('/admin')
   })
 
-  it('hides it from a signed-in founder', async () => {
-    const hrefs = await renderHeaderFor(profile('founder'))
+  it('hides it from a signed-in founder', () => {
+    const hrefs = renderHeaderFor(profile('founder'))
     expect(hrefs).not.toContain('/admin')
     // Sanity: the header did render, so the assertion above means something.
     expect(hrefs).toContain('/dashboard')
   })
 
-  it('hides it from a visitor who is not signed in', async () => {
-    const hrefs = await renderHeaderFor(null)
+  it('hides it from a visitor who is not signed in', () => {
+    const hrefs = renderHeaderFor(null)
     expect(hrefs).not.toContain('/admin')
     expect(hrefs).toContain('/login')
   })
 
-  it('hides it from a role that does not exist yet', async () => {
+  it('hides it from a role that does not exist yet', () => {
     // A role added to the enum later must not inherit admin navigation by
     // being merely truthy — the check is an equality test, and this locks that.
-    const hrefs = await renderHeaderFor(profile('moderator' as 'founder'))
+    const hrefs = renderHeaderFor(profile('moderator' as 'founder'))
     expect(hrefs).not.toContain('/admin')
+  })
+})
+
+describe('HeaderAccount while the session is being read', () => {
+  it('shows nothing rather than a Sign in that flips to a handle', () => {
+    expect(renderHeaderFor(undefined)).toEqual([])
   })
 })

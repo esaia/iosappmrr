@@ -5,7 +5,7 @@ import { TechIcon } from '@/components/tech-icon'
 import { countApps, listApps, listCategories, listTechTags, type AppSort } from '@/lib/data/apps'
 import { Container } from '@/components/ui/container'
 
-export const revalidate = 600
+export const revalidate = 86400
 
 const DESCRIPTION =
   'Browse App Store apps with revenue read directly from RevenueCat, Adapty, or App Store Connect. Filter by category, tech stack, and revenue.'

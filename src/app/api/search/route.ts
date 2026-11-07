@@ -31,6 +31,6 @@ export async function GET(request: Request) {
       })),
     },
     // Repeat keystrokes across users hit the same few prefixes.
-    { headers: { 'cache-control': 'public, max-age=15, stale-while-revalidate=60' } },
+    { headers: { 'cache-control': 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400' } },
   )
 }
