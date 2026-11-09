@@ -16,9 +16,19 @@ export default function robots(): MetadataRoute.Robots {
        *
        * Filtered and searched views of /apps are absent too. They carry
        * `noindex` in their own metadata, and a crawler has to be allowed to
-       * fetch a page before it can read that.
+       * fetch a page before it can read that. /apps-view is where the middleware
+       * rewrites them to, never linked; it is disallowed so it can't be crawled directly.
        */
-      disallow: ['/dashboard', '/account', '/admin', '/login', '/checkout', '/api/', '/auth/'],
+      disallow: [
+        '/apps-view/',
+        '/dashboard',
+        '/account',
+        '/admin',
+        '/login',
+        '/checkout',
+        '/api/',
+        '/auth/',
+      ],
     },
     sitemap: `${site.url}/sitemap.xml`,
   }
